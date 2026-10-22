@@ -1,0 +1,26 @@
+{
+  "short_name": "2esc",
+  "name": "2Escape",
+  "description": "A 2 player hacker/operative escape game",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "id": "/?source=pwa",
+  "start_url": "/?source=pwa",
+  "background_color": "#ffffff",
+  "theme_color": "#0066cc",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["games", "social"]
+}
