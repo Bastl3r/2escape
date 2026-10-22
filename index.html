@@ -1,962 +1,607 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100 select-none">
+<html lang="en" class="h-full bg-[#0d0f12]">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>2Escape</title>
-
+    <title>2Escape // Cyber-Noir Co-op PWA</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        cyber: {
-                            bg: '#0d0f12',
-                            panel: '#151921',
-                            border: '#232b38',
-                            cyan: '#00f0ff',
-                            green: '#00ff66',
-                            red: '#ff2a2a',
-                            amber: '#ffaa00',
-                            dimCyan: 'rgba(0, 240, 255, 0.15)',
-                            dimGreen: 'rgba(0, 255, 102, 0.15)',
-                            dimRed: 'rgba(255, 42, 42, 0.15)',
-                        }
-                    },
-                    fontFamily: {
-                        mono: ['Courier New', 'Consolas', 'Monaco', 'monospace']
-                    }
-                }
-            }
-        }
-    </script>
-
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- PeerJS CDN -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
-        .cyber-panel {
-            background: rgba(10, 15, 29, 0.9);
-            border: 1px solid rgba(0, 240, 255, 0.25);
-            box-shadow: 0 0 20px rgba(0, 240, 255, 0.08), inset 0 0 15px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(12px);
-        }
-
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0d0f12; }
-        ::-webkit-scrollbar-thumb { background: #232b38; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
-
-        .glow-cyan { box-shadow: 0 0 12px rgba(0, 240, 255, 0.4); }
-        .glow-green { box-shadow: 0 0 12px rgba(0, 255, 102, 0.4); }
-        .text-glow-cyan { text-shadow: 0 0 8px rgba(0, 240, 255, 0.6); }
-
-        body, canvas {
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #0d0f12;
+            color: #00f0ff;
+            overflow: hidden;
             touch-action: none;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.4);
+        }
+        .glow-green {
+            text-shadow: 0 0 10px rgba(0, 255, 102, 0.6), 0 0 20px rgba(0, 255, 102, 0.4);
+        }
+        .glow-red {
+            text-shadow: 0 0 10px rgba(255, 42, 42, 0.6), 0 0 20px rgba(255, 42, 42, 0.4);
+        }
+        .border-glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            border-color: #00f0ff;
+        }
+        .scanlines {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d0f12;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00f0ff55;
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f0ff;
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-cyan-500 selection:text-slate-950 min-h-screen flex flex-col">
+<body class="h-full flex flex-col relative select-none">
+    <!-- Scanlines Overlay -->
+    <div class="absolute inset-0 z-50 scanlines pointer-events-none"></div>
 
-    <!-- APP HEADER -->
-    <header class="border-b border-cyan-500/20 bg-slate-950/90 backdrop-blur sticky top-0 z-40 px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <span class="w-2.5 h-2.5 rounded-full bg-cyber-green animate-pulse"></span>
-            <span class="font-bold tracking-widest text-cyber-cyan text-glow-cyan text-xs sm:text-base">2Escape</span>
-            <span id="role-badge" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 font-bold uppercase border border-slate-700">UNASSIGNED</span>
-        </div>
-        
-        <div class="flex items-center space-x-4 text-xs font-mono">
-            <button id="audio-toggle-btn" class="hover:text-cyber-cyan transition-colors">
-                <span id="audio-icon">🔊 SOUND ON</span>
-            </button>
-            <div id="connection-status" class="flex items-center space-x-1.5 text-slate-400">
-                <span class="w-2 h-2 rounded-full bg-slate-600" id="status-dot"></span>
-                <span id="status-text">OFFLINE</span>
-            </div>
-            <button id="pwa-install-btn" class="hidden px-2 py-1 bg-cyber-cyan text-slate-950 font-bold rounded hover:bg-cyan-300 text-[10px]">
-                INSTALL APP
-            </button>
-        </div>
-    </header>
+    <!-- MAIN APP CONTAINER -->
+    <div id="app" class="flex-1 flex flex-col h-full w-full relative overflow-hidden">
 
-    <!-- MAIN VIEW CONTAINER -->
-    <main class="flex-1 flex flex-col p-2 md:p-4 gap-4 max-w-7xl mx-auto w-full relative">
-
-        <!-- SCREEN 1: LOBBY & ROLE SELECTION -->
-        <section id="screen-lobby" class="flex-1 flex flex-col items-center justify-center p-4">
-            <div class="max-w-xl w-full bg-cyber-panel border border-cyber-border rounded-xl p-6 shadow-2xl space-y-6">
-                <div class="text-center space-y-2">
-                    <h1 class="text-2xl sm:text-3xl font-extrabold text-cyber-cyan tracking-wider text-glow-cyan">OPERATIONAL LOBBY</h1>
-                    <p class="text-xs text-slate-400">Establish encrypted Peer-to-Peer link between Hacker & Field Operative.</p>
+        <!-- VIEW: LOBBY SYSTEM -->
+        <div id="view-lobby" class="flex-1 flex flex-col items-center justify-center p-4 relative z-10">
+            <div class="absolute inset-0 bg-radial from-[#00f0ff11] to-transparent pointer-events-none"></div>
+            <div class="max-w-md w-full bg-[#12161f] border border-[#00f0ff44] rounded-lg p-6 shadow-2xl relative">
+                <div class="absolute -top-3 left-6 px-3 bg-[#0d0f12] border border-[#00f0ff88] text-xs font-orbitron tracking-widest text-[#00f0ff] glow-cyan">
+                    2ESCAPE // SECURE TERMINAL
                 </div>
 
-                <!-- Session Configuration -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 space-y-3">
-                        <div class="flex justify-between items-center">
-                            <label class="text-xs text-cyber-cyan font-bold block">ROOM & SEED CONFIG</label>
-                            <button id="btn-regen-level" class="text-[10px] text-cyber-amber hover:underline font-mono">↻ REGENERATE</button>
-                        </div>
-                        <div>
-                            <span class="text-[10px] text-slate-500 block mb-1">SESSION ROOM ID</span>
-                            <input type="text" id="input-room-id" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white uppercase font-mono focus:border-cyber-cyan outline-none" placeholder="GENERATING SESSION..." readonly>
-                        </div>
-                        <div>
-                            <span class="text-[10px] text-slate-500 block mb-1">MISSION SEED (PRNG)</span>
-                            <input type="number" id="input-seed" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white font-mono focus:border-cyber-cyan outline-none" value="882194">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-[10px] text-slate-500 mb-1">
-                                <span>DIFFICULTY / PUZZLE LEVEL</span>
-                                <span id="level-val-display" class="text-cyber-green font-bold">LVL 5</span>
-                            </div>
-                            <input type="range" id="input-level-slider" min="1" max="20" value="5" class="w-full accent-cyber-cyan bg-slate-950 rounded cursor-pointer">
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 flex flex-col items-center justify-center space-y-2">
-                        <span class="text-[10px] text-slate-400">SESSION IDENTIFIER QR</span>
-                        <div id="qr-code-container" class="w-24 h-24 bg-slate-950 border border-cyber-cyan/30 rounded p-1 flex items-center justify-center">
-                            <svg id="qr-svg" class="w-full h-full" viewBox="0 0 100 100"></svg>
-                        </div>
-                        <span id="level-summary-badge" class="text-[10px] font-mono text-cyber-cyan">LEVEL GENERATED</span>
-                    </div>
-                </div>
-
-                <!-- Join Existing Session -->
-                <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 flex items-center space-x-2">
-                    <input type="text" id="input-join-id" class="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white uppercase font-mono focus:border-cyber-cyan outline-none" placeholder="ENTER ROOM ID TO JOIN">
-                    <button id="btn-join-room" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-cyber-cyan font-bold transition">CONNECT</button>
+                <div class="text-center mb-6 mt-2">
+                    <h1 class="text-3xl font-orbitron font-black tracking-wider text-[#00f0ff] glow-cyan">CODEBREAK</h1>
+                    <p class="text-xs text-gray-400 mt-1">ASYMMETRICAL CO-OP INFILTRATION PWA</p>
                 </div>
 
                 <!-- Role Selection -->
-                <div class="space-y-2">
-                    <label class="text-xs text-cyber-cyan font-bold block">SELECT OPERATIONAL ROLE</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button id="btn-select-operative" class="p-4 bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 hover:border-cyber-cyan rounded-xl text-left transition group">
-                            <div class="text-lg font-bold text-white group-hover:text-cyber-cyan">FIELD OPERATIVE</div>
-                            <div class="text-[11px] text-slate-400 mt-1">Walkable Procedural Map & Hardware Interfacing.</div>
-                        </button>
-                        <button id="btn-select-hacker" class="p-4 bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 hover:border-cyber-green rounded-xl text-left transition group">
-                            <div class="text-lg font-bold text-white group-hover:text-cyber-green">HACKER TERMINAL</div>
-                            <div class="text-[11px] text-slate-400 mt-1">Telemetry Dashboard, Dynamic Schematics & Manual Overrides.</div>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-                    <span class="text-slate-500">Solo Testing Mode:</span>
-                    <button id="btn-solo-launch" class="px-3 py-1 bg-cyber-border hover:bg-slate-700 text-slate-300 rounded font-bold">SOLO OFFLINE START</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- OPERATIVE ROLE INTERFACE -->
-        <section id="screen-operative" class="hidden flex-1 flex flex-col gap-3 relative pb-32 md:pb-4">
-            <div class="cyber-panel p-3 rounded-lg flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm">
-                <div class="flex items-center gap-3">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="font-mono text-cyan-400 font-bold uppercase tracking-wider">STATUS: ACTIVE INFILTRATION</span>
-                </div>
-                <div class="flex items-center gap-4 font-mono text-xs">
-                    <div>SEED: <span id="op-hud-seed" class="text-amber-400">882194</span></div>
-                    <div>LEVEL: <span id="op-hud-level" class="text-emerald-400">5</span></div>
-                    <div>ROOMS: <span id="op-hud-room" class="text-emerald-400">0 / 0</span></div>
-                </div>
-            </div>
-
-            <!-- CANVAS CONTAINER -->
-            <div class="relative w-full rounded-xl overflow-hidden cyber-panel border-cyan-500/40 flex-1 min-h-[400px] max-h-[600px] flex items-center justify-center bg-slate-950 shadow-2xl">
-                <canvas id="operative-canvas" class="w-full h-full block"></canvas>
-
-                <div id="interact-prompt" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-amber-500/90 text-slate-950 font-bold font-mono px-4 py-2 rounded-lg shadow-lg border-2 border-amber-300 animate-bounce text-xs md:text-sm z-20 pointer-events-none">
-                    [E] INTERACT WITH NODE
-                </div>
-            </div>
-
-            <!-- MOBILE CONTROL DECK -->
-            <div id="operative-control-deck" class="fixed bottom-0 left-0 right-0 bg-slate-950/95 border-t border-cyan-500/30 backdrop-blur-md p-3 z-30 flex items-center justify-between px-6 max-w-5xl mx-auto rounded-t-2xl shadow-2xl md:hidden">
-                <div class="flex flex-col items-center">
-                    <span class="text-[10px] font-mono text-cyan-400/70 mb-1 uppercase tracking-widest">Movement</span>
-                    <div id="joystick-zone" class="w-28 h-14 rounded-full bg-slate-900 border border-cyan-500/40 relative touch-none flex items-center justify-center">
-                        <div id="joystick-knob" class="w-8 h-8 rounded-full bg-cyan-400 border border-white shadow-md absolute transition-transform duration-75"></div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <button id="btn-interact-mobile" class="w-14 h-14 rounded-full bg-amber-600/30 border-2 border-amber-400 text-amber-300 font-bold font-mono text-xs flex items-center justify-center active:scale-95 transition">
-                        USE
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <button id="role-operative" onclick="selectRole('operative')" class="p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
+                        <span class="text-xl mb-1">🏃</span> FIELD OPERATIVE
+                    </button>
+                    <button id="role-hacker" onclick="selectRole('hacker')" class="p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
+                        <span class="text-xl mb-1">💻</span> HACKER OPS
                     </button>
                 </div>
-            </div>
-        </section>
 
-        <!-- HACKER ROLE INTERFACE -->
-        <section id="screen-hacker" class="hidden flex-1 flex flex-col gap-4">
-            <!-- TABS HEADER -->
-            <div class="flex border-b border-slate-800">
-                <button class="tab-btn px-4 py-3 text-xs font-bold border-b-2 border-cyber-green text-cyber-green transition" data-tab="tab-blueprint">BLUEPRINT MAP</button>
-                <button class="tab-btn px-4 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition" data-tab="tab-manuals">SCHEMATICS & MANUALS</button>
-                <button class="tab-btn px-4 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition" data-tab="tab-terminal">TERMINAL OVERRIDE</button>
-                <button class="tab-btn px-4 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition" data-tab="tab-system">SYSTEM TELEMETRY</button>
-            </div>
-
-            <!-- TAB CONTENT CONTAINER -->
-            <div class="flex-1 cyber-panel p-4 rounded-xl">
-                <!-- TAB 1: BLUEPRINT -->
-                <div id="tab-blueprint" class="tab-content flex flex-col items-center justify-center">
-                    <span class="text-xs font-mono text-cyber-cyan mb-2">FIELD OPERATIVE BLUEPRINT TRACKER</span>
-                    <pre id="ascii-blueprint" class="font-mono text-cyber-green text-xs sm:text-sm bg-slate-950 p-4 rounded border border-slate-800 leading-none overflow-x-auto min-w-[320px] text-center"></pre>
-                </div>
-
-                <!-- TAB 2: MANUALS -->
-                <div id="tab-manuals" class="tab-content hidden space-y-4">
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs font-bold text-cyber-cyan">HARDWARE MANUAL DIRECTORY</span>
-                        <span id="manual-puzzle-count" class="text-[10px] font-mono text-slate-500">0 REGISTERED MODULES</span>
-                    </div>
-                    <div id="manual-puzzle-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                </div>
-
-                <!-- TAB 3: TERMINAL -->
-                <div id="tab-terminal" class="tab-content hidden space-y-3 font-mono text-xs">
-                    <div id="terminal-logs" class="bg-slate-950 p-3 rounded border border-slate-800 h-64 overflow-y-auto space-y-1 text-slate-300">
-                        <div>[SYSTEM]: Encrypted terminal link established.</div>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-cyber-green font-bold">&gt;</span>
-                        <input type="text" id="terminal-input" class="flex-1 bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-cyber-green outline-none focus:border-cyber-green" placeholder="Enter override command ('help', 'status', 'clear')...">
+                <!-- Seed Control -->
+                <div class="mb-4">
+                    <label class="block text-xs uppercase tracking-wider text-gray-400 mb-1">Mission Seed (PRNG)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="input-seed" value="CB-9901" class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-3 py-2 text-sm text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
+                        <button onclick="randomizeSeed()" class="px-3 py-2 border border-gray-700 hover:border-[#00f0ff] text-xs font-orbitron rounded bg-gray-900 transition cursor-pointer">GEN</button>
                     </div>
                 </div>
 
-                <!-- TAB 4: SYSTEM TELEMETRY -->
-                <div id="tab-system" class="tab-content hidden space-y-4 font-mono">
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div class="bg-slate-900 p-3 rounded border border-slate-800">
-                            <span class="text-[10px] text-slate-400 block">NETWORK LATENCY</span>
-                            <span id="telemetry-ping" class="text-base font-bold text-cyber-cyan">12 ms</span>
-                        </div>
-                        <div class="bg-slate-900 p-3 rounded border border-slate-800">
-                            <span class="text-[10px] text-slate-400 block">P2P NODE ROLE</span>
-                            <span id="telemetry-role" class="text-base font-bold text-cyber-green">HACKER</span>
-                        </div>
-                        <div class="bg-slate-900 p-3 rounded border border-slate-800">
-                            <span class="text-[10px] text-slate-400 block">ACTIVE PUZZLES</span>
-                            <span id="telemetry-active" class="text-base font-bold text-cyber-amber">0/0 UNRESOLVED</span>
-                        </div>
-                        <div class="bg-slate-900 p-3 rounded border border-slate-800">
-                            <span class="text-[10px] text-slate-400 block">GENERATED LEVEL</span>
-                            <span id="telemetry-level" class="text-base font-bold text-cyber-cyan">LVL 5</span>
-                        </div>
+                <!-- Connection Options -->
+                <div class="space-y-3 pt-2 border-t border-gray-800">
+                    <div class="flex gap-2">
+                        <button onclick="hostGame()" class="flex-1 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded tracking-wider hover:bg-[#00ff66] transition cursor-pointer shadow-lg shadow-[#00f0ff22]">
+                            HOST SESSION
+                        </button>
+                        <button onclick="startSolo()" class="px-4 py-3 border border-[#00ff66] text-[#00ff66] font-orbitron text-xs rounded hover:bg-[#00ff6611] transition cursor-pointer">
+                            SOLO TEST
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="input-room" placeholder="Enter Room Code (CB-XXXX)" class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-3 py-2 text-sm text-[#00f0ff] font-mono uppercase focus:border-[#00f0ff] outline-none">
+                        <button onclick="joinGame()" class="px-5 py-2 bg-gray-800 border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-xs font-bold rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer">
+                            JOIN
+                        </button>
                     </div>
                 </div>
-            </div>
-        </section>
-    </main>
 
-    <!-- PUZZLE MODAL OVERLAY -->
-    <div id="puzzle-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="max-w-2xl w-full bg-cyber-panel border-2 border-cyber-cyan rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
-                <div>
-                    <div id="puzzle-shell-title" class="text-base font-bold text-cyber-cyan">HARDWARE INTERFACE</div>
-                    <div id="puzzle-shell-makemodel" class="text-[10px] font-mono text-slate-400">GENERIC MODEL</div>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <span id="puzzle-shell-category" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">SECURITY</span>
-                    <span id="puzzle-shell-status" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 uppercase">IN PROGRESS</span>
-                    <button id="puzzle-shell-close" class="text-slate-400 hover:text-white font-bold text-lg px-2">&times;</button>
-                </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="w-full bg-slate-950 h-2 relative">
-                <div id="puzzle-shell-progressbar" class="h-full bg-cyber-cyan transition-all duration-300" style="width: 0%"></div>
-            </div>
-
-            <!-- Error Banner -->
-            <div id="puzzle-shell-error" class="hidden bg-cyber-red/20 border-b border-cyber-red p-2 text-center text-xs font-mono text-cyber-red">
-                <span id="puzzle-shell-error-msg">SYSTEM FAULT DETECTED</span>
-            </div>
-
-            <div id="puzzle-shell-body" class="p-6 overflow-y-auto flex-1"></div>
-
-            <div class="p-3 bg-slate-900 border-t border-slate-800 flex justify-between items-center text-[10px] font-mono text-slate-500">
-                <span>ENCRYPTED HARDWARE BUS</span>
-                <span>PROGRESS: <span id="puzzle-shell-progress-text" class="text-cyber-cyan">0%</span></span>
+                <div id="lobby-status" class="mt-4 text-center text-xs text-gray-400 min-h-[20px]"></div>
             </div>
         </div>
+
+        <!-- VIEW: WAITING / HOST ROOM -->
+        <div id="view-room" class="flex-1 hidden flex-col items-center justify-center p-4 relative z-10">
+            <div class="max-w-md w-full bg-[#12161f] border border-[#00f0ff44] rounded-lg p-6 shadow-2xl text-center">
+                <h2 class="text-xl font-orbitron text-[#00f0ff] mb-2 glow-cyan">SECURE LOBBY ESTABLISHED</h2>
+                <p class="text-xs text-gray-400 mb-4">Share code or QR with your partner counterpart.</p>
+                
+                <div class="text-3xl font-mono font-bold text-[#00ff66] bg-[#0d0f12] p-3 rounded border border-[#00ff6644] mb-4 glow-green" id="display-room-code">
+                    CB-XXXX
+                </div>
+
+                <div class="flex justify-center mb-4">
+                    <div id="qrcode-container" class="bg-white p-2 rounded border border-gray-700"></div>
+                </div>
+
+                <div id="connection-state" class="text-xs text-yellow-400 mb-4 animate-pulse">Waiting for peer connection...</div>
+                <button onclick="cancelHosting()" class="px-4 py-2 border border-red-500 text-red-500 text-xs font-orbitron rounded hover:bg-red-500 hover:text-white transition cursor-pointer">ABORT SESSION</button>
+            </div>
+        </div>
+
+        <!-- VIEW: GAME CONTAINER (OPERATIVE / HACKER) -->
+        <div id="view-game" class="flex-1 hidden flex flex-col h-full w-full relative z-10">
+            <!-- Top HUD Bar -->
+            <header class="h-12 bg-[#12161f] border-b border-[#00f0ff33] flex items-center justify-between px-4 shrink-0">
+                <div class="flex items-center space-x-3">
+                    <span class="font-orbitron text-xs font-bold text-[#00f0ff]" id="hud-role-badge">ROLE: OPERATIVE</span>
+                    <span class="text-xs text-gray-500">|</span>
+                    <span class="text-xs font-mono text-gray-400">SEED: <span id="hud-seed" class="text-[#00ff66]">CB-9901</span></span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 text-xs font-mono">
+                        <span class="inline-block w-2 h-2 rounded-full bg-[#00ff66] animate-ping" id="net-indicator"></span>
+                        <span id="net-status-text" class="text-gray-400">P2P SECURE</span>
+                    </div>
+                    <button onclick="quitGame()" class="text-xs font-orbitron text-red-400 border border-red-500/40 px-2.5 py-1 rounded hover:bg-red-500/20 transition cursor-pointer">QUIT</button>
+                </div>
+            </header>
+
+            <!-- Role Viewport: Field Operative (Canvas + Controls) -->
+            <div id="role-view-operative" class="flex-1 flex flex-col relative overflow-hidden hidden">
+                <div class="flex-1 relative bg-[#0a0c10] overflow-hidden">
+                    <canvas id="operative-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+                    
+                    <!-- Operative Overlay HUD (Mission Objectives) -->
+                    <div class="absolute top-3 left-3 bg-[#12161f]/80 backdrop-blur border border-[#00f0ff44] p-3 rounded text-xs pointer-events-none">
+                        <div class="font-orbitron font-bold text-[#00f0ff] mb-1">FIELD OBJECTIVES</div>
+                        <div id="operative-objectives" class="space-y-1 text-gray-300">
+                            <div>• Locate Node Alpha [Keypad]</div>
+                            <div>• Locate Node Beta [Frequency]</div>
+                            <div>• Locate Node Gamma [Wires]</div>
+                            <div>• Locate Node Delta [Power Grid]</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Touch / Virtual Joystick & Interaction Control Bar -->
+                <div class="h-36 bg-[#12161f] border-t border-[#00f0ff33] flex items-center justify-between px-6 shrink-0 relative select-none">
+                    <div id="joystick-zone" class="w-28 h-28 rounded-full border-2 border-[#00f0ff44] bg-[#00f0ff08] relative flex items-center justify-center touch-none">
+                        <div id="joystick-knob" class="w-12 h-12 rounded-full bg-[#00f0ff] absolute shadow-lg shadow-[#00f0ff88] transition-transform duration-75 pointer-events-none"></div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="btn-interact" class="w-16 h-16 rounded-full border-2 border-[#00ff66] bg-[#00ff6622] text-[#00ff66] font-orbitron font-bold text-xs flex items-center justify-center shadow-lg shadow-[#00ff6633] active:scale-95 transition cursor-pointer">
+                            INTERACT
+                        </button>
+                        <button id="btn-jump" class="w-16 h-16 rounded-full border-2 border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron font-bold text-xs flex items-center justify-center shadow-lg shadow-[#00f0ff33] active:scale-95 transition cursor-pointer">
+                            JUMP
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Role Viewport: Hacker Dashboard (Tabs) -->
+            <div id="role-view-hacker" class="flex-1 flex flex-col bg-[#0d0f12] overflow-hidden hidden">
+                <!-- Hacker Tab Nav -->
+                <div class="flex bg-[#12161f] border-b border-[#00f0ff33] text-xs font-orbitron shrink-0 overflow-x-auto">
+                    <button onclick="switchHackerTab(1)" id="htab-btn-1" class="px-5 py-3 border-b-2 border-[#00f0ff] text-[#00f0ff] bg-[#00f0ff11] cursor-pointer whitespace-nowrap">1. BLUEPRINT RADAR</button>
+                    <button onclick="switchHackerTab(2)" id="htab-btn-2" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">2. MANUAL DIRECTORY</button>
+                    <button onclick="switchHackerTab(3)" id="htab-btn-3" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">3. OPS TERMINAL</button>
+                    <button onclick="switchHackerTab(4)" id="htab-btn-4" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">4. TELEMETRY</button>
+                </div>
+
+                <!-- Tab 1: Blueprint & Interactive Radar Map -->
+                <div id="htab-content-1" class="flex-1 flex flex-col p-4 overflow-hidden">
+                    <div class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded relative overflow-hidden flex flex-col items-center justify-center">
+                        <canvas id="hacker-radar-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+                        <div class="absolute top-3 left-3 bg-[#0d0f12]/90 border border-[#00f0ff44] p-2 rounded text-xs pointer-events-none">
+                            <span class="text-[#00f0ff] font-orbitron font-bold">SECTOR 09 // TACTICAL RADAR</span>
+                            <div class="text-[10px] text-gray-400 mt-0.5">Tracking Operative live coordinates & puzzle nodes.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Schematic / Manual Directory -->
+                <div id="htab-content-2" class="flex-1 hidden flex flex-col p-4 overflow-y-auto space-y-4">
+                    <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
+                        <h3 class="font-orbitron text-sm text-[#00f0ff] mb-2 font-bold">FIELD MANUAL // SEC-LOG 99</h3>
+                        <p class="text-xs text-gray-300 leading-relaxed">
+                            Welcome, Operative Support. Your field agent depends entirely on real-time data relay from this terminal. Review all puzzle documentation before authorizing bypasses.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-[#12161f] border border-gray-800 rounded p-4">
+                            <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE ALPHA: KEYPAD BYPASS</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed">Memory PIN code is generated deterministically from seed. Check Telemetry logs for active session decryption keys.</p>
+                        </div>
+                        <div class="bg-[#12161f] border border-gray-800 rounded p-4">
+                            <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE BETA: FREQUENCY TUNER</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed">Target Sine wave frequency and Phase shift angle are derived from seed hash. Guide operative to match wave curves perfectly.</p>
+                        </div>
+                        <div class="bg-[#12161f] border border-gray-800 rounded p-4">
+                            <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE GAMMA: WIRE CUTTER</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed">Inspect harness serial number. Rule: If serial contains odd digit, cut 3rd wire unless 2 cyan wires exist; otherwise cut 1st wire.</p>
+                        </div>
+                        <div class="bg-[#12161f] border border-gray-800 rounded p-4">
+                            <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE DELTA: POWER MATRIX</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed">3x3 switch matrix. Transmit voltage grid schematic states to align power nodes to target polarity.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Operational Terminal & Command Line -->
+                <div id="htab-content-3" class="flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
+                    <div id="terminal-output" class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300">
+                        <div class="text-[#00f0ff]">SYSTEM TERMINAL v2.4.1 // SECURE CONNECTION ACTIVE</div>
+                        <div class="text-gray-500">Type 'help' to list available system commands.</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
+                        <input type="text" id="terminal-input" placeholder="Enter command (e.g. help, statusReport, override node_alpha)..." class="flex-1 bg-[#12161f] border border-gray-700 rounded px-3 py-2 text-xs text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
+                        <button onclick="executeTerminalCommand()" class="px-4 bg-[#00f0ff22] border border-[#00f0ff] text-[#00f0ff] font-orbitron text-xs rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer">EXEC</button>
+                    </div>
+                </div>
+
+                <!-- Tab 4: System Telemetry -->
+                <div id="htab-content-4" class="flex-1 hidden flex flex-col p-4 overflow-y-auto space-y-4 font-mono text-xs">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
+                            <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2">OPERATIVE POSITION</h4>
+                            <div class="space-y-1 text-gray-300">
+                                <div>X_POS: <span id="telemetry-x" class="text-[#00ff66]">0.00</span></div>
+                                <div>Y_POS: <span id="telemetry-y" class="text-[#00ff66]">0.00</span></div>
+                                <div>VELOCITY_X: <span id="telemetry-vx" class="text-[#00ff66]">0.00</span></div>
+                                <div>STATUS: <span id="telemetry-state" class="text-[#00ff66]">ACTIVE</span></div>
+                            </div>
+                        </div>
+                        <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
+                            <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2">PUZZLE NODE STATUS</h4>
+                            <div class="space-y-1 text-gray-300" id="telemetry-nodes">
+                                <div>ALPHA (Keypad): <span class="text-yellow-400">PENDING</span></div>
+                                <div>BETA (Frequency): <span class="text-yellow-400">PENDING</span></div>
+                                <div>GAMMA (Wires): <span class="text-yellow-400">PENDING</span></div>
+                                <div>DELTA (Power): <span class="text-yellow-400">PENDING</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL OVERLAY: PUZZLE SHELL -->
+        <div id="puzzle-modal" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+            <div class="max-w-lg w-full bg-[#12161f] border border-[#00f0ff] rounded-lg shadow-2xl overflow-hidden flex flex-col">
+                <!-- Modal Header -->
+                <div class="bg-[#0d0f12] border-b border-[#00f0ff44] px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span id="puzzle-modal-tag" class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">NODE ALPHA</span>
+                        <h3 id="puzzle-modal-title" class="font-orbitron font-bold text-sm text-[#00f0ff] glow-cyan">KEYPAD OVERRIDE</h3>
+                    </div>
+                    <button onclick="closePuzzleModal()" class="text-gray-400 hover:text-red-400 font-bold text-sm cursor-pointer px-2">✕</button>
+                </div>
+                <!-- Modal Body (Dynamic Component) -->
+                <div id="puzzle-modal-body" class="p-6 flex flex-col items-center justify-center">
+                    <!-- Dynamic Puzzle UI Injected Here -->
+                </div>
+                <!-- Modal Footer Progress -->
+                <div class="bg-[#0d0f12] border-t border-gray-800 px-4 py-3 flex items-center justify-between text-xs text-gray-400">
+                    <span id="puzzle-modal-status">Status: Awaiting Input...</span>
+                    <button onclick="closePuzzleModal()" class="px-3 py-1 border border-gray-700 hover:border-[#00f0ff] rounded font-orbitron text-xs transition cursor-pointer">DISENGAGE</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        // Audio Synthesizer
-        const sound = {
-            muted: false,
-            ctx: null,
+        // --- AUDIO ENGINE (WEB AUDIO API) ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+            }
             init() {
-                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            },
-            beep(freq = 440, type = 'sine', duration = 0.1) {
-                if (this.muted) return;
-                this.init();
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+            beep(freq = 440, type = 'sine', duration = 0.1, gainVal = 0.1) {
                 try {
+                    this.init();
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
                     osc.type = type;
-                    osc.frequency.value = freq;
-                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
                     osc.connect(gain);
                     gain.connect(this.ctx.destination);
                     osc.start();
                     osc.stop(this.ctx.currentTime + duration);
-                } catch (e) {}
-            },
-            success() { this.beep(880, 'sine', 0.25); },
-            fail() { this.beep(150, 'sawtooth', 0.3); }
-        };
-
-        // Pseudo-Random Number Generator
-        class PRNG {
-            constructor(seed) {
-                this.m = 0x80000000;
-                this.a = 1103515245;
-                this.c = 12345;
-                this.state = seed ? seed : Math.floor(Math.random() * (this.m - 1));
+                } catch(e) {}
             }
-            nextInt() {
-                this.state = (this.a * this.state + this.c) % this.m;
-                return this.state;
+            success() {
+                this.beep(523.25, 'sine', 0.15, 0.15);
+                setTimeout(() => this.beep(659.25, 'sine', 0.15, 0.15), 100);
+                setTimeout(() => this.beep(783.99, 'sine', 0.3, 0.15), 200);
+            }
+            error() {
+                this.beep(150, 'sawtooth', 0.25, 0.2);
+                setTimeout(() => this.beep(100, 'sawtooth', 0.3, 0.2), 150);
+            }
+        }
+        const audio = new SoundEngine();
+
+        // --- DETERMINISTIC PRNG ---
+        class SeededPRNG {
+            constructor(seedStr) {
+                let hash = 0;
+                for (let i = 0; i < seedStr.length; i++) {
+                    hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
+                    hash |= 0;
+                }
+                this.seed = Math.abs(hash) || 123456789;
+            }
+            next() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
             }
             range(min, max) {
-                return min + Math.floor((this.nextInt() / this.m) * (max - min + 1));
+                return min + Math.floor(this.next() * (max - min + 1));
             }
         }
 
-        // Procedural Room Layout Generator (Levels 1-20)
-        class LevelGenerator {
-            static generate(seed = 882194, puzzleLevel = 5) {
-                const prng = new PRNG(seed + puzzleLevel * 100);
-                const roomCount = Math.min(20, Math.max(3, Math.floor(3 + (puzzleLevel * 0.85))));
-                const rooms = [];
-                const corridors = [];
-
-                // Simple 2D grid placement for room layout
-                let currentX = 100;
-                let currentY = 150;
-
-                for (let i = 0; i < roomCount; i++) {
-                    const width = prng.range(140, 220);
-                    const height = prng.range(120, 180);
-                    const room = {
-                        id: `room_${i + 1}`,
-                        name: `SECTOR ${i + 1}`,
-                        x: currentX,
-                        y: currentY,
-                        w: width,
-                        h: height,
-                        puzzleNode: null
-                    };
-
-                    // Parameterize puzzle difficulty for levels 1 to 20
-                    const codeLength = Math.min(8, Math.max(3, Math.floor(3 + (puzzleLevel / 3.5))));
-                    const minVal = Math.pow(10, codeLength - 1);
-                    const maxVal = Math.pow(10, codeLength) - 1;
-                    const passcode = String(prng.range(minVal, maxVal));
-
-                    room.puzzleNode = {
-                        id: `puzzle_keypad_${i + 1}`,
-                        type: 'puzzle_keypad',
-                        x: room.x + room.w / 2,
-                        y: room.y + room.h / 2,
-                        radius: 16,
-                        solved: false,
-                        config: {
-                            level: puzzleLevel,
-                            codeLength: codeLength,
-                            passcode: passcode,
-                            enteredCode: '',
-                            roomName: room.name
-                        }
-                    };
-
-                    rooms.push(room);
-
-                    // Add corridor link to next room
-                    if (i > 0) {
-                        const prevRoom = rooms[i - 1];
-                        corridors.push({
-                            x1: prevRoom.x + prevRoom.w,
-                            y1: prevRoom.y + prevRoom.h / 2,
-                            x2: room.x,
-                            y2: room.y + room.h / 2,
-                            w: Math.abs(room.x - (prevRoom.x + prevRoom.w)) || 40,
-                            h: 30
-                        });
-                    }
-
-                    // Advance position layout
-                    currentX += width + prng.range(40, 80);
-                    if (i % 4 === 3) {
-                        currentX = 100;
-                        currentY += 220;
-                    }
-                }
-
-                return { seed, level: puzzleLevel, roomCount, rooms, corridors };
-            }
-        }
-
-        // Puzzle Shell Controller
-        class PuzzleRegistryClass {
-            constructor() { this.puzzles = new Map(); }
-            register(config) { this.puzzles.set(config.id, config); }
-            get(id) { return this.puzzles.get(id); }
-            getAll() { return Array.from(this.puzzles.values()); }
-        }
-        const PuzzleRegistry = new PuzzleRegistryClass();
-
-        class PuzzleShellController {
-            constructor() {
-                this.state = { puzzleId: null, isSolved: false, progressPercent: 0, errorMsg: null, customState: {} };
-                this.callbacks = {};
-            }
-
-            mount(puzzleId, userRole, initialConfig = {}, callbacks = {}) {
-                const puzzleDef = PuzzleRegistry.get('puzzle_keypad');
-                if (!puzzleDef) return;
-
-                this.callbacks = callbacks;
-                this.state = { puzzleId, isSolved: false, progressPercent: 0, errorMsg: null, customState: initialConfig };
-
-                document.getElementById('puzzle-shell-title').textContent = `${puzzleDef.name} (LVL ${initialConfig.level || 1})`;
-                document.getElementById('puzzle-shell-makemodel').textContent = initialConfig.roomName || 'SECURITY NODE';
-                document.getElementById('puzzle-shell-category').textContent = puzzleDef.category || 'KEYPAD';
-                this.updateUI();
-
-                const container = document.getElementById('puzzle-shell-body');
-                container.innerHTML = '';
-
-                if (userRole.includes('OPERATIVE') && puzzleDef.operativeComponent) {
-                    puzzleDef.operativeComponent(container, this.state.customState, this.emitState.bind(this));
-                } else if (userRole.includes('HACKER') && puzzleDef.hackerComponent) {
-                    puzzleDef.hackerComponent(container, this.state.customState, this.emitState.bind(this));
-                } else {
-                    container.innerHTML = `<div class="p-6 text-center text-slate-400">NO INTERFACE AVAILABLE FOR ROLE: ${userRole}</div>`;
-                }
-
-                document.getElementById('puzzle-modal').classList.remove('hidden');
-            }
-
-            emitState(newStateUpdate, evaluateNow = false) {
-                this.state.customState = { ...this.state.customState, ...newStateUpdate };
-                const puzzleDef = PuzzleRegistry.get('puzzle_keypad');
-                
-                if (puzzleDef && evaluateNow) {
-                    const result = puzzleDef.evaluate(this.state.customState);
-                    this.state.progressPercent = result.progress || 0;
-                    if (result.solved) {
-                        this.state.isSolved = true;
-                        this.state.progressPercent = 100;
-                        sound.success();
-                        if (this.callbacks.onSolve) this.callbacks.onSolve(this.state);
-                    } else if (result.error) {
-                        this.state.errorMsg = result.error;
-                        sound.fail();
-                    } else {
-                        this.state.errorMsg = null;
-                    }
-                }
-                this.updateUI();
-            }
-
-            updateUI() {
-                document.getElementById('puzzle-shell-progressbar').style.width = `${this.state.progressPercent}%`;
-                document.getElementById('puzzle-shell-progress-text').textContent = `${Math.round(this.state.progressPercent)}%`;
-                const errBox = document.getElementById('puzzle-shell-error');
-                if (this.state.errorMsg) {
-                    document.getElementById('puzzle-shell-error-msg').textContent = this.state.errorMsg;
-                    errBox.classList.remove('hidden');
-                } else {
-                    errBox.classList.add('hidden');
-                }
-            }
-
-            close() {
-                document.getElementById('puzzle-modal').classList.add('hidden');
-            }
-        }
-        const PuzzleShell = new PuzzleShellController();
-
-        // Register Dynamic Level Keypad Puzzle
-        PuzzleRegistry.register({
-            id: 'puzzle_keypad',
-            name: 'Keypad Bypass',
-            category: 'KEYPAD',
-            evaluate: (state) => {
-                const requiredLen = state.codeLength || 4;
-                if (state.enteredCode.length === requiredLen) {
-                    return state.enteredCode === state.passcode 
-                        ? { solved: true, progress: 100 }
-                        : { solved: false, progress: 0, error: 'INVALID OVERRIDE CODE' };
-                }
-                return { solved: false, progress: (state.enteredCode.length / requiredLen) * 80 };
+        // --- GLOBAL GAME STATE ---
+        const State = {
+            role: 'operative', // 'operative' or 'hacker'
+            seed: 'CB-9901',
+            roomCode: null,
+            isHost: false,
+            peer: null,
+            conn: null,
+            soloMode: false,
+            prng: null,
+            activePuzzle: null,
+            puzzleStates: {
+                puzzle_keypad: false,
+                puzzle_frequency: false,
+                puzzle_wires: false,
+                puzzle_power_grid: false
             },
-            hackerComponent: (container, state) => {
-                container.innerHTML = `
-                    <div class="space-y-4 font-mono text-xs text-center">
-                        <div class="p-3 bg-slate-900 border border-slate-800 rounded">DECRYPTED PASSCODE [LEVEL ${state.level || 1}]</div>
-                        <div class="text-3xl font-bold text-cyber-green tracking-widest">${state.passcode || '****'}</div>
-                    </div>`;
-            },
-            operativeComponent: (container, state, emit) => {
-                let code = '';
-                const len = state.codeLength || 4;
-                container.innerHTML = `
-                    <div class="flex flex-col items-center space-y-4">
-                        <div id="k-disp" class="w-64 bg-slate-950 border-2 border-cyber-cyan p-3 text-center text-2xl font-mono text-cyber-cyan rounded tracking-widest">${'_'.repeat(len)}</div>
-                        <div class="grid grid-cols-3 gap-2 w-56">
-                            ${[1,2,3,4,5,6,7,8,9,0].map(n => `<button class="n-btn p-3 bg-slate-900 text-white font-bold rounded hover:bg-slate-800" data-n="${n}">${n}</button>`).join('')}
-                        </div>
-                    </div>`;
-                container.querySelectorAll('.n-btn').forEach(btn => {
-                    btn.onclick = () => {
-                        sound.beep();
-                        if (code.length < len) {
-                            code += btn.dataset.n;
-                            container.querySelector('#k-disp').textContent = code.padEnd(len, '_');
-                            emit({ enteredCode: code }, code.length === len);
-                        }
-                    };
-                });
-            },
-            hackerManualText: 'Securi-Pad PIN code extracted via telemetry bypass.'
-        });
+            operativePos: { x: 400, y: 300, vx: 0, vy: 0, grounded: false }
+        };
 
-        // 2D Walkable Operative Engine
-        class OperativeEngine {
-            constructor() {
-                this.canvas = document.getElementById('operative-canvas');
-                this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
-                this.player = { x: 150, y: 180, radius: 10, speed: 3.5 };
-                this.levelData = null;
-                this.activeModal = false;
-                this.active = false;
-                this.keys = {};
+        function randomizeSeed() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let s = 'CB-';
+            for(let i=0; i<4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+            document.getElementById('input-seed').value = s;
+        }
 
-                window.addEventListener('keydown', e => this.keys[e.key.toLowerCase()] = true);
-                window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
-            }
-
-            loadLevel(data) {
-                this.levelData = data;
-                if (data && data.rooms.length > 0) {
-                    this.player.x = data.rooms[0].x + data.rooms[0].w / 2;
-                    this.player.y = data.rooms[0].y + data.rooms[0].h / 2;
-                }
-            }
-
-            resizeCanvas() {
-                if (!this.canvas || !this.canvas.parentElement) return;
-                this.canvas.width = this.canvas.parentElement.clientWidth;
-                this.canvas.height = this.canvas.parentElement.clientHeight;
-            }
-
-            start() {
-                this.resizeCanvas();
-                this.active = true;
-                this.loop();
-            }
-
-            stop() { this.active = false; }
-
-            update() {
-                if (!this.levelData) return;
-
-                let dx = 0;
-                let dy = 0;
-                if (this.keys['w'] || this.keys['arrowup']) dy -= 1;
-                if (this.keys['s'] || this.keys['arrowdown']) dy += 1;
-                if (this.keys['a'] || this.keys['arrowleft']) dx -= 1;
-                if (this.keys['d'] || this.keys['arrowright']) dx += 1;
-
-                if (dx !== 0 && dy !== 0) {
-                    dx *= 0.7071;
-                    dy *= 0.7071;
-                }
-
-                const nextX = this.player.x + dx * this.player.speed;
-                const nextY = this.player.y + dy * this.player.speed;
-
-                // Simple Walkable Room Bound Checks
-                let inBounds = false;
-                for (const r of this.levelData.rooms) {
-                    if (nextX >= r.x + this.player.radius && nextX <= r.x + r.w - this.player.radius &&
-                        nextY >= r.y + this.player.radius && nextY <= r.y + r.h - this.player.radius) {
-                        inBounds = true;
-                        break;
-                    }
-                }
-
-                if (!inBounds) {
-                    for (const c of this.levelData.corridors) {
-                        if (nextX >= c.x1 && nextX <= c.x1 + c.w &&
-                            nextY >= c.y1 - c.h / 2 && nextY <= c.y1 + c.h / 2) {
-                            inBounds = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (inBounds || !this.levelData.rooms.length) {
-                    this.player.x = nextX;
-                    this.player.y = nextY;
-                    net.send({ type: 'PLAYER_MOVE', x: this.player.x, y: this.player.y });
-                }
-
-                // Check Puzzle Interactions
-                let nearNode = false;
-                this.levelData.rooms.forEach(r => {
-                    const node = r.puzzleNode;
-                    if (!node) return;
-                    const dist = Math.hypot(this.player.x - node.x, this.player.y - node.y);
-                    if (dist < this.player.radius + node.radius + 15 && !node.solved) {
-                        nearNode = true;
-                        if (!this.activeModal) {
-                            this.activeModal = true;
-                            PuzzleShell.mount(node.id, net.role, node.config, {
-                                onSolve: () => {
-                                    node.solved = true;
-                                    this.activeModal = false;
-                                    PuzzleShell.close();
-                                    net.send({ type: 'PUZZLE_SOLVED', puzzleId: node.id });
-                                }
-                            });
-                        }
-                    }
-                });
-
-                const prompt = document.getElementById('interact-prompt');
-                if (prompt) prompt.classList.toggle('hidden', !nearNode);
-            }
-
-            render() {
-                if (!this.ctx || !this.levelData) return;
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-                this.ctx.save();
-                // Basic Camera Center on Player
-                this.ctx.translate(this.canvas.width / 2 - this.player.x, this.canvas.height / 2 - this.player.y);
-
-                // Render Corridors
-                this.ctx.fillStyle = '#1e293b';
-                this.levelData.corridors.forEach(c => {
-                    this.ctx.fillRect(c.x1, c.y1 - c.h / 2, c.w, c.h);
-                });
-
-                // Render Rooms
-                this.levelData.rooms.forEach(r => {
-                    this.ctx.strokeStyle = '#00f0ff';
-                    this.ctx.fillStyle = '#0f172a';
-                    this.ctx.lineWidth = 2;
-                    this.ctx.fillRect(r.x, r.y, r.w, r.h);
-                    this.ctx.strokeRect(r.x, r.y, r.w, r.h);
-
-                    // Render Puzzle Nodes
-                    const n = r.puzzleNode;
-                    if (n) {
-                        this.ctx.beginPath();
-                        this.ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
-                        this.ctx.fillStyle = n.solved ? 'rgba(0, 255, 102, 0.3)' : 'rgba(255, 170, 0, 0.3)';
-                        this.ctx.fill();
-                        this.ctx.strokeStyle = n.solved ? '#00ff66' : '#ffaa00';
-                        this.ctx.stroke();
-                    }
-                });
-
-                // Render Operative Player
-                this.ctx.beginPath();
-                this.ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
-                this.ctx.fillStyle = '#ff2a2a';
-                this.ctx.fill();
-                this.ctx.strokeStyle = '#ffffff';
-                this.ctx.stroke();
-
-                this.ctx.restore();
-            }
-
-            loop() {
-                if (!this.active) return;
-                this.update();
-                this.render();
-                requestAnimationFrame(() => this.loop());
+        function selectRole(role) {
+            State.role = role;
+            audio.beep(600, 'sine', 0.05, 0.05);
+            const opBtn = document.getElementById('role-operative');
+            const hkBtn = document.getElementById('role-hacker');
+            if (role === 'operative') {
+                opBtn.className = "p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
+                hkBtn.className = "p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
+            } else {
+                hkBtn.className = "p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
+                opBtn.className = "p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
             }
         }
-        const engine = new OperativeEngine();
 
-        // Hacker Dashboard & Blueprint
-        class HackerDashboard {
-            renderBlueprint(levelData, playerX = 150, playerY = 180) {
-                const elem = document.getElementById('ascii-blueprint');
-                if (!elem || !levelData) return;
+        // --- P2P NETWORK MANAGER (PEERJS) ---
+        function hostGame() {
+            audio.beep(400, 'sine', 0.1, 0.1);
+            State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
+            State.isHost = true;
+            State.soloMode = false;
+            
+            const randCode = Math.random().toString(36.substring(2, 6)).toUpperCase();
+            State.roomCode = 'CB-' + randCode;
 
-                let output = `[ PROCEDURAL MAP SCHEMATIC - LVL ${levelData.level} ]\n`;
-                output += `TOTAL SECTORS: ${levelData.roomCount} | SEED: ${levelData.seed}\n\n`;
+            document.getElementById('view-lobby').classList.add('hidden');
+            document.getElementById('view-room').classList.remove('hidden');
+            document.getElementById('display-room-code').innerText = State.roomCode;
 
-                levelData.rooms.forEach((r, i) => {
-                    const isOperativeHere = playerX >= r.x && playerX <= r.x + r.w && playerY >= r.y && playerY <= r.y + r.h;
-                    const status = r.puzzleNode.solved ? 'CLEARED' : 'LOCKED';
-                    output += `[${r.name}] -> ${status} ${isOperativeHere ? '<< OPERATIVE PRESENT >>' : ''}\n`;
-                });
-
-                elem.textContent = output;
-            }
-
-            populateManualDirectory(levelData) {
-                const list = document.getElementById('manual-puzzle-list');
-                const count = document.getElementById('manual-puzzle-count');
-                if (!levelData) return;
-
-                if (count) count.textContent = `${levelData.rooms.length} REGISTERED MODULES`;
-                if (!list) return;
-
-                list.innerHTML = levelData.rooms.map(r => `
-                    <div class="p-3 bg-slate-900 border border-slate-800 rounded">
-                        <div class="text-xs font-bold text-cyber-cyan">${r.name} - OVERRIDE PIN</div>
-                        <div class="text-xl font-mono font-bold text-cyber-green mt-1 tracking-widest">${r.puzzleNode.config.passcode}</div>
-                        <div class="text-[10px] text-slate-500 mt-1">Difficulty Level ${r.puzzleNode.config.level} Security Key</div>
-                    </div>
-                `).join('');
-            }
-        }
-        const hackerDash = new HackerDashboard();
-
-        // P2P Network with Procedural Level Pre-generation & Sync
-        class NetworkManager {
-            constructor() { 
-                this.role = 'UNASSIGNED'; 
-                this.peer = null;
-                this.conn = null;
-                this.roomId = '';
-                this.generatedLevel = null;
-            }
-
-            // Pre-generate Level and render Room ID on the host client
-            pregenerateAndPrepareHost() {
-                const seed = parseInt(document.getElementById('input-seed').value) || 882194;
-                const level = parseInt(document.getElementById('input-level-slider').value) || 5;
-
-                // Procedurally render level layout before providing Room ID
-                this.generatedLevel = LevelGenerator.generate(seed, level);
-
-                // Generate 6-character Room Code
-                this.roomId = 'CB-' + Math.floor(1000 + Math.random() * 9000);
-                const input = document.getElementById('input-room-id');
-                if (input) input.value = this.roomId;
-
-                this.renderQR(this.roomId);
-
-                const badge = document.getElementById('level-summary-badge');
-                if (badge) badge.textContent = `LVL ${level} (${this.generatedLevel.roomCount} ROOMS READY)`;
-
-                console.log('[LEVEL PRE-GENERATED]', this.generatedLevel);
-            }
-
-            renderQR(text) {
-                const qrSvg = document.getElementById('qr-svg');
-                if (!qrSvg) return;
-                let path = "";
-                for(let i = 0; i < 8; i++) {
-                    for(let j = 0; j < 8; j++) {
-                        if ((i + j + text.length) % 2 === 0) {
-                            path += `M${i*12 + 2},${j*12 + 2}h10v10h-10z `;
-                        }
-                    }
-                }
-                qrSvg.innerHTML = `<path d="${path}" fill="#00f0ff"/>`;
-            }
-
-            setupPeer(customId = null) {
-                return new Promise((resolve, reject) => {
-                    this.peer = customId ? new Peer(customId) : new Peer();
-
-                    this.peer.on('open', (id) => {
-                        this.updateStatus(true, 'ONLINE');
-                        resolve(id);
-                    });
-
-                    this.peer.on('connection', (connection) => {
-                        this.conn = connection;
-                        this.listenToConnection();
-                    });
-
-                    this.peer.on('error', (err) => {
-                        this.updateStatus(false, 'CONN ERROR');
-                        reject(err);
-                    });
-                });
-            }
-
-            async hostRoom() {
-                const peerId = 'codebreak-' + this.roomId.toLowerCase();
-                try {
-                    await this.setupPeer(peerId);
-                    this.updateStatus(true, 'WAITING FOR PEER');
-                } catch (e) {
-                    await this.setupPeer();
-                }
-            }
-
-            async joinRoom(targetRoomId) {
-                const cleanId = targetRoomId.trim().toLowerCase();
-                const targetPeerId = cleanId.startsWith('codebreak-') ? cleanId : 'codebreak-' + cleanId;
-
-                await this.setupPeer();
-                this.conn = this.peer.connect(targetPeerId);
-                this.listenToConnection();
-            }
-
-            listenToConnection() {
-                if (!this.conn) return;
-
-                this.conn.on('open', () => {
-                    this.updateStatus(true, 'CONNECTED');
-                    sound.success();
-
-                    // Host automatically synchronizes pre-generated level layout upon connection
-                    if (this.generatedLevel) {
-                        this.send({
-                            type: 'SYNC_LEVEL',
-                            levelData: this.generatedLevel
-                        });
-                    }
-                });
-
-                this.conn.on('data', (data) => {
-                    this.handleIncomingData(data);
-                });
-
-                this.conn.on('close', () => {
-                    this.updateStatus(false, 'DISCONNECTED');
-                });
-            }
-
-            send(data) {
-                if (this.conn && this.conn.open) {
-                    this.conn.send(data);
-                }
-            }
-
-            handleIncomingData(data) {
-                if (!data || !data.type) return;
-
-                switch (data.type) {
-                    case 'SYNC_LEVEL':
-                        this.generatedLevel = data.levelData;
-                        engine.loadLevel(this.generatedLevel);
-                        hackerDash.renderBlueprint(this.generatedLevel);
-                        hackerDash.populateManualDirectory(this.generatedLevel);
-                        break;
-                    case 'PLAYER_MOVE':
-                        if (this.role.includes('HACKER')) {
-                            hackerDash.renderBlueprint(this.generatedLevel, data.x, data.y);
-                        }
-                        break;
-                    case 'PUZZLE_SOLVED':
-                        if (this.generatedLevel) {
-                            const room = this.generatedLevel.rooms.find(r => r.puzzleNode && r.puzzleNode.id === data.puzzleId);
-                            if (room) room.puzzleNode.solved = true;
-                            hackerDash.renderBlueprint(this.generatedLevel);
-                        }
-                        break;
-                }
-            }
-
-            updateStatus(online, text) {
-                const dot = document.getElementById('status-dot');
-                const label = document.getElementById('status-text');
-                if (dot) dot.className = `w-2 h-2 rounded-full ${online ? 'bg-cyber-green animate-pulse' : 'bg-slate-600'}`;
-                if (label) label.textContent = text;
-            }
-        }
-        const net = new NetworkManager();
-
-        // UI Event Listeners & Initialization
-        window.addEventListener('DOMContentLoaded', () => {
-            // Pre-generate level before providing room ID
-            net.pregenerateAndPrepareHost();
-
-            const levelSlider = document.getElementById('input-level-slider');
-            const levelValDisplay = document.getElementById('level-val-display');
-
-            levelSlider.oninput = () => {
-                levelValDisplay.textContent = `LVL ${levelSlider.value}`;
-                net.pregenerateAndPrepareHost();
-            };
-
-            document.getElementById('input-seed').onchange = () => net.pregenerateAndPrepareHost();
-            document.getElementById('btn-regen-level').onclick = () => net.pregenerateAndPrepareHost();
-
-            const switchScreen = async (screenId, roleName) => {
-                document.getElementById('screen-lobby').classList.add('hidden');
-                document.getElementById('screen-operative').classList.add('hidden');
-                document.getElementById('screen-hacker').classList.add('hidden');
-
-                document.getElementById(screenId).classList.remove('hidden');
-                document.getElementById('role-badge').textContent = roleName;
-                net.role = roleName;
-
-                if (screenId === 'screen-operative') {
-                    engine.loadLevel(net.generatedLevel);
-                    engine.start();
-                    document.getElementById('op-hud-level').textContent = net.generatedLevel.level;
-                    document.getElementById('op-hud-room').textContent = `0 / ${net.generatedLevel.roomCount}`;
-                } else if (screenId === 'screen-hacker') {
-                    hackerDash.renderBlueprint(net.generatedLevel);
-                    hackerDash.populateManualDirectory(net.generatedLevel);
-                }
-            };
-
-            document.getElementById('btn-select-operative').onclick = async () => {
-                await net.hostRoom();
-                switchScreen('screen-operative', 'OPERATIVE');
-            };
-
-            document.getElementById('btn-select-hacker').onclick = async () => {
-                await net.hostRoom();
-                switchScreen('screen-hacker', 'HACKER');
-            };
-
-            document.getElementById('btn-join-room').onclick = async () => {
-                const joinId = document.getElementById('input-join-id').value;
-                if (!joinId) return;
-                await net.joinRoom(joinId);
-                switchScreen('screen-hacker', 'HACKER (GUEST)');
-            };
-
-            document.getElementById('btn-solo-launch').onclick = () => switchScreen('screen-operative', 'OPERATIVE (SOLO)');
-
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.onclick = () => {
-                    const target = btn.dataset.tab;
-                    document.querySelectorAll('.tab-btn').forEach(b => b.className = 'tab-btn px-4 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition');
-                    btn.className = 'tab-btn px-4 py-3 text-xs font-bold border-b-2 border-cyber-green text-cyber-green transition';
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-                    document.getElementById(target).classList.remove('hidden');
-                };
+            // Render QR Code
+            const qrContainer = document.getElementById('qrcode-container');
+            qrContainer.innerHTML = '';
+            QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 }, function (err) {
+                if (err) console.error(err);
             });
 
-            document.getElementById('puzzle-shell-close').onclick = () => {
-                PuzzleShell.close();
-                engine.activeModal = false;
-            };
+            // Initialize PeerJS
+            State.peer = new Peer(State.roomCode.toLowerCase());
+            State.peer.on('connection', (connection) => {
+                State.conn = connection;
+                setupConnectionHandlers();
+                document.getElementById('connection-state').innerText = "Peer Connected! Launching...";
+                setTimeout(startGameSession, 1000);
+            });
+            State.peer.on('error', (err) => {
+                document.getElementById('connection-state').innerText = "Peer Error: " + err.type;
+            });
+        }
+
+        function joinGame() {
+            audio.beep(400, 'sine', 0.1, 0.1);
+            const code = document.getElementById('input-room').value.trim().toUpperCase();
+            if (!code) { alert('Enter valid room code.'); return; }
+            State.roomCode = code;
+            State.isHost = false;
+            State.soloMode = false;
+
+            document.getElementById('view-lobby').classList.add('hidden');
+            document.getElementById('view-room').classList.remove('hidden');
+            document.getElementById('display-room-code').innerText = State.roomCode;
+
+            State.peer = new Peer();
+            State.peer.on('open', () => {
+                State.conn = State.peer.connect(State.roomCode.toLowerCase());
+                setupConnectionHandlers();
+                document.getElementById('connection-state').innerText = "Connecting to Host...";
+            });
+            State.peer.on('error', (err) => {
+                document.getElementById('connection-state').innerText = "Connection Failed: " + err.type;
+            });
+        }
+
+        function cancelHosting() {
+            if (State.peer) State.peer.destroy();
+            document.getElementById('view-room').classList.add('hidden');
+            document.getElementById('view-lobby').classList.remove('hidden');
+        }
+
+        function startSolo() {
+            audio.beep(700, 'sine', 0.1, 0.1);
+            State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
+            State.soloMode = true;
+            startGameSession();
+        }
+
+        function setupConnectionHandlers() {
+            if (!State.conn) return;
+            State.conn.on('open', () => {
+                document.getElementById('connection-state').innerText = "Connected! Launching...";
+                setTimeout(startGameSession, 800);
+            });
+            State.conn.on('data', (data) => {
+                handleNetworkData(data);
+            });
+        }
+
+        function sendNetData(data) {
+            if (State.conn && State.conn.open) {
+                State.conn.send(data);
+            }
+        }
+
+        function handleNetworkData(data) {
+            if (data.type === 'telemetry') {
+                State.operativePos.x = data.x;
+                State.operativePos.y = data.y;
+                State.operativePos.vx = data.vx;
+            } else if (data.type === 'puzzle_sync') {
+                State.puzzleStates[data.puzzleId] = data.solved;
+                updateTelemetryNodesDisplay();
+            } else if (data.type === 'terminal_cmd') {
+                appendTerminalOutput(`[REMOTE] > ${data.cmd}`, '#00f0ff');
+            }
+        }
+
+        function startGameSession() {
+            State.prng = new SeededPRNG(State.seed);
+            document.getElementById('view-room').classList.add('hidden');
+            document.getElementById('view-lobby').classList.add('hidden');
+            document.getElementById('view-game').classList.remove('hidden');
+
+            document.getElementById('hud-seed').innerText = State.seed;
+            document.getElementById('hud-role-badge').innerText = `ROLE: ${State.role.toUpperCase()}`;
+
+            if (State.role === 'operative') {
+                document.getElementById('role-view-operative').classList.remove('hidden');
+                document.getElementById('role-view-hacker').classList.add('hidden');
+                initOperativeEngine();
+            } else {
+                document.getElementById('role-view-operative').classList.add('hidden');
+                document.getElementById('role-view-hacker').classList.remove('hidden');
+                initHackerDashboard();
+            }
+            audio.success();
+        }
+
+        function quitGame() {
+            if (State.peer) State.peer.destroy();
+            document.getElementById('view-game').classList.add('hidden');
+            document.getElementById('role-view-operative').classList.add('hidden');
+            document.getElementById('role-view-hacker').classList.add('hidden');
+            document.getElementById('view-lobby').classList.remove('hidden');
+        }
+
+
+        // --- FEATURE 1: COMPLETE KEYBOARD & TOUCH INPUT INTEGRATION ---
+        const Input = {
+            left: false, right: false, up: false, down: false, jump: false, interact: false,
+            joystickActive: false, joystickX: 0, joystickY: 0
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (State.role !== 'operative') return;
+            if (e.key === 'a' || e.key === 'ArrowLeft') Input.left = true;
+            if (e.key === 'd' || e.key === 'ArrowRight') Input.right = true;
+            if (e.key === 'w' || e.key === 'ArrowUp' || e.key === ' ') { Input.jump = true; e.preventDefault(); }
+            if (e.key === 'e' || e.key === 'E') triggerInteraction();
         });
-    </script>
-</body>
-</html>
+
+        window.addEventListener('keyup', (e) => {
+            if (State.role !== 'operative') return;
+            if (e.key === 'a' || e.key === 'ArrowLeft') Input.left = false;
+            if (e.key === 'd' || e.key === 'ArrowRight') Input.right = false;
+            if (e.key === 'w' || e.key === 'ArrowUp' || e.key === ' ') Input.jump = false;
+        });
+
+        // Touch Joystick Math
+        function initTouchControls() {
+            const zone = document.getElementById('joystick-zone');
+            const knob = document.getElementById('joystick-knob');
+            const maxDist = 40;
+
+            function handleTouch(clientX, clientY) {
+                const rect = zone.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                let dx = clientX - centerX;
+                let dy = clientY - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > maxDist) {
+                    dx = (dx / dist) * maxDist;
+                    dy = (dy / dist) * maxDist;
+                }
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                Input.joystickX = dx / maxDist;
+                Input.joystickY = dy / maxDist;
+                Input.joystickActive = true;
+            }
+
+            zone.addEventListener('touchstart', (e) => { handleTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
+            zone.addEventListener('touchmove', (e) => { handleTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
+            zone.addEventListener('touchend', () => {
+                knob.style.transform = `translate(0px, 0px)`;
+                Input.joystickX = 0;
+                Input.joystickY = 0;
+                Input.joystickActive = false;
+            });
+
+            document.getElementById('btn-jump').addEventListener('click', () => {
+                triggerJump();
+            });
+            document.getElementById('btn-interact').addEventListener('click', () => {
+                triggerInteraction();
+            });
+        }
+
+        function triggerJump() {
+            if (State.operativePos.grounded) {
+                State.operativePos.vy = -10;
+                State.operativePos.grounded = false;
+                audio.beep(300, 'square', 0.1, 0.1);
+            }
+        }
+
+        function triggerInteraction
