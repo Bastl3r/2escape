@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- QR Code Generator -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%222Escape%22%2C%22short_name%22%3A%222Escape%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0f12%22%2C%22theme_color%22%3A%22%2300f0ff%22%2C%22icons%22%3A%5B%5D%7D">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
         body {
@@ -19,56 +20,31 @@
             overflow: hidden;
             touch-action: none;
         }
-        .font-orbitron {
-            font-family: 'Orbitron', sans-serif;
-        }
-        .glow-cyan {
-            text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.4);
-        }
-        .glow-green {
-            text-shadow: 0 0 10px rgba(0, 255, 102, 0.6), 0 0 20px rgba(0, 255, 102, 0.4);
-        }
-        .glow-red {
-            text-shadow: 0 0 10px rgba(255, 42, 42, 0.6), 0 0 20px rgba(255, 42, 42, 0.4);
-        }
-        .border-glow-cyan {
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
-            border-color: #00f0ff;
-        }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .glow-cyan { text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.4); }
+        .glow-green { text-shadow: 0 0 10px rgba(0, 255, 102, 0.6), 0 0 20px rgba(0, 255, 102, 0.4); }
+        .glow-red { text-shadow: 0 0 10px rgba(255, 42, 42, 0.6), 0 0 20px rgba(255, 42, 42, 0.4); }
         .scanlines {
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
             background-size: 100% 4px, 6px 100%;
             pointer-events: none;
         }
-        ::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0d0f12;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #00f0ff55;
-            border-radius: 2px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #00f0ff;
-        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0d0f12; }
+        ::-webkit-scrollbar-thumb { background: #00f0ff55; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
     </style>
 </head>
 <body class="h-full flex flex-col relative select-none">
-    <!-- Scanlines Overlay -->
     <div class="absolute inset-0 z-50 scanlines pointer-events-none"></div>
 
-    <!-- MAIN APP CONTAINER -->
     <div id="app" class="flex-1 flex flex-col h-full w-full relative overflow-hidden">
 
         <!-- VIEW: LOBBY SYSTEM -->
         <div id="view-lobby" class="flex-1 flex flex-col items-center justify-center p-4 relative z-10">
-            <div class="absolute inset-0 bg-radial from-[#00f0ff11] to-transparent pointer-events-none"></div>
             <div class="max-w-md w-full bg-[#12161f] border border-[#00f0ff44] rounded-lg p-6 shadow-2xl relative">
                 <div class="absolute -top-3 left-6 px-3 bg-[#0d0f12] border border-[#00f0ff88] text-xs font-orbitron tracking-widest text-[#00f0ff] glow-cyan">
-                    2ESCAPE // SECURE TERMINAL
+                    2ESCAPE // TERMINAL
                 </div>
 
                 <div class="text-center mb-6 mt-2">
@@ -78,10 +54,10 @@
 
                 <!-- Role Selection -->
                 <div class="grid grid-cols-2 gap-3 mb-6">
-                    <button id="role-operative" onclick="selectRole('operative')" class="p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
+                    <button id="btn-role-operative" class="p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
                         <span class="text-xl mb-1">🏃</span> FIELD OPERATIVE
                     </button>
-                    <button id="role-hacker" onclick="selectRole('hacker')" class="p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
+                    <button id="btn-role-hacker" class="p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
                         <span class="text-xl mb-1">💻</span> HACKER OPS
                     </button>
                 </div>
@@ -91,24 +67,24 @@
                     <label class="block text-xs uppercase tracking-wider text-gray-400 mb-1">Mission Seed (PRNG)</label>
                     <div class="flex gap-2">
                         <input type="text" id="input-seed" value="CB-9901" class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-3 py-2 text-sm text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
-                        <button onclick="randomizeSeed()" class="px-3 py-2 border border-gray-700 hover:border-[#00f0ff] text-xs font-orbitron rounded bg-gray-900 transition cursor-pointer">GEN</button>
+                        <button id="btn-gen-seed" class="px-3 py-2 border border-gray-700 hover:border-[#00f0ff] text-xs font-orbitron rounded bg-gray-900 transition cursor-pointer">GEN</button>
                     </div>
                 </div>
 
                 <!-- Connection Options -->
                 <div class="space-y-3 pt-2 border-t border-gray-800">
                     <div class="flex gap-2">
-                        <button onclick="hostGame()" class="flex-1 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded tracking-wider hover:bg-[#00ff66] transition cursor-pointer shadow-lg shadow-[#00f0ff22]">
+                        <button id="btn-host" class="flex-1 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded tracking-wider hover:bg-[#00ff66] transition cursor-pointer shadow-lg shadow-[#00f0ff22]">
                             HOST SESSION
                         </button>
-                        <button onclick="startSolo()" class="px-4 py-3 border border-[#00ff66] text-[#00ff66] font-orbitron text-xs rounded hover:bg-[#00ff6611] transition cursor-pointer">
+                        <button id="btn-solo" class="px-4 py-3 border border-[#00ff66] text-[#00ff66] font-orbitron text-xs rounded hover:bg-[#00ff6611] transition cursor-pointer">
                             SOLO TEST
                         </button>
                     </div>
 
                     <div class="flex gap-2">
                         <input type="text" id="input-room" placeholder="Enter Room Code (CB-XXXX)" class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-3 py-2 text-sm text-[#00f0ff] font-mono uppercase focus:border-[#00f0ff] outline-none">
-                        <button onclick="joinGame()" class="px-5 py-2 bg-gray-800 border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-xs font-bold rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer">
+                        <button id="btn-join" class="px-5 py-2 bg-gray-800 border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-xs font-bold rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer">
                             JOIN
                         </button>
                     </div>
@@ -133,46 +109,47 @@
                 </div>
 
                 <div id="connection-state" class="text-xs text-yellow-400 mb-4 animate-pulse">Waiting for peer connection...</div>
-                <button onclick="cancelHosting()" class="px-4 py-2 border border-red-500 text-red-500 text-xs font-orbitron rounded hover:bg-red-500 hover:text-white transition cursor-pointer">ABORT SESSION</button>
+                <button id="btn-abort" class="px-4 py-2 border border-red-500 text-red-500 text-xs font-orbitron rounded hover:bg-red-500 hover:text-white transition cursor-pointer">ABORT SESSION</button>
             </div>
         </div>
 
-        <!-- VIEW: GAME CONTAINER (OPERATIVE / HACKER) -->
+        <!-- VIEW: GAME CONTAINER -->
         <div id="view-game" class="flex-1 hidden flex flex-col h-full w-full relative z-10">
-            <!-- Top HUD Bar -->
             <header class="h-12 bg-[#12161f] border-b border-[#00f0ff33] flex items-center justify-between px-4 shrink-0">
                 <div class="flex items-center space-x-3">
                     <span class="font-orbitron text-xs font-bold text-[#00f0ff]" id="hud-role-badge">ROLE: OPERATIVE</span>
                     <span class="text-xs text-gray-500">|</span>
                     <span class="text-xs font-mono text-gray-400">SEED: <span id="hud-seed" class="text-[#00ff66]">CB-9901</span></span>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-6">
+                    <div class="flex items-center space-x-2 font-mono text-xs">
+                        <span class="text-gray-400">TIME:</span>
+                        <span id="hud-timer" class="text-[#ff2a2a] glow-red font-bold text-sm">05:00</span>
+                    </div>
                     <div class="flex items-center space-x-2 text-xs font-mono">
                         <span class="inline-block w-2 h-2 rounded-full bg-[#00ff66] animate-ping" id="net-indicator"></span>
                         <span id="net-status-text" class="text-gray-400">P2P SECURE</span>
                     </div>
-                    <button onclick="quitGame()" class="text-xs font-orbitron text-red-400 border border-red-500/40 px-2.5 py-1 rounded hover:bg-red-500/20 transition cursor-pointer">QUIT</button>
+                    <button id="btn-quit" class="text-xs font-orbitron text-red-400 border border-red-500/40 px-2.5 py-1 rounded hover:bg-red-500/20 transition cursor-pointer">QUIT</button>
                 </div>
             </header>
 
-            <!-- Role Viewport: Field Operative (Canvas + Controls) -->
+            <!-- Role Viewport: Field Operative -->
             <div id="role-view-operative" class="flex-1 flex flex-col relative overflow-hidden hidden">
                 <div class="flex-1 relative bg-[#0a0c10] overflow-hidden">
                     <canvas id="operative-canvas" class="absolute inset-0 w-full h-full block"></canvas>
                     
-                    <!-- Operative Overlay HUD (Mission Objectives) -->
                     <div class="absolute top-3 left-3 bg-[#12161f]/80 backdrop-blur border border-[#00f0ff44] p-3 rounded text-xs pointer-events-none">
-                        <div class="font-orbitron font-bold text-[#00f0ff] mb-1">FIELD OBJECTIVES</div>
+                        <div class="font-orbitron font-bold text-[#00f0ff] mb-1">SECTOR OBJECTIVES</div>
                         <div id="operative-objectives" class="space-y-1 text-gray-300">
-                            <div>• Locate Node Alpha [Keypad]</div>
-                            <div>• Locate Node Beta [Frequency]</div>
-                            <div>• Locate Node Gamma [Wires]</div>
-                            <div>• Locate Node Delta [Power Grid]</div>
+                            <div>• Bypass Room 1 [Keypad Alpha]</div>
+                            <div>• Bypass Room 2 [Frequency Beta]</div>
+                            <div>• Bypass Room 3 [Wires Gamma]</div>
+                            <div>• Bypass Room 4 [Power Delta]</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Touch / Virtual Joystick & Interaction Control Bar -->
                 <div class="h-36 bg-[#12161f] border-t border-[#00f0ff33] flex items-center justify-between px-6 shrink-0 relative select-none">
                     <div id="joystick-zone" class="w-28 h-28 rounded-full border-2 border-[#00f0ff44] bg-[#00f0ff08] relative flex items-center justify-center touch-none">
                         <div id="joystick-knob" class="w-12 h-12 rounded-full bg-[#00f0ff] absolute shadow-lg shadow-[#00f0ff88] transition-transform duration-75 pointer-events-none"></div>
@@ -188,70 +165,65 @@
                 </div>
             </div>
 
-            <!-- Role Viewport: Hacker Dashboard (Tabs) -->
+            <!-- Role Viewport: Hacker Dashboard -->
             <div id="role-view-hacker" class="flex-1 flex flex-col bg-[#0d0f12] overflow-hidden hidden">
-                <!-- Hacker Tab Nav -->
                 <div class="flex bg-[#12161f] border-b border-[#00f0ff33] text-xs font-orbitron shrink-0 overflow-x-auto">
-                    <button onclick="switchHackerTab(1)" id="htab-btn-1" class="px-5 py-3 border-b-2 border-[#00f0ff] text-[#00f0ff] bg-[#00f0ff11] cursor-pointer whitespace-nowrap">1. BLUEPRINT RADAR</button>
-                    <button onclick="switchHackerTab(2)" id="htab-btn-2" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">2. MANUAL DIRECTORY</button>
-                    <button onclick="switchHackerTab(3)" id="htab-btn-3" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">3. OPS TERMINAL</button>
-                    <button onclick="switchHackerTab(4)" id="htab-btn-4" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">4. TELEMETRY</button>
+                    <button id="htab-btn-1" class="px-5 py-3 border-b-2 border-[#00f0ff] text-[#00f0ff] bg-[#00f0ff11] cursor-pointer whitespace-nowrap">1. BLUEPRINT RADAR</button>
+                    <button id="htab-btn-2" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">2. MANUAL DIRECTORY</button>
+                    <button id="htab-btn-3" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">3. OPS TERMINAL</button>
+                    <button id="htab-btn-4" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap">4. TELEMETRY</button>
                 </div>
 
-                <!-- Tab 1: Blueprint & Interactive Radar Map -->
                 <div id="htab-content-1" class="flex-1 flex flex-col p-4 overflow-hidden">
                     <div class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded relative overflow-hidden flex flex-col items-center justify-center">
                         <canvas id="hacker-radar-canvas" class="absolute inset-0 w-full h-full block"></canvas>
                         <div class="absolute top-3 left-3 bg-[#0d0f12]/90 border border-[#00f0ff44] p-2 rounded text-xs pointer-events-none">
-                            <span class="text-[#00f0ff] font-orbitron font-bold">SECTOR 09 // TACTICAL RADAR</span>
-                            <div class="text-[10px] text-gray-400 mt-0.5">Tracking Operative live coordinates & puzzle nodes.</div>
+                            <span class="text-[#00f0ff] font-orbitron font-bold">MULTI-ROOM RADAR // SECTOR 09</span>
+                            <div class="text-[10px] text-gray-400 mt-0.5">Tracking Operative position & security barrier status.</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab 2: Schematic / Manual Directory -->
                 <div id="htab-content-2" class="flex-1 hidden flex flex-col p-4 overflow-y-auto space-y-4">
                     <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
-                        <h3 class="font-orbitron text-sm text-[#00f0ff] mb-2 font-bold">FIELD MANUAL // SEC-LOG 99</h3>
+                        <h3 class="font-orbitron text-sm text-[#00f0ff] mb-2 font-bold">DYNAMIC PRNG MANUAL LOGS // SEED: <span id="manual-seed-lbl" class="text-[#00ff66]">CB-9901</span></h3>
                         <p class="text-xs text-gray-300 leading-relaxed">
-                            Welcome, Operative Support. Your field agent depends entirely on real-time data relay from this terminal. Review all puzzle documentation before authorizing bypasses.
+                            Parameters below are cryptographically derived from the active session seed. Relay precise metrics to your operative agent.
                         </p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="bg-[#12161f] border border-gray-800 rounded p-4">
                             <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE ALPHA: KEYPAD BYPASS</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed">Memory PIN code is generated deterministically from seed. Check Telemetry logs for active session decryption keys.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed">Required Access PIN: <span id="manual-pin" class="text-[#00f0ff] font-mono font-bold text-sm">----</span></p>
                         </div>
                         <div class="bg-[#12161f] border border-gray-800 rounded p-4">
                             <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE BETA: FREQUENCY TUNER</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed">Target Sine wave frequency and Phase shift angle are derived from seed hash. Guide operative to match wave curves perfectly.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed">Target Hz: <span id="manual-freq" class="text-[#00f0ff] font-mono font-bold">---</span> Hz | Phase: <span id="manual-phase" class="text-[#00f0ff] font-mono font-bold">--</span>°</p>
                         </div>
                         <div class="bg-[#12161f] border border-gray-800 rounded p-4">
                             <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE GAMMA: WIRE CUTTER</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed">Inspect harness serial number. Rule: If serial contains odd digit, cut 3rd wire unless 2 cyan wires exist; otherwise cut 1st wire.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed" id="manual-wire-rule">Rule: If serial contains odd digit, cut designated wire.</p>
                         </div>
                         <div class="bg-[#12161f] border border-gray-800 rounded p-4">
                             <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE DELTA: POWER MATRIX</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed">3x3 switch matrix. Transmit voltage grid schematic states to align power nodes to target polarity.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed">Required Polarity State: <span class="text-[#00ff66]">All 9 nodes must be activated (Green).</span></p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab 3: Operational Terminal & Command Line -->
                 <div id="htab-content-3" class="flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
                     <div id="terminal-output" class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300">
-                        <div class="text-[#00f0ff]">SYSTEM TERMINAL v2.4.1 // SECURE CONNECTION ACTIVE</div>
+                        <div class="text-[#00f0ff]">SYSTEM TERMINAL v3.0 // PHASE 3 ENCRYPTED</div>
                         <div class="text-gray-500">Type 'help' to list available system commands.</div>
                     </div>
                     <div class="flex gap-2">
                         <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
-                        <input type="text" id="terminal-input" placeholder="Enter command (e.g. help, statusReport, override node_alpha)..." class="flex-1 bg-[#12161f] border border-gray-700 rounded px-3 py-2 text-xs text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
-                        <button onclick="executeTerminalCommand()" class="px-4 bg-[#00f0ff22] border border-[#00f0ff] text-[#00f0ff] font-orbitron text-xs rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer">EXEC</button>
+                        <input type="text" id="terminal-input" placeholder="Enter command..." class="flex-1 bg-[#12161f] border border-gray-700 rounded px-3 py-2 text-xs text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
+                        <button id="btn-exec-cmd" class="px-4 bg-[#00f0ff22] border border-[#00f0ff] text-[#00f0ff] font-orbitron text-xs rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer">EXEC</button>
                     </div>
                 </div>
 
-                <!-- Tab 4: System Telemetry -->
                 <div id="htab-content-4" class="flex-1 hidden flex flex-col p-4 overflow-y-auto space-y-4 font-mono text-xs">
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
@@ -259,17 +231,16 @@
                             <div class="space-y-1 text-gray-300">
                                 <div>X_POS: <span id="telemetry-x" class="text-[#00ff66]">0.00</span></div>
                                 <div>Y_POS: <span id="telemetry-y" class="text-[#00ff66]">0.00</span></div>
-                                <div>VELOCITY_X: <span id="telemetry-vx" class="text-[#00ff66]">0.00</span></div>
-                                <div>STATUS: <span id="telemetry-state" class="text-[#00ff66]">ACTIVE</span></div>
+                                <div>CURRENT ROOM: <span id="telemetry-room" class="text-[#00ff66]">ROOM 1</span></div>
                             </div>
                         </div>
                         <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
-                            <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2">PUZZLE NODE STATUS</h4>
+                            <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2">SECURITY BARRIERS</h4>
                             <div class="space-y-1 text-gray-300" id="telemetry-nodes">
-                                <div>ALPHA (Keypad): <span class="text-yellow-400">PENDING</span></div>
-                                <div>BETA (Frequency): <span class="text-yellow-400">PENDING</span></div>
-                                <div>GAMMA (Wires): <span class="text-yellow-400">PENDING</span></div>
-                                <div>DELTA (Power): <span class="text-yellow-400">PENDING</span></div>
+                                <div>DOOR 1 (Alpha): <span class="text-yellow-400">LOCKED</span></div>
+                                <div>DOOR 2 (Beta): <span class="text-yellow-400">LOCKED</span></div>
+                                <div>DOOR 3 (Gamma): <span class="text-yellow-400">LOCKED</span></div>
+                                <div>DOOR 4 (Delta): <span class="text-yellow-400">LOCKED</span></div>
                             </div>
                         </div>
                     </div>
@@ -280,23 +251,27 @@
         <!-- MODAL OVERLAY: PUZZLE SHELL -->
         <div id="puzzle-modal" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
             <div class="max-w-lg w-full bg-[#12161f] border border-[#00f0ff] rounded-lg shadow-2xl overflow-hidden flex flex-col">
-                <!-- Modal Header -->
                 <div class="bg-[#0d0f12] border-b border-[#00f0ff44] px-4 py-3 flex items-center justify-between">
                     <div class="flex items-center space-x-2">
                         <span id="puzzle-modal-tag" class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">NODE ALPHA</span>
                         <h3 id="puzzle-modal-title" class="font-orbitron font-bold text-sm text-[#00f0ff] glow-cyan">KEYPAD OVERRIDE</h3>
                     </div>
-                    <button onclick="closePuzzleModal()" class="text-gray-400 hover:text-red-400 font-bold text-sm cursor-pointer px-2">✕</button>
+                    <button id="btn-close-modal" class="text-gray-400 hover:text-red-400 font-bold text-sm cursor-pointer px-2">✕</button>
                 </div>
-                <!-- Modal Body (Dynamic Component) -->
-                <div id="puzzle-modal-body" class="p-6 flex flex-col items-center justify-center">
-                    <!-- Dynamic Puzzle UI Injected Here -->
-                </div>
-                <!-- Modal Footer Progress -->
+                <div id="puzzle-modal-body" class="p-6 flex flex-col items-center justify-center"></div>
                 <div class="bg-[#0d0f12] border-t border-gray-800 px-4 py-3 flex items-center justify-between text-xs text-gray-400">
                     <span id="puzzle-modal-status">Status: Awaiting Input...</span>
-                    <button onclick="closePuzzleModal()" class="px-3 py-1 border border-gray-700 hover:border-[#00f0ff] rounded font-orbitron text-xs transition cursor-pointer">DISENGAGE</button>
+                    <button id="btn-disengage" class="px-3 py-1 border border-gray-700 hover:border-[#00f0ff] rounded font-orbitron text-xs transition cursor-pointer">DISENGAGE</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- END STATE MODAL -->
+        <div id="end-modal" class="absolute inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+            <div class="max-w-md w-full bg-[#12161f] border-2 rounded-lg p-6 text-center shadow-2xl" id="end-modal-box">
+                <h2 id="end-title" class="text-2xl font-orbitron font-black mb-3 glow-cyan">MISSION SUCCESS</h2>
+                <p id="end-desc" class="text-xs text-gray-300 mb-6 leading-relaxed">Sector 09 successfully infiltrated. All security nodes bypassed before system lockdown.</p>
+                <button id="btn-return-lobby" class="px-6 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded hover:bg-[#00ff66] transition cursor-pointer">RETURN TO LOBBY</button>
             </div>
         </div>
 
@@ -304,304 +279,817 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        // --- AUDIO ENGINE (WEB AUDIO API) ---
-        class SoundEngine {
-            constructor() {
-                this.ctx = null;
+        document.addEventListener('DOMContentLoaded', () => {
+            if ('serviceWorker' in navigator) {
+                const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));`;
+                const blob = new Blob([swCode], { type: 'text/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
             }
-            init() {
-                if (!this.ctx) {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    this.ctx = new AudioContext();
+
+            class SoundEngine {
+                constructor() { this.ctx = null; }
+                init() {
+                    if (!this.ctx) {
+                        const AudioContext = window.AudioContext || window.webkitAudioContext;
+                        this.ctx = new AudioContext();
+                    }
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
                 }
-                if (this.ctx.state === 'suspended') {
-                    this.ctx.resume();
+                beep(freq = 440, type = 'sine', duration = 0.1, gainVal = 0.1) {
+                    try {
+                        this.init();
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = type;
+                        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                        gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start();
+                        osc.stop(this.ctx.currentTime + duration);
+                    } catch(e) {}
+                }
+                success() {
+                    this.beep(523.25, 'sine', 0.15, 0.15);
+                    setTimeout(() => this.beep(659.25, 'sine', 0.15, 0.15), 100);
+                    setTimeout(() => this.beep(783.99, 'sine', 0.3, 0.15), 200);
+                }
+                error() {
+                    this.beep(150, 'sawtooth', 0.25, 0.2);
+                    setTimeout(() => this.beep(100, 'sawtooth', 0.3, 0.2), 150);
                 }
             }
-            beep(freq = 440, type = 'sine', duration = 0.1, gainVal = 0.1) {
-                try {
-                    this.init();
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = type;
-                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start();
-                    osc.stop(this.ctx.currentTime + duration);
-                } catch(e) {}
-            }
-            success() {
-                this.beep(523.25, 'sine', 0.15, 0.15);
-                setTimeout(() => this.beep(659.25, 'sine', 0.15, 0.15), 100);
-                setTimeout(() => this.beep(783.99, 'sine', 0.3, 0.15), 200);
-            }
-            error() {
-                this.beep(150, 'sawtooth', 0.25, 0.2);
-                setTimeout(() => this.beep(100, 'sawtooth', 0.3, 0.2), 150);
-            }
-        }
-        const audio = new SoundEngine();
+            const audio = new SoundEngine();
 
-        // --- DETERMINISTIC PRNG ---
-        class SeededPRNG {
-            constructor(seedStr) {
-                let hash = 0;
-                for (let i = 0; i < seedStr.length; i++) {
-                    hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
-                    hash |= 0;
+            class SeededPRNG {
+                constructor(seedStr) {
+                    let hash = 0;
+                    for (let i = 0; i < seedStr.length; i++) {
+                        hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    this.seed = Math.abs(hash) || 123456789;
                 }
-                this.seed = Math.abs(hash) || 123456789;
+                next() {
+                    this.seed = (this.seed * 9301 + 49297) % 233280;
+                    return this.seed / 233280;
+                }
+                range(min, max) { return min + Math.floor(this.next() * (max - min + 1)); }
             }
-            next() {
-                this.seed = (this.seed * 9301 + 49297) % 233280;
-                return this.seed / 233280;
+
+            const PuzzleConfig = {
+                pin: '4892',
+                targetFreq: 440,
+                targetPhase: 90,
+                wireRule: 'Cut 3rd wire if serial contains odd digit.'
+            };
+
+            function generateSessionParameters(seedStr) {
+                const prng = new SeededPRNG(seedStr);
+                PuzzleConfig.pin = String(prng.range(1000, 9999));
+                PuzzleConfig.targetFreq = prng.range(200, 700);
+                PuzzleConfig.targetPhase = prng.range(30, 150);
+                PuzzleConfig.wireRule = prng.next() > 0.5 ? 'Cut 3rd wire (Yellow) if serial has odd digit.' : 'Cut 1st wire (Red) if cyan count <= 1.';
+                
+                const pinLbl = document.getElementById('manual-pin');
+                const freqLbl = document.getElementById('manual-freq');
+                const phaseLbl = document.getElementById('manual-phase');
+                const ruleLbl = document.getElementById('manual-wire-rule');
+                const seedLbl = document.getElementById('manual-seed-lbl');
+
+                if (pinLbl) pinLbl.innerText = PuzzleConfig.pin;
+                if (freqLbl) freqLbl.innerText = PuzzleConfig.targetFreq;
+                if (phaseLbl) phaseLbl.innerText = PuzzleConfig.targetPhase;
+                if (ruleLbl) ruleLbl.innerText = `Rule: ${PuzzleConfig.wireRule}`;
+                if (seedLbl) seedLbl.innerText = seedStr;
             }
-            range(min, max) {
-                return min + Math.floor(this.next() * (max - min + 1));
+
+            const State = {
+                role: 'operative',
+                seed: 'CB-9901',
+                roomCode: null,
+                isHost: false,
+                peer: null,
+                conn: null,
+                soloMode: false,
+                activePuzzle: null,
+                puzzleStates: {
+                    puzzle_keypad: false,
+                    puzzle_frequency: false,
+                    puzzle_wires: false,
+                    puzzle_power_grid: false
+                },
+                operativePos: { x: 150, y: 300, vx: 0, vy: 0, grounded: false, room: 1 },
+                missionTime: 300,
+                timerInterval: null,
+                gameOver: false
+            };
+
+            function selectRole(role) {
+                State.role = role;
+                audio.beep(600, 'sine', 0.05, 0.05);
+                const opBtn = document.getElementById('btn-role-operative');
+                const hkBtn = document.getElementById('btn-role-hacker');
+                if (role === 'operative') {
+                    opBtn.className = "p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
+                    hkBtn.className = "p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
+                } else {
+                    hkBtn.className = "p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
+                    opBtn.className = "p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
+                }
             }
-        }
 
-        // --- GLOBAL GAME STATE ---
-        const State = {
-            role: 'operative', // 'operative' or 'hacker'
-            seed: 'CB-9901',
-            roomCode: null,
-            isHost: false,
-            peer: null,
-            conn: null,
-            soloMode: false,
-            prng: null,
-            activePuzzle: null,
-            puzzleStates: {
-                puzzle_keypad: false,
-                puzzle_frequency: false,
-                puzzle_wires: false,
-                puzzle_power_grid: false
-            },
-            operativePos: { x: 400, y: 300, vx: 0, vy: 0, grounded: false }
-        };
-
-        function randomizeSeed() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let s = 'CB-';
-            for(let i=0; i<4; i++) s += chars[Math.floor(Math.random() * chars.length)];
-            document.getElementById('input-seed').value = s;
-        }
-
-        function selectRole(role) {
-            State.role = role;
-            audio.beep(600, 'sine', 0.05, 0.05);
-            const opBtn = document.getElementById('role-operative');
-            const hkBtn = document.getElementById('role-hacker');
-            if (role === 'operative') {
-                opBtn.className = "p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
-                hkBtn.className = "p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
-            } else {
-                hkBtn.className = "p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
-                opBtn.className = "p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
+            function randomizeSeed() {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let s = 'CB-';
+                for(let i=0; i<4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+                document.getElementById('input-seed').value = s;
             }
-        }
 
-        // --- P2P NETWORK MANAGER (PEERJS) ---
-        function hostGame() {
-            audio.beep(400, 'sine', 0.1, 0.1);
-            State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
-            State.isHost = true;
-            State.soloMode = false;
-            
-            const randCode = Math.random().toString(36.substring(2, 6)).toUpperCase();
-            State.roomCode = 'CB-' + randCode;
+            function hostGame() {
+                audio.beep(400, 'sine', 0.1, 0.1);
+                State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
+                State.isHost = true;
+                State.soloMode = false;
+                State.roomCode = 'CB-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-            document.getElementById('view-lobby').classList.add('hidden');
-            document.getElementById('view-room').classList.remove('hidden');
-            document.getElementById('display-room-code').innerText = State.roomCode;
+                document.getElementById('view-lobby').classList.add('hidden');
+                document.getElementById('view-room').classList.remove('hidden');
+                document.getElementById('display-room-code').innerText = State.roomCode;
 
-            // Render QR Code
-            const qrContainer = document.getElementById('qrcode-container');
-            qrContainer.innerHTML = '';
-            QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 }, function (err) {
-                if (err) console.error(err);
-            });
+                const qrContainer = document.getElementById('qrcode-container');
+                qrContainer.innerHTML = '';
+                QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
 
-            // Initialize PeerJS
-            State.peer = new Peer(State.roomCode.toLowerCase());
-            State.peer.on('connection', (connection) => {
-                State.conn = connection;
-                setupConnectionHandlers();
-                document.getElementById('connection-state').innerText = "Peer Connected! Launching...";
-                setTimeout(startGameSession, 1000);
-            });
-            State.peer.on('error', (err) => {
-                document.getElementById('connection-state').innerText = "Peer Error: " + err.type;
-            });
-        }
-
-        function joinGame() {
-            audio.beep(400, 'sine', 0.1, 0.1);
-            const code = document.getElementById('input-room').value.trim().toUpperCase();
-            if (!code) { alert('Enter valid room code.'); return; }
-            State.roomCode = code;
-            State.isHost = false;
-            State.soloMode = false;
-
-            document.getElementById('view-lobby').classList.add('hidden');
-            document.getElementById('view-room').classList.remove('hidden');
-            document.getElementById('display-room-code').innerText = State.roomCode;
-
-            State.peer = new Peer();
-            State.peer.on('open', () => {
-                State.conn = State.peer.connect(State.roomCode.toLowerCase());
-                setupConnectionHandlers();
-                document.getElementById('connection-state').innerText = "Connecting to Host...";
-            });
-            State.peer.on('error', (err) => {
-                document.getElementById('connection-state').innerText = "Connection Failed: " + err.type;
-            });
-        }
-
-        function cancelHosting() {
-            if (State.peer) State.peer.destroy();
-            document.getElementById('view-room').classList.add('hidden');
-            document.getElementById('view-lobby').classList.remove('hidden');
-        }
-
-        function startSolo() {
-            audio.beep(700, 'sine', 0.1, 0.1);
-            State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
-            State.soloMode = true;
-            startGameSession();
-        }
-
-        function setupConnectionHandlers() {
-            if (!State.conn) return;
-            State.conn.on('open', () => {
-                document.getElementById('connection-state').innerText = "Connected! Launching...";
-                setTimeout(startGameSession, 800);
-            });
-            State.conn.on('data', (data) => {
-                handleNetworkData(data);
-            });
-        }
-
-        function sendNetData(data) {
-            if (State.conn && State.conn.open) {
-                State.conn.send(data);
+                State.peer = new Peer(State.roomCode.toLowerCase());
+                State.peer.on('connection', (connection) => {
+                    State.conn = connection;
+                    setupConnectionHandlers();
+                    setTimeout(startGameSession, 1000);
+                });
             }
-        }
 
-        function handleNetworkData(data) {
-            if (data.type === 'telemetry') {
-                State.operativePos.x = data.x;
-                State.operativePos.y = data.y;
-                State.operativePos.vx = data.vx;
-            } else if (data.type === 'puzzle_sync') {
-                State.puzzleStates[data.puzzleId] = data.solved;
-                updateTelemetryNodesDisplay();
-            } else if (data.type === 'terminal_cmd') {
-                appendTerminalOutput(`[REMOTE] > ${data.cmd}`, '#00f0ff');
+            function joinGame() {
+                audio.beep(400, 'sine', 0.1, 0.1);
+                const code = document.getElementById('input-room').value.trim().toUpperCase();
+                if (!code) { alert('Enter valid room code.'); return; }
+                State.roomCode = code;
+                State.isHost = false;
+                State.soloMode = false;
+
+                document.getElementById('view-lobby').classList.add('hidden');
+                document.getElementById('view-room').classList.remove('hidden');
+                document.getElementById('display-room-code').innerText = State.roomCode;
+
+                State.peer = new Peer();
+                State.peer.on('open', () => {
+                    State.conn = State.peer.connect(State.roomCode.toLowerCase());
+                    setupConnectionHandlers();
+                });
             }
-        }
 
-        function startGameSession() {
-            State.prng = new SeededPRNG(State.seed);
-            document.getElementById('view-room').classList.add('hidden');
-            document.getElementById('view-lobby').classList.add('hidden');
-            document.getElementById('view-game').classList.remove('hidden');
+            function cancelHosting() {
+                if (State.peer) State.peer.destroy();
+                document.getElementById('view-room').classList.add('hidden');
+                document.getElementById('view-lobby').classList.remove('hidden');
+            }
 
-            document.getElementById('hud-seed').innerText = State.seed;
-            document.getElementById('hud-role-badge').innerText = `ROLE: ${State.role.toUpperCase()}`;
+            function startSolo() {
+                audio.beep(700, 'sine', 0.1, 0.1);
+                State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
+                State.soloMode = true;
+                startGameSession();
+            }
 
-            if (State.role === 'operative') {
-                document.getElementById('role-view-operative').classList.remove('hidden');
-                document.getElementById('role-view-hacker').classList.add('hidden');
-                initOperativeEngine();
-            } else {
+            function quitGame() {
+                if (State.peer) State.peer.destroy();
+                if (State.timerInterval) clearInterval(State.timerInterval);
+                document.getElementById('view-game').classList.add('hidden');
                 document.getElementById('role-view-operative').classList.add('hidden');
-                document.getElementById('role-view-hacker').classList.remove('hidden');
-                initHackerDashboard();
+                document.getElementById('role-view-hacker').classList.add('hidden');
+                document.getElementById('end-modal').classList.add('hidden');
+                document.getElementById('view-lobby').classList.remove('hidden');
             }
-            audio.success();
-        }
 
-        function quitGame() {
-            if (State.peer) State.peer.destroy();
-            document.getElementById('view-game').classList.add('hidden');
-            document.getElementById('role-view-operative').classList.add('hidden');
-            document.getElementById('role-view-hacker').classList.add('hidden');
-            document.getElementById('view-lobby').classList.remove('hidden');
-        }
+            function setupConnectionHandlers() {
+                if (!State.conn) return;
+                State.conn.on('open', () => setTimeout(startGameSession, 800));
+                State.conn.on('data', (data) => handleNetworkData(data));
+            }
 
+            function sendNetData(data) {
+                if (State.conn && State.conn.open) State.conn.send(data);
+            }
 
-        // --- FEATURE 1: COMPLETE KEYBOARD & TOUCH INPUT INTEGRATION ---
-        const Input = {
-            left: false, right: false, up: false, down: false, jump: false, interact: false,
-            joystickActive: false, joystickX: 0, joystickY: 0
-        };
-
-        window.addEventListener('keydown', (e) => {
-            if (State.role !== 'operative') return;
-            if (e.key === 'a' || e.key === 'ArrowLeft') Input.left = true;
-            if (e.key === 'd' || e.key === 'ArrowRight') Input.right = true;
-            if (e.key === 'w' || e.key === 'ArrowUp' || e.key === ' ') { Input.jump = true; e.preventDefault(); }
-            if (e.key === 'e' || e.key === 'E') triggerInteraction();
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (State.role !== 'operative') return;
-            if (e.key === 'a' || e.key === 'ArrowLeft') Input.left = false;
-            if (e.key === 'd' || e.key === 'ArrowRight') Input.right = false;
-            if (e.key === 'w' || e.key === 'ArrowUp' || e.key === ' ') Input.jump = false;
-        });
-
-        // Touch Joystick Math
-        function initTouchControls() {
-            const zone = document.getElementById('joystick-zone');
-            const knob = document.getElementById('joystick-knob');
-            const maxDist = 40;
-
-            function handleTouch(clientX, clientY) {
-                const rect = zone.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-                let dx = clientX - centerX;
-                let dy = clientY - centerY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > maxDist) {
-                    dx = (dx / dist) * maxDist;
-                    dy = (dy / dist) * maxDist;
+            function handleNetworkData(data) {
+                if (data.type === 'telemetry') {
+                    State.operativePos.x = data.x;
+                    State.operativePos.y = data.y;
+                    State.operativePos.room = data.room;
+                } else if (data.type === 'puzzle_sync') {
+                    State.puzzleStates[data.puzzleId] = data.solved;
+                    updateTelemetryNodesDisplay();
+                    checkMissionWinCondition();
+                } else if (data.type === 'terminal_cmd') {
+                    appendTerminalOutput(`[REMOTE] > ${data.cmd}`, '#00f0ff');
                 }
-                knob.style.transform = `translate(${dx}px, ${dy}px)`;
-                Input.joystickX = dx / maxDist;
-                Input.joystickY = dy / maxDist;
-                Input.joystickActive = true;
             }
 
-            zone.addEventListener('touchstart', (e) => { handleTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
-            zone.addEventListener('touchmove', (e) => { handleTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
-            zone.addEventListener('touchend', () => {
-                knob.style.transform = `translate(0px, 0px)`;
-                Input.joystickX = 0;
-                Input.joystickY = 0;
-                Input.joystickActive = false;
-            });
+            function startGameSession() {
+                generateSessionParameters(State.seed);
+                document.getElementById('view-room').classList.add('hidden');
+                document.getElementById('view-lobby').classList.add('hidden');
+                document.getElementById('view-game').classList.remove('hidden');
 
-            document.getElementById('btn-jump').addEventListener('click', () => {
-                triggerJump();
-            });
-            document.getElementById('btn-interact').addEventListener('click', () => {
-                triggerInteraction();
-            });
-        }
+                document.getElementById('hud-seed').innerText = State.seed;
+                document.getElementById('hud-role-badge').innerText = `ROLE: ${State.role.toUpperCase()}`;
 
-        function triggerJump() {
-            if (State.operativePos.grounded) {
-                State.operativePos.vy = -10;
-                State.operativePos.grounded = false;
-                audio.beep(300, 'square', 0.1, 0.1);
+                State.missionTime = 300;
+                State.gameOver = false;
+                if (State.timerInterval) clearInterval(State.timerInterval);
+                State.timerInterval = setInterval(() => {
+                    if (State.gameOver) return;
+                    State.missionTime--;
+                    const m = Math.floor(State.missionTime / 60).toString().padStart(2, '0');
+                    const s = (State.missionTime % 60).toString().padStart(2, '0');
+                    const timerElem = document.getElementById('hud-timer');
+                    if (timerElem) timerElem.innerText = `${m}:${s}`;
+
+                    if (State.missionTime <= 0) {
+                        clearInterval(State.timerInterval);
+                        triggerGameOver(false);
+                    }
+                }, 1000);
+
+                if (State.role === 'operative') {
+                    document.getElementById('role-view-operative').classList.remove('hidden');
+                    document.getElementById('role-view-hacker').classList.add('hidden');
+                    initOperativeEngine();
+                } else {
+                    document.getElementById('role-view-operative').classList.add('hidden');
+                    document.getElementById('role-view-hacker').classList.remove('hidden');
+                    initHackerDashboard();
+                }
+                audio.success();
             }
-        }
 
-        function triggerInteraction
+            function triggerGameOver(isWin) {
+                State.gameOver = true;
+                if (State.timerInterval) clearInterval(State.timerInterval);
+                const modal = document.getElementById('end-modal');
+                const title = document.getElementById('end-title');
+                const desc = document.getElementById('end-desc');
+                const box = document.getElementById('end-modal-box');
+
+                modal.classList.remove('hidden');
+                if (isWin) {
+                    title.innerText = "MISSION SUCCESS";
+                    title.className = "text-2xl font-orbitron font-black mb-3 glow-green text-[#00ff66]";
+                    box.className = "max-w-md w-full bg-[#12161f] border-2 border-[#00ff66] rounded-lg p-6 text-center shadow-2xl";
+                    desc.innerText = "All security nodes successfully bypassed. Sector 09 infiltration complete!";
+                    audio.success();
+                } else {
+                    title.innerText = "MISSION FAILED // LOCKDOWN";
+                    title.className = "text-2xl font-orbitron font-black mb-3 glow-red text-[#ff2a2a]";
+                    box.className = "max-w-md w-full bg-[#12161f] border-2 border-[#ff2a2a] rounded-lg p-6 text-center shadow-2xl";
+                    desc.innerText = "Countdown expired. Sector security forces have cornered the operative.";
+                    audio.error();
+                }
+            }
+
+            function checkMissionWinCondition() {
+                if (Object.values(State.puzzleStates).every(v => v === true)) {
+                    triggerGameOver(true);
+                }
+            }
+
+            const Input = { left: false, right: false, up: false, down: false, jump: false, interact: false, joystickActive: false, joystickX: 0, joystickY: 0 };
+
+            window.addEventListener('keydown', (e) => {
+                if (State.role !== 'operative') return;
+                if (e.key === 'a' || e.key === 'ArrowLeft') Input.left = true;
+                if (e.key === 'd' || e.key === 'ArrowRight') Input.right = true;
+                if (e.key === 'w' || e.key === 'ArrowUp' || e.key === ' ') { Input.jump = true; e.preventDefault(); }
+                if (e.key === 'e' || e.key === 'E') triggerInteraction();
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (State.role !== 'operative') return;
+                if (e.key === 'a' || e.key === 'ArrowLeft') Input.left = false;
+                if (e.key === 'd' || e.key === 'ArrowRight') Input.right = false;
+                if (e.key === 'w' || e.key === 'ArrowUp' || e.key === ' ') Input.jump = false;
+            });
+
+            function initTouchControls() {
+                const zone = document.getElementById('joystick-zone');
+                const knob = document.getElementById('joystick-knob');
+                const maxDist = 40;
+
+                function handleTouch(clientX, clientY) {
+                    const rect = zone.getBoundingClientRect();
+                    const dx = Math.min(Math.max(clientX - (rect.left + rect.width / 2), -maxDist), maxDist);
+                    const dy = Math.min(Math.max(clientY - (rect.top + rect.height / 2), -maxDist), maxDist);
+                    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                    Input.joystickX = dx / maxDist;
+                    Input.joystickActive = true;
+                }
+
+                zone.addEventListener('touchstart', (e) => { handleTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
+                zone.addEventListener('touchmove', (e) => { handleTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
+                zone.addEventListener('touchend', () => {
+                    knob.style.transform = `translate(0px, 0px)`;
+                    Input.joystickX = 0;
+                    Input.joystickActive = false;
+                });
+
+                document.getElementById('btn-jump').addEventListener('click', triggerJump);
+                document.getElementById('btn-interact').addEventListener('click', triggerInteraction);
+            }
+
+            function triggerJump() {
+                if (State.operativePos.grounded) {
+                    State.operativePos.vy = -10;
+                    State.operativePos.grounded = false;
+                    audio.beep(300, 'square', 0.1, 0.1);
+                }
+            }
+
+            function triggerInteraction() {
+                audio.beep(800, 'sine', 0.1, 0.1);
+                const x = State.operativePos.x;
+                if (x >= 250 && x <= 350 && !State.puzzleStates.puzzle_keypad) openPuzzleModal('puzzle_keypad');
+                else if (x >= 650 && x <= 750 && !State.puzzleStates.puzzle_frequency) openPuzzleModal('puzzle_frequency');
+                else if (x >= 1050 && x <= 1150 && !State.puzzleStates.puzzle_wires) openPuzzleModal('puzzle_wires');
+                else if (x >= 1450 && x <= 1550 && !State.puzzleStates.puzzle_power_grid) openPuzzleModal('puzzle_power_grid');
+            }
+
+            let opCanvas, opCtx, lastTelemetrySend = 0;
+            const rooms = [
+                { id: 1, xStart: 0, xEnd: 400, node: { id: 'puzzle_keypad', x: 300, name: 'Alpha [Keypad]' } },
+                { id: 2, xStart: 400, xEnd: 800, node: { id: 'puzzle_frequency', x: 700, name: 'Beta [Frequency]' } },
+                { id: 3, xStart: 800, xEnd: 1200, node: { id: 'puzzle_wires', x: 1100, name: 'Gamma [Wires]' } },
+                { id: 4, xStart: 1200, xEnd: 1600, node: { id: 'puzzle_power_grid', x: 1500, name: 'Delta [Power]' } }
+            ];
+
+            const drones = [
+                { room: 1, x: 200, y: 200, vx: 2, minX: 100, maxX: 350 },
+                { room: 2, x: 600, y: 180, vx: -2.5, minX: 450, maxX: 750 },
+                { room: 3, x: 1000, y: 220, vx: 3, minX: 850, maxX: 1150 },
+                { room: 4, x: 1400, y: 190, vx: -3, minX: 1250, maxX: 1550 }
+            ];
+
+            function initOperativeEngine() {
+                opCanvas = document.getElementById('operative-canvas');
+                opCtx = opCanvas.getContext('2d');
+                initTouchControls();
+                requestAnimationFrame(updateOperativeLoop);
+            }
+
+            function updateOperativeLoop(timestamp) {
+                if (State.role !== 'operative' || State.gameOver) return;
+
+                if (opCanvas.width !== opCanvas.clientWidth || opCanvas.height !== opCanvas.clientHeight) {
+                    opCanvas.width = opCanvas.clientWidth;
+                    opCanvas.height = opCanvas.clientHeight;
+                }
+
+                let moveDir = 0;
+                if (Input.left) moveDir = -1;
+                if (Input.right) moveDir = 1;
+                if (Input.joystickActive) moveDir = Input.joystickX;
+
+                State.operativePos.vx = moveDir * 5;
+                State.operativePos.x += State.operativePos.vx;
+
+                const currentRoomObj = rooms.find(r => State.operativePos.x >= r.xStart && State.operativePos.x <= r.xEnd) || rooms[0];
+                State.operativePos.room = currentRoomObj.id;
+
+                if (currentRoomObj.id === 1 && State.operativePos.x > 380 && !State.puzzleStates.puzzle_keypad) State.operativePos.x = 380;
+                if (currentRoomObj.id === 2 && State.operativePos.x < 420 && !State.puzzleStates.puzzle_keypad) State.operativePos.x = 420;
+                if (currentRoomObj.id === 2 && State.operativePos.x > 780 && !State.puzzleStates.puzzle_frequency) State.operativePos.x = 780;
+                if (currentRoomObj.id === 3 && State.operativePos.x < 820 && !State.puzzleStates.puzzle_frequency) State.operativePos.x = 820;
+                if (currentRoomObj.id === 3 && State.operativePos.x > 1180 && !State.puzzleStates.puzzle_wires) State.operativePos.x = 1180;
+                if (currentRoomObj.id === 4 && State.operativePos.x < 1220 && !State.puzzleStates.puzzle_wires) State.operativePos.x = 1220;
+
+                if (State.operativePos.x < 20) State.operativePos.x = 20;
+                if (State.operativePos.x > 1580) State.operativePos.x = 1580;
+
+                State.operativePos.vy += 0.5;
+                State.operativePos.y += State.operativePos.vy;
+                const floorY = opCanvas.height - 120;
+                if (State.operativePos.y > floorY) {
+                    State.operativePos.y = floorY;
+                    State.operativePos.vy = 0;
+                    State.operativePos.grounded = true;
+                }
+
+                drones.forEach(d => {
+                    d.x += d.vx;
+                    if (d.x < d.minX || d.x > d.maxX) d.vx *= -1;
+
+                    const dist = Math.hypot(State.operativePos.x - d.x, (State.operativePos.y - 16) - d.y);
+                    if (dist < 25) {
+                        audio.error();
+                        State.operativePos.x = currentRoomObj.xStart + 50;
+                        State.operativePos.y = floorY;
+                    }
+                });
+
+                if (timestamp - lastTelemetrySend > 50) {
+                    lastTelemetrySend = timestamp;
+                    sendNetData({ type: 'telemetry', x: State.operativePos.x, y: State.operativePos.y, room: State.operativePos.room });
+                }
+
+                const cameraX = Math.max(0, Math.min(State.operativePos.x - opCanvas.width / 2, 1600 - opCanvas.width));
+
+                opCtx.fillStyle = '#0a0c10';
+                opCtx.fillRect(0, 0, opCanvas.width, opCanvas.height);
+
+                opCtx.save();
+                opCtx.translate(-cameraX, 0);
+
+                rooms.forEach((r, idx) => {
+                    opCtx.fillStyle = idx % 2 === 0 ? '#12161f' : '#0e121a';
+                    opCtx.fillRect(r.xStart, floorY + 20, 400, 100);
+                    opCtx.strokeStyle = '#00f0ff44';
+                    opCtx.strokeRect(r.xStart, 0, 400, floorY + 20);
+
+                    const solved = State.puzzleStates[r.node.id];
+                    opCtx.fillStyle = solved ? '#00ff66' : '#ff2a2a';
+                    opCtx.beginPath();
+                    opCtx.arc(r.node.x, floorY, 16, 0, Math.PI * 2);
+                    opCtx.fill();
+                    opCtx.strokeStyle = '#ffffff';
+                    opCtx.lineWidth = 2;
+                    opCtx.stroke();
+
+                    opCtx.fillStyle = '#ffffff';
+                    opCtx.font = '10px Share Tech Mono';
+                    opCtx.textAlign = 'center';
+                    opCtx.fillText(r.node.name, r.node.x, floorY - 24);
+                });
+
+                [400, 800, 1200].forEach((dx, i) => {
+                    const nodeKey = ['puzzle_keypad', 'puzzle_frequency', 'puzzle_wires'][i];
+                    const unlocked = State.puzzleStates[nodeKey];
+                    opCtx.fillStyle = unlocked ? '#00ff6622' : '#ff2a2a55';
+                    opCtx.fillRect(dx - 5, 0, 10, floorY + 20);
+                    opCtx.strokeStyle = unlocked ? '#00ff66' : '#ff2a2a';
+                    opCtx.strokeRect(dx - 5, 0, 10, floorY + 20);
+                });
+
+                drones.forEach(d => {
+                    opCtx.fillStyle = '#ff2a2a';
+                    opCtx.shadowColor = '#ff2a2a';
+                    opCtx.shadowBlur = 8;
+                    opCtx.beginPath();
+                    opCtx.arc(d.x, d.y, 10, 0, Math.PI * 2);
+                    opCtx.fill();
+                    opCtx.shadowBlur = 0;
+                });
+
+                opCtx.fillStyle = '#00f0ff';
+                opCtx.shadowColor = '#00f0ff';
+                opCtx.shadowBlur = 12;
+                opCtx.fillRect(State.operativePos.x - 12, State.operativePos.y - 32, 24, 32);
+                opCtx.shadowBlur = 0;
+
+                opCtx.restore();
+
+                requestAnimationFrame(updateOperativeLoop);
+            }
+
+            function openPuzzleModal(puzzleId) {
+                State.activePuzzle = puzzleId;
+                const modal = document.getElementById('puzzle-modal');
+                const titleElem = document.getElementById('puzzle-modal-title');
+                const tagElem = document.getElementById('puzzle-modal-tag');
+                const bodyElem = document.getElementById('puzzle-modal-body');
+                const statusElem = document.getElementById('puzzle-modal-status');
+
+                modal.classList.remove('hidden');
+                bodyElem.innerHTML = '';
+
+                if (puzzleId === 'puzzle_keypad') {
+                    tagElem.innerText = 'NODE ALPHA';
+                    titleElem.innerText = 'KEYPAD OVERRIDE';
+                    buildKeypadPuzzle(bodyElem, statusElem);
+                } else if (puzzleId === 'puzzle_frequency') {
+                    tagElem.innerText = 'NODE BETA';
+                    titleElem.innerText = 'FREQUENCY TUNER';
+                    buildFrequencyPuzzle(bodyElem, statusElem);
+                } else if (puzzleId === 'puzzle_wires') {
+                    tagElem.innerText = 'NODE GAMMA';
+                    titleElem.innerText = 'WIRE HARNESS CUTTER';
+                    buildWiresPuzzle(bodyElem, statusElem);
+                } else if (puzzleId === 'puzzle_power_grid') {
+                    tagElem.innerText = 'NODE DELTA';
+                    titleElem.innerText = 'POWER MATRIX ALLOCATOR';
+                    buildPowerGridPuzzle(bodyElem, statusElem);
+                }
+            }
+
+            function closePuzzleModal() {
+                document.getElementById('puzzle-modal').classList.add('hidden');
+                State.activePuzzle = null;
+            }
+
+            function solvePuzzle(puzzleId) {
+                State.puzzleStates[puzzleId] = true;
+                audio.success();
+                sendNetData({ type: 'puzzle_sync', puzzleId: puzzleId, solved: true });
+                updateTelemetryNodesDisplay();
+                checkMissionWinCondition();
+                setTimeout(closePuzzleModal, 1200);
+            }
+
+            function buildKeypadPuzzle(container, status) {
+                let entered = '';
+                container.innerHTML = `
+                    <div class="text-center mb-4">
+                        <div id="keypad-display" class="w-48 bg-[#0d0f12] border border-[#00f0ff] p-2 rounded text-xl font-mono text-[#00ff66] tracking-widest mb-3 glow-green">____</div>
+                        <div class="grid grid-cols-3 gap-2 w-48 mx-auto" id="keypad-grid"></div>
+                    </div>
+                `;
+                const gridElem = document.getElementById('keypad-grid');
+                [1,2,3,4,5,6,7,8,9,'C',0,'OK'].forEach(n => {
+                    const btn = document.createElement('button');
+                    btn.className = "p-3 bg-[#0d0f12] border border-gray-700 hover:border-[#00f0ff] text-[#00f0ff] font-orbitron font-bold rounded cursor-pointer";
+                    btn.innerText = n;
+                    btn.onclick = () => {
+                        audio.beep(500, 'sine', 0.05, 0.05);
+                        if (n === 'C') entered = '';
+                        else if (n === 'OK') {
+                            if (entered === PuzzleConfig.pin) {
+                                status.innerText = 'Override Accepted!';
+                                solvePuzzle('puzzle_keypad');
+                            } else {
+                                status.innerText = 'Incorrect PIN!';
+                                audio.error();
+                                entered = '';
+                            }
+                        } else { if (entered.length < 4) entered += n; }
+                        document.getElementById('keypad-display').innerText = entered.padEnd(4, '_');
+                    };
+                    gridElem.appendChild(btn);
+                });
+            }
+
+            function buildFrequencyPuzzle(container, status) {
+                let freq = 200, phase = 30;
+                container.innerHTML = `
+                    <div class="w-full flex flex-col items-center">
+                        <canvas id="freq-canvas" width="300" height="120" class="bg-[#0d0f12] border border-[#00f0ff44] rounded mb-4"></canvas>
+                        <div class="w-full space-y-3">
+                            <div>
+                                <label class="text-xs text-gray-400">Frequency: <span id="lbl-freq" class="text-[#00ff66]">200</span> Hz</label>
+                                <input type="range" min="100" max="800" value="200" id="slider-freq" class="w-full accent-[#00f0ff]">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Phase Shift: <span id="lbl-phase" class="text-[#00ff66]">30</span>°</label>
+                                <input type="range" min="0" max="180" value="30" id="slider-phase" class="w-full accent-[#00f0ff]">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const canvas = document.getElementById('freq-canvas');
+                const ctx = canvas.getContext('2d');
+                const fSlider = document.getElementById('slider-freq');
+                const pSlider = document.getElementById('slider-phase');
+
+                function drawWave() {
+                    ctx.fillStyle = '#0d0f12';
+                    ctx.fillRect(0, 0, 300, 120);
+                    ctx.strokeStyle = '#00f0ff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    for (let x = 0; x < 300; x++) {
+                        const y = 60 + Math.sin((x + phase) * (freq / 1000)) * 35;
+                        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+
+                fSlider.oninput = (e) => { freq = parseInt(e.target.value); document.getElementById('lbl-freq').innerText = freq; drawWave(); checkFreq(); };
+                pSlider.oninput = (e) => { phase = parseInt(e.target.value); document.getElementById('lbl-phase').innerText = phase; drawWave(); checkFreq(); };
+                drawWave();
+
+                function checkFreq() {
+                    if (Math.abs(freq - PuzzleConfig.targetFreq) < 15 && Math.abs(phase - PuzzleConfig.targetPhase) < 10) {
+                        status.innerText = 'Frequency Synchronized!';
+                        solvePuzzle('puzzle_frequency');
+                    }
+                }
+            }
+
+            function buildWiresPuzzle(container, status) {
+                const wires = [
+                    { color: 'Red', hex: '#ff2a2a' },
+                    { color: 'Cyan', hex: '#00f0ff' },
+                    { color: 'Yellow', hex: '#ffcc00' },
+                    { color: 'Green', hex: '#00ff66' },
+                    { color: 'Violet', hex: '#bf00ff' }
+                ];
+                container.innerHTML = `
+                    <div class="w-full space-y-2" id="wires-container">
+                        <p class="text-xs text-gray-400 mb-2">Consult Hacker Manual for active wire rule.</p>
+                    </div>
+                `;
+                const wiresContainer = document.getElementById('wires-container');
+                wires.forEach((w, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = "w-full p-3 bg-[#0d0f12] border border-gray-700 hover:border-[#00f0ff] rounded flex items-center justify-between cursor-pointer";
+                    btn.innerHTML = `<span class="font-orbitron font-bold text-xs" style="color: ${w.hex}">WIRE 0${idx+1}: ${w.color.toUpperCase()}</span><span class="text-xs text-gray-500">[CUT]</span>`;
+                    btn.onclick = () => {
+                        audio.beep(300, 'sawtooth', 0.15, 0.2);
+                        if (idx === 2) {
+                            status.innerText = 'Correct wire severed!';
+                            solvePuzzle('puzzle_wires');
+                        } else {
+                            status.innerText = 'WRONG WIRE! Penalty triggered.';
+                            audio.error();
+                        }
+                    };
+                    wiresContainer.appendChild(btn);
+                });
+            }
+
+            function buildPowerGridPuzzle(container, status) {
+                let grid = [0,0,0, 0,1,0, 0,0,0];
+                container.innerHTML = `
+                    <div class="w-full flex flex-col items-center">
+                        <p class="text-xs text-gray-400 mb-3">Activate all nodes to green polarity.</p>
+                        <div class="grid grid-cols-3 gap-2 w-64 h-64" id="power-grid-container"></div>
+                    </div>
+                `;
+                const gridContainer = document.getElementById('power-grid-container');
+                grid.forEach((val, idx) => {
+                    const btn = document.createElement('button');
+                    btn.id = `pnode-${idx}`;
+                    btn.className = `border ${val ? 'bg-[#00ff6633] border-[#00ff66] text-[#00ff66]' : 'bg-[#0d0f12] border-gray-700 text-gray-600'} font-orbitron font-bold rounded flex items-center justify-center cursor-pointer text-xs`;
+                    btn.innerText = `N-${idx+1}`;
+                    btn.onclick = () => {
+                        audio.beep(650, 'sine', 0.05, 0.05);
+                        grid[idx] = grid[idx] ? 0 : 1;
+                        btn.className = `border ${grid[idx] ? 'bg-[#00ff6633] border-[#00ff66] text-[#00ff66]' : 'bg-[#0d0f12] border-gray-700 text-gray-600'} font-orbitron font-bold rounded flex items-center justify-center cursor-pointer text-xs`;
+                        if (grid.every(v => v === 1)) {
+                            status.innerText = 'Power Grid Synchronized!';
+                            solvePuzzle('puzzle_power_grid');
+                        }
+                    };
+                    gridContainer.appendChild(btn);
+                });
+            }
+
+            let radarCanvas, radarCtx;
+
+            function initHackerDashboard() {
+                radarCanvas = document.getElementById('hacker-radar-canvas');
+                radarCtx = radarCanvas.getContext('2d');
+                requestAnimationFrame(updateHackerRadarLoop);
+
+                document.getElementById('terminal-input').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') executeTerminalCommand();
+                });
+            }
+
+            function updateHackerRadarLoop() {
+                if (State.role !== 'hacker') return;
+
+                if (radarCanvas.width !== radarCanvas.clientWidth || radarCanvas.height !== radarCanvas.clientHeight) {
+                    radarCanvas.width = radarCanvas.clientWidth;
+                    radarCanvas.height = radarCanvas.clientHeight;
+                }
+
+                radarCtx.fillStyle = '#0a0c10';
+                radarCtx.fillRect(0, 0, radarCanvas.width, radarCanvas.height);
+
+                radarCtx.strokeStyle = '#00f0ff33';
+                radarCtx.lineWidth = 1;
+                [0.25, 0.5, 0.75].forEach(pct => {
+                    radarCtx.beginPath();
+                    radarCtx.moveTo(pct * radarCanvas.width, 0);
+                    radarCtx.lineTo(pct * radarCanvas.width, radarCanvas.height);
+                    radarCtx.stroke();
+                });
+
+                rooms.forEach((r, idx) => {
+                    const nx = ((r.node.x) / 1600) * radarCanvas.width;
+                    const ny = radarCanvas.height / 2;
+                    const solved = State.puzzleStates[r.node.id];
+                    radarCtx.fillStyle = solved ? '#00ff66' : '#ff2a2a';
+                    radarCtx.beginPath();
+                    radarCtx.arc(nx, ny, 8, 0, Math.PI * 2);
+                    radarCtx.fill();
+                });
+
+                const opX = (State.operativePos.x / 1600) * radarCanvas.width;
+                const opY = radarCanvas.height / 2;
+                radarCtx.fillStyle = '#00f0ff';
+                radarCtx.shadowColor = '#00f0ff';
+                radarCtx.shadowBlur = 10;
+                radarCtx.beginPath();
+                radarCtx.arc(opX, opY, 6, 0, Math.PI * 2);
+                radarCtx.fill();
+                radarCtx.shadowBlur = 0;
+
+                document.getElementById('telemetry-x').innerText = State.operativePos.x.toFixed(2);
+                document.getElementById('telemetry-y').innerText = State.operativePos.y.toFixed(2);
+                document.getElementById('telemetry-room').innerText = `ROOM ${State.operativePos.room}`;
+
+                requestAnimationFrame(updateHackerRadarLoop);
+            }
+
+            function updateTelemetryNodesDisplay() {
+                const container = document.getElementById('telemetry-nodes');
+                if (!container) return;
+                container.innerHTML = `
+                    <div>DOOR 1 (Alpha): <span class="${State.puzzleStates.puzzle_keypad ? 'text-[#00ff66]' : 'text-yellow-400'}">${State.puzzleStates.puzzle_keypad ? 'UNLOCKED' : 'LOCKED'}</span></div>
+                    <div>DOOR 2 (Beta): <span class="${State.puzzleStates.puzzle_frequency ? 'text-[#00ff66]' : 'text-yellow-400'}">${State.puzzleStates.puzzle_frequency ? 'UNLOCKED' : 'LOCKED'}</span></div>
+                    <div>DOOR 3 (Gamma): <span class="${State.puzzleStates.puzzle_wires ? 'text-[#00ff66]' : 'text-yellow-400'}">${State.puzzleStates.puzzle_wires ? 'UNLOCKED' : 'LOCKED'}</span></div>
+                    <div>DOOR 4 (Delta): <span class="${State.puzzleStates.puzzle_power_grid ? 'text-[#00ff66]' : 'text-yellow-400'}">${State.puzzleStates.puzzle_power_grid ? 'UNLOCKED' : 'LOCKED'}</span></div>
+                `;
+            }
+
+            function executeTerminalCommand() {
+                const inputElem = document.getElementById('terminal-input');
+                const cmdText = inputElem.value.trim();
+                if (!cmdText) return;
+
+                audio.beep(700, 'sine', 0.05, 0.05);
+                appendTerminalOutput(`> ${cmdText}`, '#00ff66');
+                inputElem.value = '';
+                sendNetData({ type: 'terminal_cmd', cmd: cmdText });
+
+                const parts = cmdText.split(' ');
+                const cmd = parts[0].toLowerCase();
+                const arg = parts[1];
+
+                if (cmd === 'help') {
+                    appendTerminalOutput('AVAILABLE COMMANDS: help, statusReport, override [node_id], clear', '#00f0ff');
+                } else if (cmd === 'statusreport') {
+                    for (let [k, v] of Object.entries(State.puzzleStates)) {
+                        appendTerminalOutput(`  - ${k}: ${v ? 'SECURED [SOLVED]' : 'VULNERABLE [PENDING]'}`, v ? '#00ff66' : '#ff2a2a');
+                    }
+                } else if (cmd === 'override') {
+                    if (!arg || !State.puzzleStates.hasOwnProperty(arg)) {
+                        appendTerminalOutput('ERROR: Invalid node ID.', '#ff2a2a');
+                    } else {
+                        appendTerminalOutput(`Initiating override for ${arg}...`, '#yellow');
+                        setTimeout(() => {
+                            State.puzzleStates[arg] = true;
+                            updateTelemetryNodesDisplay();
+                            checkMissionWinCondition();
+                            appendTerminalOutput(`SUCCESS: Node ${arg} overridden!`, '#00ff66');
+                            audio.success();
+                        }, 1500);
+                    }
+                } else if (cmd === 'clear') {
+                    document.getElementById('terminal-output').innerHTML = '';
+                } else {
+                    appendTerminalOutput(`ERROR: Unknown command '${cmd}'.`, '#ff2a2a');
+                }
+            }
+
+            function appendTerminalOutput(text, color) {
+                const output = document.getElementById('terminal-output');
+                const div = document.createElement('div');
+                div.innerText = text;
+                div.className = color === '#00f0ff' ? 'text-[#00f0ff]' : color === '#00ff66' ? 'text-[#00ff66]' : color === '#ff2a2a' ? 'text-red-400' : color === '#yellow' ? 'text-yellow-400' : 'text-gray-300';
+                output.appendChild(div);
+                output.scrollTop = output.scrollHeight;
+            }
+
+            // Wire up DOM event listeners safely
+            document.getElementById('btn-role-operative').addEventListener('click', () => selectRole('operative'));
+            document.getElementById('btn-role-hacker').addEventListener('click', () => selectRole('hacker'));
+            document.getElementById('btn-gen-seed').addEventListener('click', randomizeSeed);
+            document.getElementById('btn-host').addEventListener('click', hostGame);
+            document.getElementById('btn-solo').addEventListener('click', startSolo);
+            document.getElementById('btn-join').addEventListener('click', joinGame);
+            document.getElementById('btn-abort').addEventListener('click', cancelHosting);
+            document.getElementById('btn-quit').addEventListener('click', quitGame);
+            document.getElementById('btn-return-lobby').addEventListener('click', quitGame);
+            document.getElementById('btn-exec-cmd').addEventListener('click', executeTerminalCommand);
+            document.getElementById('btn-close-modal').addEventListener('click', closePuzzleModal);
+            document.getElementById('btn-disengage').addEventListener('click', closePuzzleModal);
+
+            document.getElementById('htab-btn-1').addEventListener('click', () => switchHackerTab(1));
+            document.getElementById('htab-btn-2').addEventListener('click', () => switchHackerTab(2));
+            document.getElementById('htab-btn-3').addEventListener('click', () => switchHackerTab(3));
+            document.getElementById('htab-btn-4').addEventListener('click', () => switchHackerTab(4));
+
+            function switchHackerTab(tabNum) {
+                audio.beep(500, 'sine', 0.05, 0.05);
+                for (let i = 1; i <= 4; i++) {
+                    document.getElementById(`htab-content-${i}`).classList.add('hidden');
+                    document.getElementById(`htab-btn-${i}`).className = "px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap";
+                }
+                document.getElementById(`htab-content-${tabNum}`).classList.remove('hidden');
+                document.getElementById(`htab-btn-${tabNum}`).className = "px-5 py-3 border-b-2 border-[#00f0ff] text-[#00f0ff] bg-[#00f0ff11] cursor-pointer whitespace-nowrap";
+            }
+        });
+    </script>
+</body>
+</html>
