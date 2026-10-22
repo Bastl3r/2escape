@@ -99,14 +99,24 @@
                 <!-- Session Configuration -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 space-y-3">
-                        <label class="text-xs text-cyber-cyan font-bold block">ROOM & SEED CONFIG</label>
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs text-cyber-cyan font-bold block">ROOM & SEED CONFIG</label>
+                            <button id="btn-regen-level" class="text-[10px] text-cyber-amber hover:underline font-mono">↻ REGENERATE</button>
+                        </div>
                         <div>
                             <span class="text-[10px] text-slate-500 block mb-1">SESSION ROOM ID</span>
-                            <input type="text" id="input-room-id" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white uppercase font-mono focus:border-cyber-cyan outline-none" placeholder="AUTO-GENERATING..." readonly>
+                            <input type="text" id="input-room-id" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white uppercase font-mono focus:border-cyber-cyan outline-none" placeholder="GENERATING SESSION..." readonly>
                         </div>
                         <div>
                             <span class="text-[10px] text-slate-500 block mb-1">MISSION SEED (PRNG)</span>
                             <input type="number" id="input-seed" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white font-mono focus:border-cyber-cyan outline-none" value="882194">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1">
+                                <span>DIFFICULTY / PUZZLE LEVEL</span>
+                                <span id="level-val-display" class="text-cyber-green font-bold">LVL 5</span>
+                            </div>
+                            <input type="range" id="input-level-slider" min="1" max="20" value="5" class="w-full accent-cyber-cyan bg-slate-950 rounded cursor-pointer">
                         </div>
                     </div>
 
@@ -115,7 +125,7 @@
                         <div id="qr-code-container" class="w-24 h-24 bg-slate-950 border border-cyber-cyan/30 rounded p-1 flex items-center justify-center">
                             <svg id="qr-svg" class="w-full h-full" viewBox="0 0 100 100"></svg>
                         </div>
-                        <span class="text-[10px] text-slate-500">Scan or share Room ID</span>
+                        <span id="level-summary-badge" class="text-[10px] font-mono text-cyber-cyan">LEVEL GENERATED</span>
                     </div>
                 </div>
 
@@ -131,11 +141,11 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <button id="btn-select-operative" class="p-4 bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 hover:border-cyber-cyan rounded-xl text-left transition group">
                             <div class="text-lg font-bold text-white group-hover:text-cyber-cyan">FIELD OPERATIVE</div>
-                            <div class="text-[11px] text-slate-400 mt-1">2D Tactical Movement & Physical Hardware Interfacing.</div>
+                            <div class="text-[11px] text-slate-400 mt-1">Walkable Procedural Map & Hardware Interfacing.</div>
                         </button>
                         <button id="btn-select-hacker" class="p-4 bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 hover:border-cyber-green rounded-xl text-left transition group">
                             <div class="text-lg font-bold text-white group-hover:text-cyber-green">HACKER TERMINAL</div>
-                            <div class="text-[11px] text-slate-400 mt-1">Telemetry Dashboard, Manual Override & Tech Schematics.</div>
+                            <div class="text-[11px] text-slate-400 mt-1">Telemetry Dashboard, Dynamic Schematics & Manual Overrides.</div>
                         </button>
                     </div>
                 </div>
@@ -156,12 +166,13 @@
                 </div>
                 <div class="flex items-center gap-4 font-mono text-xs">
                     <div>SEED: <span id="op-hud-seed" class="text-amber-400">882194</span></div>
-                    <div>SECTOR: <span id="op-hud-room" class="text-emerald-400">1 / 4</span></div>
+                    <div>LEVEL: <span id="op-hud-level" class="text-emerald-400">5</span></div>
+                    <div>ROOMS: <span id="op-hud-room" class="text-emerald-400">0 / 0</span></div>
                 </div>
             </div>
 
             <!-- CANVAS CONTAINER -->
-            <div class="relative w-full rounded-xl overflow-hidden cyber-panel border-cyan-500/40 flex-1 min-h-[380px] max-h-[550px] flex items-center justify-center bg-slate-950 shadow-2xl">
+            <div class="relative w-full rounded-xl overflow-hidden cyber-panel border-cyan-500/40 flex-1 min-h-[400px] max-h-[600px] flex items-center justify-center bg-slate-950 shadow-2xl">
                 <canvas id="operative-canvas" class="w-full h-full block"></canvas>
 
                 <div id="interact-prompt" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-amber-500/90 text-slate-950 font-bold font-mono px-4 py-2 rounded-lg shadow-lg border-2 border-amber-300 animate-bounce text-xs md:text-sm z-20 pointer-events-none">
@@ -173,14 +184,13 @@
             <div id="operative-control-deck" class="fixed bottom-0 left-0 right-0 bg-slate-950/95 border-t border-cyan-500/30 backdrop-blur-md p-3 z-30 flex items-center justify-between px-6 max-w-5xl mx-auto rounded-t-2xl shadow-2xl md:hidden">
                 <div class="flex flex-col items-center">
                     <span class="text-[10px] font-mono text-cyan-400/70 mb-1 uppercase tracking-widest">Movement</span>
-                    <div id="joystick-zone" class="w-24 h-12 rounded-full bg-slate-900 border border-cyan-500/40 relative touch-none flex items-center justify-center">
+                    <div id="joystick-zone" class="w-28 h-14 rounded-full bg-slate-900 border border-cyan-500/40 relative touch-none flex items-center justify-center">
                         <div id="joystick-knob" class="w-8 h-8 rounded-full bg-cyan-400 border border-white shadow-md absolute transition-transform duration-75"></div>
                     </div>
                 </div>
-
                 <div class="flex items-center gap-3">
-                    <button id="btn-jump" class="w-14 h-14 rounded-full bg-cyan-600/30 border-2 border-cyan-400 text-cyan-300 font-bold font-mono text-xs flex items-center justify-center active:scale-95 transition">
-                        JUMP
+                    <button id="btn-interact-mobile" class="w-14 h-14 rounded-full bg-amber-600/30 border-2 border-amber-400 text-amber-300 font-bold font-mono text-xs flex items-center justify-center active:scale-95 transition">
+                        USE
                     </button>
                 </div>
             </div>
@@ -201,7 +211,7 @@
                 <!-- TAB 1: BLUEPRINT -->
                 <div id="tab-blueprint" class="tab-content flex flex-col items-center justify-center">
                     <span class="text-xs font-mono text-cyber-cyan mb-2">FIELD OPERATIVE BLUEPRINT TRACKER</span>
-                    <pre id="ascii-blueprint" class="font-mono text-cyber-green text-xs sm:text-sm bg-slate-950 p-4 rounded border border-slate-800 leading-none overflow-x-auto"></pre>
+                    <pre id="ascii-blueprint" class="font-mono text-cyber-green text-xs sm:text-sm bg-slate-950 p-4 rounded border border-slate-800 leading-none overflow-x-auto min-w-[320px] text-center"></pre>
                 </div>
 
                 <!-- TAB 2: MANUALS -->
@@ -237,11 +247,11 @@
                         </div>
                         <div class="bg-slate-900 p-3 rounded border border-slate-800">
                             <span class="text-[10px] text-slate-400 block">ACTIVE PUZZLES</span>
-                            <span id="telemetry-active" class="text-base font-bold text-cyber-amber">4/4 UNRESOLVED</span>
+                            <span id="telemetry-active" class="text-base font-bold text-cyber-amber">0/0 UNRESOLVED</span>
                         </div>
                         <div class="bg-slate-900 p-3 rounded border border-slate-800">
-                            <span class="text-[10px] text-slate-400 block">WAKE LOCK STATUS</span>
-                            <span id="telemetry-wakelock" class="text-base font-bold text-cyber-green">ACTIVE</span>
+                            <span class="text-[10px] text-slate-400 block">GENERATED LEVEL</span>
+                            <span id="telemetry-level" class="text-base font-bold text-cyber-cyan">LVL 5</span>
                         </div>
                     </div>
                 </div>
@@ -285,7 +295,7 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        // Simple Audio Synthesizer
+        // Audio Synthesizer
         const sound = {
             muted: false,
             ctx: null,
@@ -308,7 +318,6 @@
                     osc.stop(this.ctx.currentTime + duration);
                 } catch (e) {}
             },
-            jump() { this.beep(300, 'square', 0.15); },
             success() { this.beep(880, 'sine', 0.25); },
             fail() { this.beep(150, 'sawtooth', 0.3); }
         };
@@ -330,6 +339,80 @@
             }
         }
 
+        // Procedural Room Layout Generator (Levels 1-20)
+        class LevelGenerator {
+            static generate(seed = 882194, puzzleLevel = 5) {
+                const prng = new PRNG(seed + puzzleLevel * 100);
+                const roomCount = Math.min(20, Math.max(3, Math.floor(3 + (puzzleLevel * 0.85))));
+                const rooms = [];
+                const corridors = [];
+
+                // Simple 2D grid placement for room layout
+                let currentX = 100;
+                let currentY = 150;
+
+                for (let i = 0; i < roomCount; i++) {
+                    const width = prng.range(140, 220);
+                    const height = prng.range(120, 180);
+                    const room = {
+                        id: `room_${i + 1}`,
+                        name: `SECTOR ${i + 1}`,
+                        x: currentX,
+                        y: currentY,
+                        w: width,
+                        h: height,
+                        puzzleNode: null
+                    };
+
+                    // Parameterize puzzle difficulty for levels 1 to 20
+                    const codeLength = Math.min(8, Math.max(3, Math.floor(3 + (puzzleLevel / 3.5))));
+                    const minVal = Math.pow(10, codeLength - 1);
+                    const maxVal = Math.pow(10, codeLength) - 1;
+                    const passcode = String(prng.range(minVal, maxVal));
+
+                    room.puzzleNode = {
+                        id: `puzzle_keypad_${i + 1}`,
+                        type: 'puzzle_keypad',
+                        x: room.x + room.w / 2,
+                        y: room.y + room.h / 2,
+                        radius: 16,
+                        solved: false,
+                        config: {
+                            level: puzzleLevel,
+                            codeLength: codeLength,
+                            passcode: passcode,
+                            enteredCode: '',
+                            roomName: room.name
+                        }
+                    };
+
+                    rooms.push(room);
+
+                    // Add corridor link to next room
+                    if (i > 0) {
+                        const prevRoom = rooms[i - 1];
+                        corridors.push({
+                            x1: prevRoom.x + prevRoom.w,
+                            y1: prevRoom.y + prevRoom.h / 2,
+                            x2: room.x,
+                            y2: room.y + room.h / 2,
+                            w: Math.abs(room.x - (prevRoom.x + prevRoom.w)) || 40,
+                            h: 30
+                        });
+                    }
+
+                    // Advance position layout
+                    currentX += width + prng.range(40, 80);
+                    if (i % 4 === 3) {
+                        currentX = 100;
+                        currentY += 220;
+                    }
+                }
+
+                return { seed, level: puzzleLevel, roomCount, rooms, corridors };
+            }
+        }
+
         // Puzzle Shell Controller
         class PuzzleRegistryClass {
             constructor() { this.puzzles = new Map(); }
@@ -346,15 +429,15 @@
             }
 
             mount(puzzleId, userRole, initialConfig = {}, callbacks = {}) {
-                const puzzleDef = PuzzleRegistry.get(puzzleId);
+                const puzzleDef = PuzzleRegistry.get('puzzle_keypad');
                 if (!puzzleDef) return;
 
                 this.callbacks = callbacks;
                 this.state = { puzzleId, isSolved: false, progressPercent: 0, errorMsg: null, customState: initialConfig };
 
-                document.getElementById('puzzle-shell-title').textContent = puzzleDef.name;
-                document.getElementById('puzzle-shell-makemodel').textContent = puzzleDef.makeModel || '';
-                document.getElementById('puzzle-shell-category').textContent = puzzleDef.category || 'MODULE';
+                document.getElementById('puzzle-shell-title').textContent = `${puzzleDef.name} (LVL ${initialConfig.level || 1})`;
+                document.getElementById('puzzle-shell-makemodel').textContent = initialConfig.roomName || 'SECURITY NODE';
+                document.getElementById('puzzle-shell-category').textContent = puzzleDef.category || 'KEYPAD';
                 this.updateUI();
 
                 const container = document.getElementById('puzzle-shell-body');
@@ -373,7 +456,7 @@
 
             emitState(newStateUpdate, evaluateNow = false) {
                 this.state.customState = { ...this.state.customState, ...newStateUpdate };
-                const puzzleDef = PuzzleRegistry.get(this.state.puzzleId);
+                const puzzleDef = PuzzleRegistry.get('puzzle_keypad');
                 
                 if (puzzleDef && evaluateNow) {
                     const result = puzzleDef.evaluate(this.state.customState);
@@ -411,76 +494,72 @@
         }
         const PuzzleShell = new PuzzleShellController();
 
-        // Register Default Puzzles
+        // Register Dynamic Level Keypad Puzzle
         PuzzleRegistry.register({
             id: 'puzzle_keypad',
             name: 'Keypad Bypass',
-            makeModel: 'ZEIT-TECH XP-900',
             category: 'KEYPAD',
-            generateConfig: (prng) => ({ passcode: String(prng.range(1000, 9999)), enteredCode: '' }),
             evaluate: (state) => {
-                if (state.enteredCode.length === 4) {
+                const requiredLen = state.codeLength || 4;
+                if (state.enteredCode.length === requiredLen) {
                     return state.enteredCode === state.passcode 
                         ? { solved: true, progress: 100 }
-                        : { solved: false, progress: 0, error: 'INVALID PASSCODE' };
+                        : { solved: false, progress: 0, error: 'INVALID OVERRIDE CODE' };
                 }
-                return { solved: false, progress: (state.enteredCode.length / 4) * 75 };
+                return { solved: false, progress: (state.enteredCode.length / requiredLen) * 80 };
             },
             hackerComponent: (container, state) => {
                 container.innerHTML = `
                     <div class="space-y-4 font-mono text-xs text-center">
-                        <div class="p-3 bg-slate-900 border border-slate-800 rounded">DECRYPTED REGISTRATION PIN</div>
-                        <div class="text-3xl font-bold text-cyber-green">${state.passcode || '****'}</div>
+                        <div class="p-3 bg-slate-900 border border-slate-800 rounded">DECRYPTED PASSCODE [LEVEL ${state.level || 1}]</div>
+                        <div class="text-3xl font-bold text-cyber-green tracking-widest">${state.passcode || '****'}</div>
                     </div>`;
             },
             operativeComponent: (container, state, emit) => {
                 let code = '';
+                const len = state.codeLength || 4;
                 container.innerHTML = `
                     <div class="flex flex-col items-center space-y-4">
-                        <div id="k-disp" class="w-48 bg-slate-950 border-2 border-cyber-cyan p-3 text-center text-2xl font-mono text-cyber-cyan rounded">____</div>
-                        <div class="grid grid-cols-3 gap-2 w-48">
-                            ${[1,2,3,4,5,6,7,8,9,0].map(n => `<button class="n-btn p-3 bg-slate-900 text-white font-bold rounded" data-n="${n}">${n}</button>`).join('')}
+                        <div id="k-disp" class="w-64 bg-slate-950 border-2 border-cyber-cyan p-3 text-center text-2xl font-mono text-cyber-cyan rounded tracking-widest">${'_'.repeat(len)}</div>
+                        <div class="grid grid-cols-3 gap-2 w-56">
+                            ${[1,2,3,4,5,6,7,8,9,0].map(n => `<button class="n-btn p-3 bg-slate-900 text-white font-bold rounded hover:bg-slate-800" data-n="${n}">${n}</button>`).join('')}
                         </div>
                     </div>`;
                 container.querySelectorAll('.n-btn').forEach(btn => {
                     btn.onclick = () => {
                         sound.beep();
-                        if (code.length < 4) {
+                        if (code.length < len) {
                             code += btn.dataset.n;
-                            container.querySelector('#k-disp').textContent = code.padEnd(4, '_');
-                            emit({ enteredCode: code }, code.length === 4);
+                            container.querySelector('#k-disp').textContent = code.padEnd(len, '_');
+                            emit({ enteredCode: code }, code.length === len);
                         }
                     };
                 });
             },
-            hackerManualText: 'Securi-Pad PIN code is exposed via memory inspection.'
+            hackerManualText: 'Securi-Pad PIN code extracted via telemetry bypass.'
         });
 
-        // 2D Operative Game Engine
+        // 2D Walkable Operative Engine
         class OperativeEngine {
             constructor() {
                 this.canvas = document.getElementById('operative-canvas');
                 this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
-                this.player = { x: 100, y: 100, vx: 0, vy: 0, radius: 12, speed: 3.5, isGrounded: false };
-                this.puzzleNodes = [];
+                this.player = { x: 150, y: 180, radius: 10, speed: 3.5 };
+                this.levelData = null;
+                this.activeModal = false;
                 this.active = false;
+                this.keys = {};
+
+                window.addEventListener('keydown', e => this.keys[e.key.toLowerCase()] = true);
+                window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
             }
 
-            initWorld(seed = 882194) {
-                if (!this.canvas) return;
-                this.resizeCanvas();
-                const prng = new PRNG(seed);
-                const puzzles = PuzzleRegistry.getAll();
-                const coords = [{ x: 150, y: 200 }, { x: 350, y: 150 }, { x: 500, y: 250 }];
-                
-                this.puzzleNodes = puzzles.map((p, idx) => ({
-                    id: p.id,
-                    x: coords[idx % coords.length].x,
-                    y: coords[idx % coords.length].y,
-                    radius: 16,
-                    solved: false,
-                    config: p.generateConfig(prng)
-                }));
+            loadLevel(data) {
+                this.levelData = data;
+                if (data && data.rooms.length > 0) {
+                    this.player.x = data.rooms[0].x + data.rooms[0].w / 2;
+                    this.player.y = data.rooms[0].y + data.rooms[0].h / 2;
+                }
             }
 
             resizeCanvas() {
@@ -490,6 +569,7 @@
             }
 
             start() {
+                this.resizeCanvas();
                 this.active = true;
                 this.loop();
             }
@@ -497,21 +577,56 @@
             stop() { this.active = false; }
 
             update() {
-                this.player.vy += 0.35;
-                this.player.x += this.player.vx;
-                this.player.y += this.player.vy;
+                if (!this.levelData) return;
 
-                const floorY = this.canvas.height - 40;
-                if (this.player.y > floorY - this.player.radius) {
-                    this.player.y = floorY - this.player.radius;
-                    this.player.vy = 0;
-                    this.player.isGrounded = true;
+                let dx = 0;
+                let dy = 0;
+                if (this.keys['w'] || this.keys['arrowup']) dy -= 1;
+                if (this.keys['s'] || this.keys['arrowdown']) dy += 1;
+                if (this.keys['a'] || this.keys['arrowleft']) dx -= 1;
+                if (this.keys['d'] || this.keys['arrowright']) dx += 1;
+
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.7071;
+                    dy *= 0.7071;
                 }
 
+                const nextX = this.player.x + dx * this.player.speed;
+                const nextY = this.player.y + dy * this.player.speed;
+
+                // Simple Walkable Room Bound Checks
+                let inBounds = false;
+                for (const r of this.levelData.rooms) {
+                    if (nextX >= r.x + this.player.radius && nextX <= r.x + r.w - this.player.radius &&
+                        nextY >= r.y + this.player.radius && nextY <= r.y + r.h - this.player.radius) {
+                        inBounds = true;
+                        break;
+                    }
+                }
+
+                if (!inBounds) {
+                    for (const c of this.levelData.corridors) {
+                        if (nextX >= c.x1 && nextX <= c.x1 + c.w &&
+                            nextY >= c.y1 - c.h / 2 && nextY <= c.y1 + c.h / 2) {
+                            inBounds = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (inBounds || !this.levelData.rooms.length) {
+                    this.player.x = nextX;
+                    this.player.y = nextY;
+                    net.send({ type: 'PLAYER_MOVE', x: this.player.x, y: this.player.y });
+                }
+
+                // Check Puzzle Interactions
                 let nearNode = false;
-                this.puzzleNodes.forEach(node => {
+                this.levelData.rooms.forEach(r => {
+                    const node = r.puzzleNode;
+                    if (!node) return;
                     const dist = Math.hypot(this.player.x - node.x, this.player.y - node.y);
-                    if (dist < this.player.radius + node.radius + 10 && !node.solved) {
+                    if (dist < this.player.radius + node.radius + 15 && !node.solved) {
                         nearNode = true;
                         if (!this.activeModal) {
                             this.activeModal = true;
@@ -520,6 +635,7 @@
                                     node.solved = true;
                                     this.activeModal = false;
                                     PuzzleShell.close();
+                                    net.send({ type: 'PUZZLE_SOLVED', puzzleId: node.id });
                                 }
                             });
                         }
@@ -531,30 +647,48 @@
             }
 
             render() {
-                if (!this.ctx) return;
+                if (!this.ctx || !this.levelData) return;
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-                const floorY = this.canvas.height - 40;
-                this.ctx.strokeStyle = '#232b38';
-                this.ctx.lineWidth = 4;
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, floorY);
-                this.ctx.lineTo(this.canvas.width, floorY);
-                this.ctx.stroke();
+                this.ctx.save();
+                // Basic Camera Center on Player
+                this.ctx.translate(this.canvas.width / 2 - this.player.x, this.canvas.height / 2 - this.player.y);
 
-                this.puzzleNodes.forEach(n => {
-                    this.ctx.beginPath();
-                    this.ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
-                    this.ctx.fillStyle = n.solved ? 'rgba(0, 255, 102, 0.2)' : 'rgba(0, 240, 255, 0.2)';
-                    this.ctx.fill();
-                    this.ctx.strokeStyle = n.solved ? '#00ff66' : '#00f0ff';
-                    this.ctx.stroke();
+                // Render Corridors
+                this.ctx.fillStyle = '#1e293b';
+                this.levelData.corridors.forEach(c => {
+                    this.ctx.fillRect(c.x1, c.y1 - c.h / 2, c.w, c.h);
                 });
 
+                // Render Rooms
+                this.levelData.rooms.forEach(r => {
+                    this.ctx.strokeStyle = '#00f0ff';
+                    this.ctx.fillStyle = '#0f172a';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.fillRect(r.x, r.y, r.w, r.h);
+                    this.ctx.strokeRect(r.x, r.y, r.w, r.h);
+
+                    // Render Puzzle Nodes
+                    const n = r.puzzleNode;
+                    if (n) {
+                        this.ctx.beginPath();
+                        this.ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+                        this.ctx.fillStyle = n.solved ? 'rgba(0, 255, 102, 0.3)' : 'rgba(255, 170, 0, 0.3)';
+                        this.ctx.fill();
+                        this.ctx.strokeStyle = n.solved ? '#00ff66' : '#ffaa00';
+                        this.ctx.stroke();
+                    }
+                });
+
+                // Render Operative Player
                 this.ctx.beginPath();
                 this.ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
                 this.ctx.fillStyle = '#ff2a2a';
                 this.ctx.fill();
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.stroke();
+
+                this.ctx.restore();
             }
 
             loop() {
@@ -566,53 +700,77 @@
         }
         const engine = new OperativeEngine();
 
-        // Hacker Dashboard & Blueprints
+        // Hacker Dashboard & Blueprint
         class HackerDashboard {
-            renderBlueprint(playerX, playerY) {
+            renderBlueprint(levelData, playerX = 150, playerY = 180) {
                 const elem = document.getElementById('ascii-blueprint');
-                if (!elem) return;
-                elem.textContent = `+------------------------------+\n|  OPERATIVE POS: X:${Math.round(playerX)} Y:${Math.round(playerY)}     |\n+------------------------------+`;
+                if (!elem || !levelData) return;
+
+                let output = `[ PROCEDURAL MAP SCHEMATIC - LVL ${levelData.level} ]\n`;
+                output += `TOTAL SECTORS: ${levelData.roomCount} | SEED: ${levelData.seed}\n\n`;
+
+                levelData.rooms.forEach((r, i) => {
+                    const isOperativeHere = playerX >= r.x && playerX <= r.x + r.w && playerY >= r.y && playerY <= r.y + r.h;
+                    const status = r.puzzleNode.solved ? 'CLEARED' : 'LOCKED';
+                    output += `[${r.name}] -> ${status} ${isOperativeHere ? '<< OPERATIVE PRESENT >>' : ''}\n`;
+                });
+
+                elem.textContent = output;
             }
 
-            populateManualDirectory() {
+            populateManualDirectory(levelData) {
                 const list = document.getElementById('manual-puzzle-list');
                 const count = document.getElementById('manual-puzzle-count');
-                const puzzles = PuzzleRegistry.getAll();
-                if (count) count.textContent = `${puzzles.length} REGISTERED MODULES`;
+                if (!levelData) return;
+
+                if (count) count.textContent = `${levelData.rooms.length} REGISTERED MODULES`;
                 if (!list) return;
 
-                list.innerHTML = puzzles.map(p => `
+                list.innerHTML = levelData.rooms.map(r => `
                     <div class="p-3 bg-slate-900 border border-slate-800 rounded">
-                        <div class="text-xs font-bold text-cyber-cyan">${p.name}</div>
-                        <div class="text-[10px] text-slate-400 mt-1">${p.hackerManualText}</div>
+                        <div class="text-xs font-bold text-cyber-cyan">${r.name} - OVERRIDE PIN</div>
+                        <div class="text-xl font-mono font-bold text-cyber-green mt-1 tracking-widest">${r.puzzleNode.config.passcode}</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Difficulty Level ${r.puzzleNode.config.level} Security Key</div>
                     </div>
                 `).join('');
             }
         }
         const hackerDash = new HackerDashboard();
 
-        // P2P Network
+        // P2P Network with Procedural Level Pre-generation & Sync
         class NetworkManager {
             constructor() { 
                 this.role = 'UNASSIGNED'; 
                 this.peer = null;
                 this.conn = null;
                 this.roomId = '';
-                this.isHost = false;
+                this.generatedLevel = null;
             }
 
-            initHost() {
-                // Generate clean 6-character room code
+            // Pre-generate Level and render Room ID on the host client
+            pregenerateAndPrepareHost() {
+                const seed = parseInt(document.getElementById('input-seed').value) || 882194;
+                const level = parseInt(document.getElementById('input-level-slider').value) || 5;
+
+                // Procedurally render level layout before providing Room ID
+                this.generatedLevel = LevelGenerator.generate(seed, level);
+
+                // Generate 6-character Room Code
                 this.roomId = 'CB-' + Math.floor(1000 + Math.random() * 9000);
                 const input = document.getElementById('input-room-id');
                 if (input) input.value = this.roomId;
+
                 this.renderQR(this.roomId);
+
+                const badge = document.getElementById('level-summary-badge');
+                if (badge) badge.textContent = `LVL ${level} (${this.generatedLevel.roomCount} ROOMS READY)`;
+
+                console.log('[LEVEL PRE-GENERATED]', this.generatedLevel);
             }
 
             renderQR(text) {
                 const qrSvg = document.getElementById('qr-svg');
                 if (!qrSvg) return;
-                // Simple placeholder matrix visualization for seed code
                 let path = "";
                 for(let i = 0; i < 8; i++) {
                     for(let j = 0; j < 8; j++) {
@@ -629,19 +787,16 @@
                     this.peer = customId ? new Peer(customId) : new Peer();
 
                     this.peer.on('open', (id) => {
-                        console.log('[P2P] Peer ID created:', id);
                         this.updateStatus(true, 'ONLINE');
                         resolve(id);
                     });
 
                     this.peer.on('connection', (connection) => {
-                        console.log('[P2P] Incoming connection...');
                         this.conn = connection;
                         this.listenToConnection();
                     });
 
                     this.peer.on('error', (err) => {
-                        console.error('[P2P] PeerJS Error:', err);
                         this.updateStatus(false, 'CONN ERROR');
                         reject(err);
                     });
@@ -649,24 +804,20 @@
             }
 
             async hostRoom() {
-                this.isHost = true;
                 const peerId = 'codebreak-' + this.roomId.toLowerCase();
                 try {
                     await this.setupPeer(peerId);
                     this.updateStatus(true, 'WAITING FOR PEER');
                 } catch (e) {
-                    // Fallback if ID is occupied
                     await this.setupPeer();
                 }
             }
 
             async joinRoom(targetRoomId) {
-                this.isHost = false;
                 const cleanId = targetRoomId.trim().toLowerCase();
                 const targetPeerId = cleanId.startsWith('codebreak-') ? cleanId : 'codebreak-' + cleanId;
 
                 await this.setupPeer();
-                console.log('[P2P] Connecting to:', targetPeerId);
                 this.conn = this.peer.connect(targetPeerId);
                 this.listenToConnection();
             }
@@ -675,20 +826,19 @@
                 if (!this.conn) return;
 
                 this.conn.on('open', () => {
-                    console.log('[P2P] Connection established!');
                     this.updateStatus(true, 'CONNECTED');
                     sound.success();
 
-                    // Synchronize seed and room settings
-                    this.send({
-                        type: 'SYNC_HANDSHAKE',
-                        role: this.role,
-                        seed: parseInt(document.getElementById('input-seed').value) || 882194
-                    });
+                    // Host automatically synchronizes pre-generated level layout upon connection
+                    if (this.generatedLevel) {
+                        this.send({
+                            type: 'SYNC_LEVEL',
+                            levelData: this.generatedLevel
+                        });
+                    }
                 });
 
                 this.conn.on('data', (data) => {
-                    console.log('[P2P] Data received:', data);
                     this.handleIncomingData(data);
                 });
 
@@ -707,23 +857,22 @@
                 if (!data || !data.type) return;
 
                 switch (data.type) {
-                    case 'SYNC_HANDSHAKE':
-                        if (data.seed) {
-                            document.getElementById('input-seed').value = data.seed;
-                            if (this.role.includes('OPERATIVE')) {
-                                engine.initWorld(data.seed);
-                            }
-                        }
+                    case 'SYNC_LEVEL':
+                        this.generatedLevel = data.levelData;
+                        engine.loadLevel(this.generatedLevel);
+                        hackerDash.renderBlueprint(this.generatedLevel);
+                        hackerDash.populateManualDirectory(this.generatedLevel);
                         break;
                     case 'PLAYER_MOVE':
                         if (this.role.includes('HACKER')) {
-                            hackerDash.renderBlueprint(data.x, data.y);
+                            hackerDash.renderBlueprint(this.generatedLevel, data.x, data.y);
                         }
                         break;
-                    case 'PUZZLE_STATE':
-                        if (PuzzleShell.state.puzzleId === data.puzzleId) {
-                            PuzzleShell.state.customState = data.customState;
-                            PuzzleShell.updateUI();
+                    case 'PUZZLE_SOLVED':
+                        if (this.generatedLevel) {
+                            const room = this.generatedLevel.rooms.find(r => r.puzzleNode && r.puzzleNode.id === data.puzzleId);
+                            if (room) room.puzzleNode.solved = true;
+                            hackerDash.renderBlueprint(this.generatedLevel);
                         }
                         break;
                 }
@@ -738,9 +887,21 @@
         }
         const net = new NetworkManager();
 
-        // UI Event Listeners
+        // UI Event Listeners & Initialization
         window.addEventListener('DOMContentLoaded', () => {
-            net.initHost();
+            // Pre-generate level before providing room ID
+            net.pregenerateAndPrepareHost();
+
+            const levelSlider = document.getElementById('input-level-slider');
+            const levelValDisplay = document.getElementById('level-val-display');
+
+            levelSlider.oninput = () => {
+                levelValDisplay.textContent = `LVL ${levelSlider.value}`;
+                net.pregenerateAndPrepareHost();
+            };
+
+            document.getElementById('input-seed').onchange = () => net.pregenerateAndPrepareHost();
+            document.getElementById('btn-regen-level').onclick = () => net.pregenerateAndPrepareHost();
 
             const switchScreen = async (screenId, roleName) => {
                 document.getElementById('screen-lobby').classList.add('hidden');
@@ -752,10 +913,13 @@
                 net.role = roleName;
 
                 if (screenId === 'screen-operative') {
-                    engine.initWorld(parseInt(document.getElementById('input-seed').value) || 882194);
+                    engine.loadLevel(net.generatedLevel);
                     engine.start();
+                    document.getElementById('op-hud-level').textContent = net.generatedLevel.level;
+                    document.getElementById('op-hud-room').textContent = `0 / ${net.generatedLevel.roomCount}`;
                 } else if (screenId === 'screen-hacker') {
-                    hackerDash.populateManualDirectory();
+                    hackerDash.renderBlueprint(net.generatedLevel);
+                    hackerDash.populateManualDirectory(net.generatedLevel);
                 }
             };
 
@@ -791,14 +955,6 @@
             document.getElementById('puzzle-shell-close').onclick = () => {
                 PuzzleShell.close();
                 engine.activeModal = false;
-            };
-
-            document.getElementById('btn-jump').onclick = () => {
-                if (engine.player.isGrounded) {
-                    engine.player.vy = -7.5;
-                    engine.player.isGrounded = false;
-                    sound.jump();
-                }
             };
         });
     </script>
