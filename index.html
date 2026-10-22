@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100 select-none">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>2Escape</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#0d0f12',
+                            panel: '#151921',
+                            border: '#232b38',
+                            cyan: '#00f0ff',
+                            green: '#00ff66',
+                            red: '#ff2a2a',
+                            amber: '#ffaa00',
+                            dimCyan: 'rgba(0, 240, 255, 0.15)',
+                            dimGreen: 'rgba(0, 255, 102, 0.15)',
+                            dimRed: 'rgba(255, 42, 42, 0.15)',
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['Courier New', 'Consolas', 'Monaco', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <style>
+        .cyber-panel {
+            background: rgba(10, 15, 29, 0.9);
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.08), inset 0 0 15px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0d0f12; }
+        ::-webkit-scrollbar-thumb { background: #232b38; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+
+        .glow-cyan { box-shadow: 0 0 12px rgba(0, 240, 255, 0.4); }
+        .glow-green { box-shadow: 0 0 12px rgba(0, 255, 102, 0.4); }
+        .text-glow-cyan { text-shadow: 0 0 8px rgba(0, 240, 255, 0.6); }
+
+        body, canvas {
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-cyan-500 selection:text-slate-950 min-h-screen flex flex-col">
+
+    <!-- APP HEADER -->
+    <header class="border-b border-cyan-500/20 bg-slate-950/90 backdrop-blur sticky top-0 z-40 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyber-green animate-pulse"></span>
+            <span class="font-bold tracking-widest text-cyber-cyan text-glow-cyan text-xs sm:text-base">2Escape</span>
+            <span id="role-badge" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 font-bold uppercase border border-slate-700">UNASSIGNED</span>
+        </div>
+        
+        <div class="flex items-center space-x-4 text-xs font-mono">
+            <button id="audio-toggle-btn" class="hover:text-cyber-cyan transition-colors">
+                <span id="audio-icon">🔊 SOUND ON</span>
+            </button>
+            <div id="connection-status" class="flex items-center space-x-1.5 text-slate-400">
+                <span class="w-2 h-2 rounded-full bg-slate-600" id="status-dot"></span>
+                <span id="status-text">OFFLINE</span>
+            </div>
+            <button id="pwa-install-btn" class="hidden px-2 py-1 bg-cyber-cyan text-slate-950 font-bold rounded hover:bg-cyan-300 text-[10px]">
+                INSTALL APP
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="flex-1 flex flex-col p-2 md:p-4 gap-4 max-w-7xl mx-auto w-full relative">
+
+        <!-- SCREEN 1: LOBBY & ROLE SELECTION -->
+        <section id="screen-lobby" class="flex-1 flex flex-col items-center justify-center p-4">
+            <div class="max-w-xl w-full bg-cyber-panel border border-cyber-border rounded-xl p-6 shadow-2xl space-y-6">
+                <div class="text-center space-y-2">
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-cyber-cyan tracking-wider text-glow-cyan">OPERATIONAL LOBBY</h1>
+                    <p class="text-xs text-slate-400">Establish encrypted Peer-to-Peer link between Hacker & Field Operative.</p>
+                </div>
+
+                <!-- Session Configuration -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 space-y-3">
+                        <label class="text-xs text-cyber-cyan font-bold block">ROOM & SEED CONFIG</label>
+                        <div>
+                            <span class="text-[10px] text-slate-500 block mb-1">SESSION ROOM ID</span>
+                            <input type="text" id="input-room-id" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white uppercase font-mono focus:border-cyber-cyan outline-none" placeholder="AUTO-GENERATING..." readonly>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-500 block mb-1">MISSION SEED (PRNG)</span>
+                            <input type="number" id="input-seed" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white font-mono focus:border-cyber-cyan outline-none" value="882194">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 flex flex-col items-center justify-center space-y-2">
+                        <span class="text-[10px] text-slate-400">SESSION IDENTIFIER QR</span>
+                        <div id="qr-code-container" class="w-24 h-24 bg-slate-950 border border-cyber-cyan/30 rounded p-1 flex items-center justify-center">
+                            <svg id="qr-svg" class="w-full h-full" viewBox="0 0 100 100"></svg>
+                        </div>
+                        <span class="text-[10px] text-slate-500">Scan or share Room ID</span>
+                    </div>
+                </div>
+
+                <!-- Join Existing Session -->
+                <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 flex items-center space-x-2">
+                    <input type="text" id="input-join-id" class="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white uppercase font-mono focus:border-cyber-cyan outline-none" placeholder="ENTER ROOM ID TO JOIN">
+                    <button id="btn-join-room" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-cyber-cyan font-bold transition">CONNECT</button>
+                </div>
+
+                <!-- Role Selection -->
+                <div class="space-y-2">
+                    <label class="text-xs text-cyber-cyan font-bold block">SELECT OPERATIONAL ROLE</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button id="btn-select-operative" class="p-4 bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 hover:border-cyber-cyan rounded-xl text-left transition group">
+                            <div class="text-lg font-bold text-white group-hover:text-cyber-cyan">FIELD OPERATIVE</div>
+                            <div class="text-[11px] text-slate-400 mt-1">2D Tactical Movement & Physical Hardware Interfacing.</div>
+                        </button>
+                        <button id="btn-select-hacker" class="p-4 bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 hover:border-cyber-green rounded-xl text-left transition group">
+                            <div class="text-lg font-bold text-white group-hover:text-cyber-green">HACKER TERMINAL</div>
+                            <div class="text-[11px] text-slate-400 mt-1">Telemetry Dashboard, Manual Override & Tech Schematics.</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
+                    <span class="text-slate-500">Solo Testing Mode:</span>
+                    <button id="btn-solo-launch" class="px-3 py-1 bg-cyber-border hover:bg-slate-700 text-slate-300 rounded font-bold">SOLO OFFLINE START</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- OPERATIVE ROLE INTERFACE -->
+        <section id="screen-operative" class="hidden flex-1 flex flex-col gap-3 relative pb-32 md:pb-4">
+            <div class="cyber-panel p-3 rounded-lg flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm">
+                <div class="flex items-center gap-3">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="font-mono text-cyan-400 font-bold uppercase tracking-wider">STATUS: ACTIVE INFILTRATION</span>
+                </div>
+                <div class="flex items-center gap-4 font-mono text-xs">
+                    <div>SEED: <span id="op-hud-seed" class="text-amber-400">882194</span></div>
+                    <div>SECTOR: <span id="op-hud-room" class="text-emerald-400">1 / 4</span></div>
+                </div>
+            </div>
+
+            <!-- CANVAS CONTAINER -->
+            <div class="relative w-full rounded-xl overflow-hidden cyber-panel border-cyan-500/40 flex-1 min-h-[380px] max-h-[550px] flex items-center justify-center bg-slate-950 shadow-2xl">
+                <canvas id="operative-canvas" class="w-full h-full block"></canvas>
+
+                <div id="interact-prompt" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-amber-500/90 text-slate-950 font-bold font-mono px-4 py-2 rounded-lg shadow-lg border-2 border-amber-300 animate-bounce text-xs md:text-sm z-20 pointer-events-none">
+                    [E] INTERACT WITH NODE
+                </div>
+            </div>
+
+            <!-- MOBILE CONTROL DECK -->
+            <div id="operative-control-deck" class="fixed bottom-0 left-0 right-0 bg-slate-950/95 border-t border-cyan-500/30 backdrop-blur-md p-3 z-30 flex items-center justify-between px-6 max-w-5xl mx-auto rounded-t-2xl shadow-2xl md:hidden">
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] font-mono text-cyan-400/70 mb-1 uppercase tracking-widest">Movement</span>
+                    <div id="joystick-zone" class="w-24 h-12 rounded-full bg-slate-900 border border-cyan-500/40 relative touch-none flex items-center justify-center">
+                        <div id="joystick-knob" class="w-8 h-8 rounded-full bg-cyan-400 border border-white shadow-md absolute transition-transform duration-75"></div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button id="btn-jump" class="w-14 h-14 rounded-full bg-cyan-600/30 border-2 border-cyan-400 text-cyan-300 font-bold font-mono text-xs flex items-center justify-center active:scale-95 transition">
+                        JUMP
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- HACKER ROLE INTERFACE -->
+        <section id="screen-hacker" class="hidden flex-1 flex flex-col gap-4">
+            <!-- TABS HEADER -->
+            <div class="flex border-b border-slate-800">
+                <button class="tab-btn px-4 py-3 text-xs font-bold border-b-2 border-cyber-green text-cyber-green transition" data-tab="tab-blueprint">BLUEPRINT MAP</button>
+                <button class="tab-btn px-4 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition" data-tab="tab-manuals">SCHEMATICS & MANUALS</button>
+                <button class="tab-btn px-4 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition" data-tab="tab-terminal">TERMINAL OVERRIDE</button>
+                <button class="tab-btn px-4 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition" data-tab="tab-system">SYSTEM TELEMETRY</button>
+            </div>
+
+            <!-- TAB CONTENT CONTAINER -->
+            <div class="flex-1 cyber-panel p-4 rounded-xl">
+                <!-- TAB 1: BLUEPRINT -->
+                <div id="tab-blueprint" class="tab-content flex flex-col items-center justify-center">
+                    <span class="text-xs font-mono text-cyber-cyan mb-2">FIELD OPERATIVE BLUEPRINT TRACKER</span>
+                    <pre id="ascii-blueprint" class="font-mono text-cyber-green text-xs sm:text-sm bg-slate-950 p-4 rounded border border-slate-800 leading-none overflow-x-auto"></pre>
+                </div>
+
+                <!-- TAB 2: MANUALS -->
+                <div id="tab-manuals" class="tab-content hidden space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-cyber-cyan">HARDWARE MANUAL DIRECTORY</span>
+                        <span id="manual-puzzle-count" class="text-[10px] font-mono text-slate-500">0 REGISTERED MODULES</span>
+                    </div>
+                    <div id="manual-puzzle-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </div>
+
+                <!-- TAB 3: TERMINAL -->
+                <div id="tab-terminal" class="tab-content hidden space-y-3 font-mono text-xs">
+                    <div id="terminal-logs" class="bg-slate-950 p-3 rounded border border-slate-800 h-64 overflow-y-auto space-y-1 text-slate-300">
+                        <div>[SYSTEM]: Encrypted terminal link established.</div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-cyber-green font-bold">&gt;</span>
+                        <input type="text" id="terminal-input" class="flex-1 bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-cyber-green outline-none focus:border-cyber-green" placeholder="Enter override command ('help', 'status', 'clear')...">
+                    </div>
+                </div>
+
+                <!-- TAB 4: SYSTEM TELEMETRY -->
+                <div id="tab-system" class="tab-content hidden space-y-4 font-mono">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="bg-slate-900 p-3 rounded border border-slate-800">
+                            <span class="text-[10px] text-slate-400 block">NETWORK LATENCY</span>
+                            <span id="telemetry-ping" class="text-base font-bold text-cyber-cyan">12 ms</span>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded border border-slate-800">
+                            <span class="text-[10px] text-slate-400 block">P2P NODE ROLE</span>
+                            <span id="telemetry-role" class="text-base font-bold text-cyber-green">HACKER</span>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded border border-slate-800">
+                            <span class="text-[10px] text-slate-400 block">ACTIVE PUZZLES</span>
+                            <span id="telemetry-active" class="text-base font-bold text-cyber-amber">4/4 UNRESOLVED</span>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded border border-slate-800">
+                            <span class="text-[10px] text-slate-400 block">WAKE LOCK STATUS</span>
+                            <span id="telemetry-wakelock" class="text-base font-bold text-cyber-green">ACTIVE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- PUZZLE MODAL OVERLAY -->
+    <div id="puzzle-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="max-w-2xl w-full bg-cyber-panel border-2 border-cyber-cyan rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+                <div>
+                    <div id="puzzle-shell-title" class="text-base font-bold text-cyber-cyan">HARDWARE INTERFACE</div>
+                    <div id="puzzle-shell-makemodel" class="text-[10px] font-mono text-slate-400">GENERIC MODEL</div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span id="puzzle-shell-category" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">SECURITY</span>
+                    <span id="puzzle-shell-status" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 uppercase">IN PROGRESS</span>
+                    <button id="puzzle-shell-close" class="text-slate-400 hover:text-white font-bold text-lg px-2">&times;</button>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-950 h-2 relative">
+                <div id="puzzle-shell-progressbar" class="h-full bg-cyber-cyan transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="puzzle-shell-error" class="hidden bg-cyber-red/20 border-b border-cyber-red p-2 text-center text-xs font-mono text-cyber-red">
+                <span id="puzzle-shell-error-msg">SYSTEM FAULT DETECTED</span>
+            </div>
+
+            <div id="puzzle-shell-body" class="p-6 overflow-y-auto flex-1"></div>
+
+            <div class="p-3 bg-slate-900 border-t border-slate-800 flex justify-between items-center text-[10px] font-mono text-slate-500">
+                <span>ENCRYPTED HARDWARE BUS</span>
+                <span>PROGRESS: <span id="puzzle-shell-progress-text" class="text-cyber-cyan">0%</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Simple Audio Synthesizer
+        const sound = {
+            muted: false,
+            ctx: null,
+            init() {
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            },
+            beep(freq = 440, type = 'sine', duration = 0.1) {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            },
+            jump() { this.beep(300, 'square', 0.15); },
+            success() { this.beep(880, 'sine', 0.25); },
+            fail() { this.beep(150, 'sawtooth', 0.3); }
+        };
+
+        // Pseudo-Random Number Generator
+        class PRNG {
+            constructor(seed) {
+                this.m = 0x80000000;
+                this.a = 1103515245;
+                this.c = 12345;
+                this.state = seed ? seed : Math.floor(Math.random() * (this.m - 1));
+            }
+            nextInt() {
+                this.state = (this.a * this.state + this.c) % this.m;
+                return this.state;
+            }
+            range(min, max) {
+                return min + Math.floor((this.nextInt() / this.m) * (max - min + 1));
+            }
+        }
+
+        // Puzzle Shell Controller
+        class PuzzleRegistryClass {
+            constructor() { this.puzzles = new Map(); }
+            register(config) { this.puzzles.set(config.id, config); }
+            get(id) { return this.puzzles.get(id); }
+            getAll() { return Array.from(this.puzzles.values()); }
+        }
+        const PuzzleRegistry = new PuzzleRegistryClass();
+
+        class PuzzleShellController {
+            constructor() {
+                this.state = { puzzleId: null, isSolved: false, progressPercent: 0, errorMsg: null, customState: {} };
+                this.callbacks = {};
+            }
+
+            mount(puzzleId, userRole, initialConfig = {}, callbacks = {}) {
+                const puzzleDef = PuzzleRegistry.get(puzzleId);
+                if (!puzzleDef) return;
+
+                this.callbacks = callbacks;
+                this.state = { puzzleId, isSolved: false, progressPercent: 0, errorMsg: null, customState: initialConfig };
+
+                document.getElementById('puzzle-shell-title').textContent = puzzleDef.name;
+                document.getElementById('puzzle-shell-makemodel').textContent = puzzleDef.makeModel || '';
+                document.getElementById('puzzle-shell-category').textContent = puzzleDef.category || 'MODULE';
+                this.updateUI();
+
+                const container = document.getElementById('puzzle-shell-body');
+                container.innerHTML = '';
+
+                if (userRole.includes('OPERATIVE') && puzzleDef.operativeComponent) {
+                    puzzleDef.operativeComponent(container, this.state.customState, this.emitState.bind(this));
+                } else if (userRole.includes('HACKER') && puzzleDef.hackerComponent) {
+                    puzzleDef.hackerComponent(container, this.state.customState, this.emitState.bind(this));
+                } else {
+                    container.innerHTML = `<div class="p-6 text-center text-slate-400">NO INTERFACE AVAILABLE FOR ROLE: ${userRole}</div>`;
+                }
+
+                document.getElementById('puzzle-modal').classList.remove('hidden');
+            }
+
+            emitState(newStateUpdate, evaluateNow = false) {
+                this.state.customState = { ...this.state.customState, ...newStateUpdate };
+                const puzzleDef = PuzzleRegistry.get(this.state.puzzleId);
+                
+                if (puzzleDef && evaluateNow) {
+                    const result = puzzleDef.evaluate(this.state.customState);
+                    this.state.progressPercent = result.progress || 0;
+                    if (result.solved) {
+                        this.state.isSolved = true;
+                        this.state.progressPercent = 100;
+                        sound.success();
+                        if (this.callbacks.onSolve) this.callbacks.onSolve(this.state);
+                    } else if (result.error) {
+                        this.state.errorMsg = result.error;
+                        sound.fail();
+                    } else {
+                        this.state.errorMsg = null;
+                    }
+                }
+                this.updateUI();
+            }
+
+            updateUI() {
+                document.getElementById('puzzle-shell-progressbar').style.width = `${this.state.progressPercent}%`;
+                document.getElementById('puzzle-shell-progress-text').textContent = `${Math.round(this.state.progressPercent)}%`;
+                const errBox = document.getElementById('puzzle-shell-error');
+                if (this.state.errorMsg) {
+                    document.getElementById('puzzle-shell-error-msg').textContent = this.state.errorMsg;
+                    errBox.classList.remove('hidden');
+                } else {
+                    errBox.classList.add('hidden');
+                }
+            }
+
+            close() {
+                document.getElementById('puzzle-modal').classList.add('hidden');
+            }
+        }
+        const PuzzleShell = new PuzzleShellController();
+
+        // Register Default Puzzles
+        PuzzleRegistry.register({
+            id: 'puzzle_keypad',
+            name: 'Keypad Bypass',
+            makeModel: 'ZEIT-TECH XP-900',
+            category: 'KEYPAD',
+            generateConfig: (prng) => ({ passcode: String(prng.range(1000, 9999)), enteredCode: '' }),
+            evaluate: (state) => {
+                if (state.enteredCode.length === 4) {
+                    return state.enteredCode === state.passcode 
+                        ? { solved: true, progress: 100 }
+                        : { solved: false, progress: 0, error: 'INVALID PASSCODE' };
+                }
+                return { solved: false, progress: (state.enteredCode.length / 4) * 75 };
+            },
+            hackerComponent: (container, state) => {
+                container.innerHTML = `
+                    <div class="space-y-4 font-mono text-xs text-center">
+                        <div class="p-3 bg-slate-900 border border-slate-800 rounded">DECRYPTED REGISTRATION PIN</div>
+                        <div class="text-3xl font-bold text-cyber-green">${state.passcode || '****'}</div>
+                    </div>`;
+            },
+            operativeComponent: (container, state, emit) => {
+                let code = '';
+                container.innerHTML = `
+                    <div class="flex flex-col items-center space-y-4">
+                        <div id="k-disp" class="w-48 bg-slate-950 border-2 border-cyber-cyan p-3 text-center text-2xl font-mono text-cyber-cyan rounded">____</div>
+                        <div class="grid grid-cols-3 gap-2 w-48">
+                            ${[1,2,3,4,5,6,7,8,9,0].map(n => `<button class="n-btn p-3 bg-slate-900 text-white font-bold rounded" data-n="${n}">${n}</button>`).join('')}
+                        </div>
+                    </div>`;
+                container.querySelectorAll('.n-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        sound.beep();
+                        if (code.length < 4) {
+                            code += btn.dataset.n;
+                            container.querySelector('#k-disp').textContent = code.padEnd(4, '_');
+                            emit({ enteredCode: code }, code.length === 4);
+                        }
+                    };
+                });
+            },
+            hackerManualText: 'Securi-Pad PIN code is exposed via memory inspection.'
+        });
+
+        // 2D Operative Game Engine
+        class OperativeEngine {
+            constructor() {
+                this.canvas = document.getElementById('operative-canvas');
+                this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
+                this.player = { x: 100, y: 100, vx: 0, vy: 0, radius: 12, speed: 3.5, isGrounded: false };
+                this.puzzleNodes = [];
+                this.active = false;
+            }
+
+            initWorld(seed = 882194) {
+                if (!this.canvas) return;
+                this.resizeCanvas();
+                const prng = new PRNG(seed);
+                const puzzles = PuzzleRegistry.getAll();
+                const coords = [{ x: 150, y: 200 }, { x: 350, y: 150 }, { x: 500, y: 250 }];
+                
+                this.puzzleNodes = puzzles.map((p, idx) => ({
+                    id: p.id,
+                    x: coords[idx % coords.length].x,
+                    y: coords[idx % coords.length].y,
+                    radius: 16,
+                    solved: false,
+                    config: p.generateConfig(prng)
+                }));
+            }
+
+            resizeCanvas() {
+                if (!this.canvas || !this.canvas.parentElement) return;
+                this.canvas.width = this.canvas.parentElement.clientWidth;
+                this.canvas.height = this.canvas.parentElement.clientHeight;
+            }
+
+            start() {
+                this.active = true;
+                this.loop();
+            }
+
+            stop() { this.active = false; }
+
+            update() {
+                this.player.vy += 0.35;
+                this.player.x += this.player.vx;
+                this.player.y += this.player.vy;
+
+                const floorY = this.canvas.height - 40;
+                if (this.player.y > floorY - this.player.radius) {
+                    this.player.y = floorY - this.player.radius;
+                    this.player.vy = 0;
+                    this.player.isGrounded = true;
+                }
+
+                let nearNode = false;
+                this.puzzleNodes.forEach(node => {
+                    const dist = Math.hypot(this.player.x - node.x, this.player.y - node.y);
+                    if (dist < this.player.radius + node.radius + 10 && !node.solved) {
+                        nearNode = true;
+                        if (!this.activeModal) {
+                            this.activeModal = true;
+                            PuzzleShell.mount(node.id, net.role, node.config, {
+                                onSolve: () => {
+                                    node.solved = true;
+                                    this.activeModal = false;
+                                    PuzzleShell.close();
+                                }
+                            });
+                        }
+                    }
+                });
+
+                const prompt = document.getElementById('interact-prompt');
+                if (prompt) prompt.classList.toggle('hidden', !nearNode);
+            }
+
+            render() {
+                if (!this.ctx) return;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                const floorY = this.canvas.height - 40;
+                this.ctx.strokeStyle = '#232b38';
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, floorY);
+                this.ctx.lineTo(this.canvas.width, floorY);
+                this.ctx.stroke();
+
+                this.puzzleNodes.forEach(n => {
+                    this.ctx.beginPath();
+                    this.ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = n.solved ? 'rgba(0, 255, 102, 0.2)' : 'rgba(0, 240, 255, 0.2)';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = n.solved ? '#00ff66' : '#00f0ff';
+                    this.ctx.stroke();
+                });
+
+                this.ctx.beginPath();
+                this.ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#ff2a2a';
+                this.ctx.fill();
+            }
+
+            loop() {
+                if (!this.active) return;
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+        const engine = new OperativeEngine();
+
+        // Hacker Dashboard & Blueprints
+        class HackerDashboard {
+            renderBlueprint(playerX, playerY) {
+                const elem = document.getElementById('ascii-blueprint');
+                if (!elem) return;
+                elem.textContent = `+------------------------------+\n|  OPERATIVE POS: X:${Math.round(playerX)} Y:${Math.round(playerY)}     |\n+------------------------------+`;
+            }
+
+            populateManualDirectory() {
+                const list = document.getElementById('manual-puzzle-list');
+                const count = document.getElementById('manual-puzzle-count');
+                const puzzles = PuzzleRegistry.getAll();
+                if (count) count.textContent = `${puzzles.length} REGISTERED MODULES`;
+                if (!list) return;
+
+                list.innerHTML = puzzles.map(p => `
+                    <div class="p-3 bg-slate-900 border border-slate-800 rounded">
+                        <div class="text-xs font-bold text-cyber-cyan">${p.name}</div>
+                        <div class="text-[10px] text-slate-400 mt-1">${p.hackerManualText}</div>
+                    </div>
+                `).join('');
+            }
+        }
+        const hackerDash = new HackerDashboard();
+
+        // P2P Network
+        class NetworkManager {
+            constructor() { this.role = 'UNASSIGNED'; }
+            initHost() {
+                const id = 'CB-' + Math.floor(1000 + Math.random() * 9000);
+                const input = document.getElementById('input-room-id');
+                if (input) input.value = id;
+            }
+        }
+        const net = new NetworkManager();
+
+        // UI Event Listeners
+        window.addEventListener('DOMContentLoaded', () => {
+            net.initHost();
+
+            const switchScreen = (screenId, roleName) => {
+                document.getElementById('screen-lobby').classList.add('hidden');
+                document.getElementById('screen-operative').classList.add('hidden');
+                document.getElementById('screen-hacker').classList.add('hidden');
+
+                document.getElementById(screenId).classList.remove('hidden');
+                document.getElementById('role-badge').textContent = roleName;
+                net.role = roleName;
+
+                if (screenId === 'screen-operative') {
+                    engine.initWorld(parseInt(document.getElementById('input-seed').value) || 882194);
+                    engine.start();
+                } else if (screenId === 'screen-hacker') {
+                    hackerDash.populateManualDirectory();
+                }
+            };
+
+            document.getElementById('btn-select-operative').onclick = () => switchScreen('screen-operative', 'OPERATIVE');
+            document.getElementById('btn-select-hacker').onclick = () => switchScreen('screen-hacker', 'HACKER');
+            document.getElementById('btn-solo-launch').onclick = () => switchScreen('screen-operative', 'OPERATIVE (SOLO)');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const target = btn.dataset.tab;
+                    document.querySelectorAll('.tab-btn').forEach(b => b.className = 'tab-btn px-4 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition');
+                    btn.className = 'tab-btn px-4 py-3 text-xs font-bold border-b-2 border-cyber-green text-cyber-green transition';
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                    document.getElementById(target).classList.remove('hidden');
+                };
+            });
+
+            document.getElementById('puzzle-shell-close').onclick = () => {
+                PuzzleShell.close();
+                engine.activeModal = false;
+            };
+
+            document.getElementById('btn-jump').onclick = () => {
+                if (engine.player.isGrounded) {
+                    engine.player.vy = -7.5;
+                    engine.player.isGrounded = false;
+                    sound.jump();
+                }
+            };
+        });
+    </script>
+</body>
+</html>
