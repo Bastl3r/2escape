@@ -408,6 +408,7 @@
                 document.getElementById('input-seed').value = s;
             }
 
+            // --- NETWORKING ---
             function hostGame() {
                 audio.beep(400, 'sine', 0.1, 0.1);
                 State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
@@ -418,16 +419,30 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
+                document.getElementById('connection-state').innerText = 'Initializing Host Peer...';
 
                 const qrContainer = document.getElementById('qrcode-container');
                 qrContainer.innerHTML = '';
                 QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
 
+                if (State.peer) State.peer.destroy();
+                
+                // Use lowercase peer ID to prevent case mismatch
                 State.peer = new Peer(State.roomCode.toLowerCase());
+                
+                State.peer.on('open', () => {
+                    document.getElementById('connection-state').innerText = 'Waiting for peer connection...';
+                });
+
                 State.peer.on('connection', (connection) => {
                     State.conn = connection;
                     setupConnectionHandlers();
+                    document.getElementById('connection-state').innerText = 'Peer connected! Launching session...';
                     setTimeout(startGameSession, 1000);
+                });
+
+                State.peer.on('error', (err) => {
+                    document.getElementById('connection-state').innerText = `Peer Error: ${err.type}`;
                 });
             }
 
@@ -442,11 +457,19 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
+                document.getElementById('connection-state').innerText = 'Connecting to host session...';
+
+                if (State.peer) State.peer.destroy();
 
                 State.peer = new Peer();
                 State.peer.on('open', () => {
+                    // Force lowercase when connecting to match host ID
                     State.conn = State.peer.connect(State.roomCode.toLowerCase());
                     setupConnectionHandlers();
+                });
+
+                State.peer.on('error', (err) => {
+                    document.getElementById('connection-state').innerText = `Connection Failed: ${err.type}`;
                 });
             }
 
@@ -475,8 +498,18 @@
 
             function setupConnectionHandlers() {
                 if (!State.conn) return;
-                State.conn.on('open', () => setTimeout(startGameSession, 800));
+                
+                State.conn.on('open', () => {
+                    document.getElementById('connection-state').innerText = 'Secure channel established!';
+                    setTimeout(startGameSession, 800);
+                });
+
                 State.conn.on('data', (data) => handleNetworkData(data));
+                
+                State.conn.on('close', () => {
+                    alert('Peer disconnected.');
+                    quitGame();
+                });
             }
 
             function sendNetData(data) {
