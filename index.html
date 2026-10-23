@@ -10,7 +10,8 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- QR Code Generator -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%222Escape%22%2C%22short_name%22%3A%222Escape%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0f12%22%2C%22theme_color%22%3A%22%2300f0ff%22%2C%22icons%22%3A%5B%5D%7D">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%222Escape%20Codebreak%22%2C%22short_name%22%3A%222Escape%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0f12%22%2C%22theme_color%22%3A%22%2300f0ff%22%2C%22icons%22%3A%5B%5D%7D">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
         body {
@@ -407,7 +408,6 @@
                 document.getElementById('input-seed').value = s;
             }
 
-            // --- NETWORKING ---
             function hostGame() {
                 audio.beep(400, 'sine', 0.1, 0.1);
                 State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
@@ -418,30 +418,16 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = 'Initializing Host Peer...';
 
                 const qrContainer = document.getElementById('qrcode-container');
                 qrContainer.innerHTML = '';
                 QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
 
-                if (State.peer) State.peer.destroy();
-                
-                // Use lowercase peer ID to prevent mismatch
                 State.peer = new Peer(State.roomCode.toLowerCase());
-                
-                State.peer.on('open', () => {
-                    document.getElementById('connection-state').innerText = 'Waiting for peer connection...';
-                });
-
                 State.peer.on('connection', (connection) => {
                     State.conn = connection;
                     setupConnectionHandlers();
-                    document.getElementById('connection-state').innerText = 'Peer connected! Launching session...';
                     setTimeout(startGameSession, 1000);
-                });
-
-                State.peer.on('error', (err) => {
-                    document.getElementById('connection-state').innerText = `Peer Error: ${err.type}`;
                 });
             }
 
@@ -456,36 +442,41 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = 'Connecting to host session...';
-
-                if (State.peer) State.peer.destroy();
 
                 State.peer = new Peer();
                 State.peer.on('open', () => {
-                    // Force lowercase when connecting to match host ID
                     State.conn = State.peer.connect(State.roomCode.toLowerCase());
                     setupConnectionHandlers();
                 });
+            }
 
-                State.peer.on('error', (err) => {
-                    document.getElementById('connection-state').innerText = `Connection Failed: ${err.type}`;
-                });
+            function cancelHosting() {
+                if (State.peer) State.peer.destroy();
+                document.getElementById('view-room').classList.add('hidden');
+                document.getElementById('view-lobby').classList.remove('hidden');
+            }
+
+            function startSolo() {
+                audio.beep(700, 'sine', 0.1, 0.1);
+                State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
+                State.soloMode = true;
+                startGameSession();
+            }
+
+            function quitGame() {
+                if (State.peer) State.peer.destroy();
+                if (State.timerInterval) clearInterval(State.timerInterval);
+                document.getElementById('view-game').classList.add('hidden');
+                document.getElementById('role-view-operative').classList.add('hidden');
+                document.getElementById('role-view-hacker').classList.add('hidden');
+                document.getElementById('end-modal').classList.add('hidden');
+                document.getElementById('view-lobby').classList.remove('hidden');
             }
 
             function setupConnectionHandlers() {
                 if (!State.conn) return;
-                
-                State.conn.on('open', () => {
-                    document.getElementById('connection-state').innerText = 'Secure channel established!';
-                    setTimeout(startGameSession, 800);
-                });
-
+                State.conn.on('open', () => setTimeout(startGameSession, 800));
                 State.conn.on('data', (data) => handleNetworkData(data));
-                
-                State.conn.on('close', () => {
-                    alert('Peer disconnected.');
-                    quitGame();
-                });
             }
 
             function sendNetData(data) {
