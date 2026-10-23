@@ -408,7 +408,7 @@
                 document.getElementById('input-seed').value = s;
             }
 
-            // --- NETWORKING ---
+            // --- NETWORKING ENGINE ---
             function hostGame() {
                 audio.beep(400, 'sine', 0.1, 0.1);
                 State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
@@ -416,46 +416,49 @@
                 State.soloMode = false;
                 State.roomCode = 'CB-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-                if (State.peer) State.peer.destroy();
+                if (State.peer) {
+                    try { State.peer.destroy(); } catch(e) {}
+                }
 
-                // Initialize peer first, but don't change views yet
-                State.peer = new Peer(State.roomCode.toLowerCase());
-                
+                document.getElementById('view-lobby').classList.add('hidden');
+                document.getElementById('view-room').classList.remove('hidden');
+                document.getElementById('display-room-code').innerText = State.roomCode;
+                document.getElementById('connection-state').innerText = 'Registering host node on cloud...';
+
+                const qrContainer = document.getElementById('qrcode-container');
+                qrContainer.innerHTML = '';
+                QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
+
+                // Initialize Peer with custom ID and explicit cloud server config for stability
+                State.peer = new Peer(State.roomCode.toLowerCase(), {
+                    host: '0.peerjs.com',
+                    port: 443,
+                    secure: true,
+                    debug: 1
+                });
+
                 State.peer.on('open', (id) => {
-                    // Only transition to room view AFTER registration succeeds on the server
-                    document.getElementById('view-lobby').classList.add('hidden');
-                    document.getElementById('view-room').classList.remove('hidden');
-                    document.getElementById('display-room-code').innerText = State.roomCode;
-                    document.getElementById('connection-state').innerText = 'Waiting for peer connection...';
-
-                    const qrContainer = document.getElementById('qrcode-container');
-                    qrContainer.innerHTML = '';
-                    QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
+                    document.getElementById('connection-state').innerText = 'Waiting for operative / hacker counterpart...';
                 });
 
                 State.peer.on('connection', (connection) => {
                     State.conn = connection;
                     setupConnectionHandlers();
-                    document.getElementById('connection-state').innerText = 'Peer connected! Launching session...';
+                    document.getElementById('connection-state').innerText = 'Secure link established! Launching session...';
                     setTimeout(startGameSession, 1000);
                 });
 
                 State.peer.on('error', (err) => {
-                    document.getElementById('view-room').classList.add('hidden');
-                    document.getElementById('view-lobby').classList.remove('hidden');
-                    alert(`Host Peer Error: ${err.type}`);
+                    console.error("Peer host error:", err);
+                    document.getElementById('connection-state').innerText = `Host Error: ${err.type}`;
                 });
             }
 
-                State.peer.on('error', (err) => {
-                    document.getElementById('connection-state').innerText = `Host Peer Error: ${err.type}`;
-                });
-            }
-
-            function joinGame(retryCount = 0) {
+            function joinGame(attempt = 1) {
                 audio.beep(400, 'sine', 0.1, 0.1);
                 const code = document.getElementById('input-room').value.trim().toUpperCase();
                 if (!code) { alert('Enter valid room code.'); return; }
+                
                 State.roomCode = code;
                 State.isHost = false;
                 State.soloMode = false;
@@ -463,32 +466,56 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = retryCount > 0 ? `Retrying connection (${retryCount}/3)...` : 'Connecting to host session...';
+                document.getElementById('connection-state').innerText = attempt > 1 ? `Retrying connection (Attempt ${attempt}/4)...` : 'Connecting to host session...';
 
-                if (State.peer && retryCount === 0) State.peer.destroy();
+                if (State.peer && attempt === 1) {
+                    try { State.peer.destroy(); } catch(e) {}
+                }
 
                 if (!State.peer || State.peer.destroyed) {
-                    State.peer = new Peer();
+                    State.peer = new Peer({
+                        host: '0.peerjs.com',
+                        port: 443,
+                        secure: true,
+                        debug: 1
+                    });
                 }
 
                 State.peer.on('open', () => {
                     const targetId = State.roomCode.toLowerCase();
-                    State.conn = State.peer.connect(targetId, { reliable: true });
-                    setupConnectionHandlers();
+                    const conn = State.peer.connect(targetId, { reliable: true });
+                    
+                    conn.on('open', () => {
+                        State.conn = conn;
+                        setupConnectionHandlers();
+                        document.getElementById('connection-state').innerText = 'Channel secure! Syncing simulation...';
+                        setTimeout(startGameSession, 800);
+                    });
+
+                    conn.on('error', (err) => {
+                        console.error("Connection data error:", err);
+                    });
                 });
 
                 State.peer.on('error', (err) => {
-                    if (err.type === 'peer-unavailable' && retryCount < 3) {
-                        // Automatically retry after 1.5 seconds if the host is still spinning up
-                        setTimeout(() => joinGame(retryCount + 1), 1500);
+                    console.error("Peer join error:", err);
+                    if (err.type === 'peer-unavailable' && attempt < 4) {
+                        // Host might still be registering on the public broker; back off and retry automatically
+                        setTimeout(() => joinGame(attempt + 1), 2000);
                     } else {
                         document.getElementById('connection-state').innerText = `Connection Failed: ${err.type}`;
+                        setTimeout(() => {
+                            document.getElementById('view-room').classList.add('hidden');
+                            document.getElementById('view-lobby').classList.remove('hidden');
+                        }, 2500);
                     }
                 });
             }
 
             function cancelHosting() {
-                if (State.peer) State.peer.destroy();
+                if (State.peer) {
+                    try { State.peer.destroy(); } catch(e) {}
+                }
                 document.getElementById('view-room').classList.add('hidden');
                 document.getElementById('view-lobby').classList.remove('hidden');
             }
@@ -512,16 +539,13 @@
 
             function setupConnectionHandlers() {
                 if (!State.conn) return;
-                
-                State.conn.on('open', () => {
-                    document.getElementById('connection-state').innerText = 'Secure channel established!';
-                    setTimeout(startGameSession, 800);
+
+                State.conn.on('data', (data) => {
+                    handleNetworkData(data);
                 });
 
-                State.conn.on('data', (data) => handleNetworkData(data));
-                
                 State.conn.on('close', () => {
-                    alert('Peer disconnected.');
+                    alert('Peer counterpart disconnected.');
                     quitGame();
                 });
             }
