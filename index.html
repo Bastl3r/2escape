@@ -419,7 +419,7 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = 'Initializing Host Peer...';
+                document.getElementById('connection-state').innerText = 'Registering host session on network...';
 
                 const qrContainer = document.getElementById('qrcode-container');
                 qrContainer.innerHTML = '';
@@ -427,10 +427,11 @@
 
                 if (State.peer) State.peer.destroy();
                 
-                // Use lowercase peer ID to prevent case mismatch
+                // Create Peer with lowercase ID
                 State.peer = new Peer(State.roomCode.toLowerCase());
                 
-                State.peer.on('open', () => {
+                State.peer.on('open', (id) => {
+                    // Confirmed registered on PeerJS server
                     document.getElementById('connection-state').innerText = 'Waiting for peer connection...';
                 });
 
@@ -442,11 +443,11 @@
                 });
 
                 State.peer.on('error', (err) => {
-                    document.getElementById('connection-state').innerText = `Peer Error: ${err.type}`;
+                    document.getElementById('connection-state').innerText = `Host Peer Error: ${err.type}`;
                 });
             }
 
-            function joinGame() {
+            function joinGame(retryCount = 0) {
                 audio.beep(400, 'sine', 0.1, 0.1);
                 const code = document.getElementById('input-room').value.trim().toUpperCase();
                 if (!code) { alert('Enter valid room code.'); return; }
@@ -457,19 +458,27 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = 'Connecting to host session...';
+                document.getElementById('connection-state').innerText = retryCount > 0 ? `Retrying connection (${retryCount}/3)...` : 'Connecting to host session...';
 
-                if (State.peer) State.peer.destroy();
+                if (State.peer && retryCount === 0) State.peer.destroy();
 
-                State.peer = new Peer();
+                if (!State.peer || State.peer.destroyed) {
+                    State.peer = new Peer();
+                }
+
                 State.peer.on('open', () => {
-                    // Force lowercase when connecting to match host ID
-                    State.conn = State.peer.connect(State.roomCode.toLowerCase());
+                    const targetId = State.roomCode.toLowerCase();
+                    State.conn = State.peer.connect(targetId, { reliable: true });
                     setupConnectionHandlers();
                 });
 
                 State.peer.on('error', (err) => {
-                    document.getElementById('connection-state').innerText = `Connection Failed: ${err.type}`;
+                    if (err.type === 'peer-unavailable' && retryCount < 3) {
+                        // Host might still be registering; retry after 1.5 seconds
+                        setTimeout(() => joinGame(retryCount + 1), 1500);
+                    } else {
+                        document.getElementById('connection-state').innerText = `Connection Failed: ${err.type}`;
+                    }
                 });
             }
 
