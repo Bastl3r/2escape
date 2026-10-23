@@ -416,23 +416,21 @@
                 State.soloMode = false;
                 State.roomCode = 'CB-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-                document.getElementById('view-lobby').classList.add('hidden');
-                document.getElementById('view-room').classList.remove('hidden');
-                document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = 'Registering host session on network...';
-
-                const qrContainer = document.getElementById('qrcode-container');
-                qrContainer.innerHTML = '';
-                QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
-
                 if (State.peer) State.peer.destroy();
-                
-                // Create Peer with lowercase ID
+
+                // Initialize peer first, but don't change views yet
                 State.peer = new Peer(State.roomCode.toLowerCase());
                 
                 State.peer.on('open', (id) => {
-                    // Confirmed registered on PeerJS server
+                    // Only transition to room view AFTER registration succeeds on the server
+                    document.getElementById('view-lobby').classList.add('hidden');
+                    document.getElementById('view-room').classList.remove('hidden');
+                    document.getElementById('display-room-code').innerText = State.roomCode;
                     document.getElementById('connection-state').innerText = 'Waiting for peer connection...';
+
+                    const qrContainer = document.getElementById('qrcode-container');
+                    qrContainer.innerHTML = '';
+                    QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
                 });
 
                 State.peer.on('connection', (connection) => {
@@ -441,6 +439,13 @@
                     document.getElementById('connection-state').innerText = 'Peer connected! Launching session...';
                     setTimeout(startGameSession, 1000);
                 });
+
+                State.peer.on('error', (err) => {
+                    document.getElementById('view-room').classList.add('hidden');
+                    document.getElementById('view-lobby').classList.remove('hidden');
+                    alert(`Host Peer Error: ${err.type}`);
+                });
+            }
 
                 State.peer.on('error', (err) => {
                     document.getElementById('connection-state').innerText = `Host Peer Error: ${err.type}`;
@@ -474,7 +479,7 @@
 
                 State.peer.on('error', (err) => {
                     if (err.type === 'peer-unavailable' && retryCount < 3) {
-                        // Host might still be registering; retry after 1.5 seconds
+                        // Automatically retry after 1.5 seconds if the host is still spinning up
                         setTimeout(() => joinGame(retryCount + 1), 1500);
                     } else {
                         document.getElementById('connection-state').innerText = `Connection Failed: ${err.type}`;
