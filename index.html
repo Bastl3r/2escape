@@ -8,8 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- PeerJS CDN -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <!-- QR Code Generator -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- QR Code Generator CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%222Escape%20Codebreak%22%2C%22short_name%22%3A%222Escape%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0f12%22%2C%22theme_color%22%3A%22%2300f0ff%22%2C%22icons%22%3A%5B%5D%7D">
     <style>
@@ -106,7 +106,7 @@
                 </div>
 
                 <div class="flex justify-center mb-4">
-                    <div id="qrcode-container" class="bg-white p-2 rounded border border-gray-700"></div>
+                    <div id="qrcode-container" class="bg-white p-2 rounded border border-gray-700 min-h-[140px] min-w-[140px] flex items-center justify-center"></div>
                 </div>
 
                 <div id="connection-state" class="text-xs text-yellow-400 mb-4 animate-pulse">Waiting for peer connection...</div>
@@ -408,6 +408,25 @@
                 document.getElementById('input-seed').value = s;
             }
 
+            function safeRenderQR(containerElem, text) {
+                containerElem.innerHTML = '';
+                try {
+                    if (window.QRCode) {
+                        new QRCode(containerElem, {
+                            text: text,
+                            width: 140,
+                            height: 140,
+                            colorDark : "#000000",
+                            colorLight : "#ffffff"
+                        });
+                    } else {
+                        containerElem.innerText = "[QR Code Ready]";
+                    }
+                } catch(e) {
+                    containerElem.innerText = text;
+                }
+            }
+
             // --- NETWORKING ENGINE ---
             function hostGame() {
                 audio.beep(400, 'sine', 0.1, 0.1);
@@ -420,36 +439,21 @@
                     try { State.peer.destroy(); } catch(e) {}
                 }
 
-                // 1. Immediately switch views so the user sees progress
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = 'Registering host node on network...';
+                document.getElementById('connection-state').innerText = 'Initializing Host Peer...';
 
                 const qrContainer = document.getElementById('qrcode-container');
-                qrContainer.innerHTML = '';
-                QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
+                safeRenderQR(qrContainer, State.roomCode);
 
-                // 2. Instantiate Peer with custom lowercase ID and STUN configuration
-                const customId = State.roomCode.toLowerCase();
-                State.peer = new Peer(customId, {
-                    host: '0.peerjs.com',
-                    port: 443,
-                    secure: true,
-                    config: {
-                        iceServers: [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:global.stun.twilio.com:3478' }
-                        ]
-                    }
-                });
+                const peerId = State.roomCode.toLowerCase();
+                State.peer = new Peer(peerId);
 
-                // 3. Handle successful server registration
-                State.peer.on('open', (id) => {
+                State.peer.on('open', () => {
                     document.getElementById('connection-state').innerText = 'Waiting for peer connection...';
                 });
 
-                // 4. Handle incoming connection from joining client
                 State.peer.on('connection', (connection) => {
                     State.conn = connection;
                     setupConnectionHandlers();
@@ -457,22 +461,17 @@
                     setTimeout(startGameSession, 1000);
                 });
 
-                // 5. Handle registration errors (e.g., duplicate ID collision)
                 State.peer.on('error', (err) => {
-                    console.error("Host Peer Error:", err);
-                    document.getElementById('connection-state').innerText = `Host Error: ${err.type}`;
-                    if (err.type === 'unavailable-id') {
-                        // If ID collision happens, auto-regenerate a new one
-                        setTimeout(hostGame, 1000);
-                    }
+                    console.error("Host Error:", err);
+                    document.getElementById('connection-state').innerText = `Peer Error: ${err.type}`;
                 });
             }
 
             function joinGame(attempt = 1) {
                 audio.beep(400, 'sine', 0.1, 0.1);
                 const code = document.getElementById('input-room').value.trim().toUpperCase();
-                if (!code) { alert('Enter a valid room code.'); return; }
-                
+                if (!code) { alert('Enter valid room code.'); return; }
+
                 State.roomCode = code;
                 State.isHost = false;
                 State.soloMode = false;
@@ -480,29 +479,18 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = attempt > 1 ? `Retrying connection (Attempt ${attempt}/4)...` : 'Connecting to host session...';
+                document.getElementById('connection-state').innerText = attempt > 1 ? `Retrying connection (${attempt}/3)...` : 'Connecting to host session...';
 
                 if (State.peer && attempt === 1) {
                     try { State.peer.destroy(); } catch(e) {}
                 }
 
-                // Initialize client peer
-                State.peer = new Peer({
-                    host: '0.peerjs.com',
-                    port: 443,
-                    secure: true,
-                    config: {
-                        iceServers: [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:global.stun.twilio.com:3478' }
-                        ]
-                    }
-                });
+                State.peer = new Peer();
 
                 State.peer.on('open', () => {
                     const targetId = State.roomCode.toLowerCase();
-                    const conn = State.peer.connect(targetId, { reliable: true });
-                    
+                    const conn = State.peer.connect(targetId);
+
                     conn.on('open', () => {
                         State.conn = conn;
                         setupConnectionHandlers();
@@ -511,22 +499,30 @@
                     });
 
                     conn.on('error', (err) => {
-                        console.error("Connection data error:", err);
+                        console.error("Conn Error:", err);
                     });
                 });
 
                 State.peer.on('error', (err) => {
-                    console.error("Join Peer Error:", err);
-                    if (err.type === 'peer-unavailable' && attempt < 4) {
-                        // If host is still propagating on the cloud broker, back off and retry automatically
-                        setTimeout(() => joinGame(attempt + 1), 2000);
+                    console.error("Join Error:", err);
+                    if (err.type === 'peer-unavailable' && attempt < 3) {
+                        setTimeout(() => joinGame(attempt + 1), 1500);
                     } else {
                         document.getElementById('connection-state').innerText = `Connection Failed: ${err.type}`;
-                        setTimeout(() => {
-                            document.getElementById('view-room').classList.add('hidden');
-                            document.getElementById('view-lobby').classList.remove('hidden');
-                        }, 2500);
                     }
+                });
+            }
+
+            function setupConnectionHandlers() {
+                if (!State.conn) return;
+
+                State.conn.on('data', (data) => {
+                    handleNetworkData(data);
+                });
+
+                State.conn.on('close', () => {
+                    alert('Peer disconnected.');
+                    quitGame();
                 });
             }
 
@@ -546,30 +542,15 @@
             }
 
             function quitGame() {
-                if (State.peer) State.peer.destroy();
+                if (State.peer) {
+                    try { State.peer.destroy(); } catch(e) {}
+                }
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 document.getElementById('view-game').classList.add('hidden');
                 document.getElementById('role-view-operative').classList.add('hidden');
                 document.getElementById('role-view-hacker').classList.add('hidden');
                 document.getElementById('end-modal').classList.add('hidden');
                 document.getElementById('view-lobby').classList.remove('hidden');
-            }
-
-            function setupConnectionHandlers() {
-                if (!State.conn) return;
-
-                State.conn.on('data', (data) => {
-                    handleNetworkData(data);
-                });
-
-                State.conn.on('close', () => {
-                    alert('Peer counterpart disconnected.');
-                    quitGame();
-                });
-            }
-
-            function sendNetData(data) {
-                if (State.conn && State.conn.open) State.conn.send(data);
             }
 
             function handleNetworkData(data) {
@@ -584,6 +565,10 @@
                 } else if (data.type === 'terminal_cmd') {
                     appendTerminalOutput(`[REMOTE] > ${data.cmd}`, '#00f0ff');
                 }
+            }
+
+            function sendNetData(data) {
+                if (State.conn && State.conn.open) State.conn.send(data);
             }
 
             function startGameSession() {
@@ -1151,13 +1136,13 @@
                 output.scrollTop = output.scrollHeight;
             }
 
-            // Wire up DOM event listeners safely
+            // Safe DOM Event Binds
             document.getElementById('btn-role-operative').addEventListener('click', () => selectRole('operative'));
             document.getElementById('btn-role-hacker').addEventListener('click', () => selectRole('hacker'));
             document.getElementById('btn-gen-seed').addEventListener('click', randomizeSeed);
             document.getElementById('btn-host').addEventListener('click', hostGame);
             document.getElementById('btn-solo').addEventListener('click', startSolo);
-            document.getElementById('btn-join').addEventListener('click', joinGame);
+            document.getElementById('btn-join').addEventListener('click', () => joinGame());
             document.getElementById('btn-abort').addEventListener('click', cancelHosting);
             document.getElementById('btn-quit').addEventListener('click', quitGame);
             document.getElementById('btn-return-lobby').addEventListener('click', quitGame);
