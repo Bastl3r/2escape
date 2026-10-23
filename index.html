@@ -408,7 +408,7 @@
                 document.getElementById('input-seed').value = s;
             }
 
-            // --- NETWORKING ENGINE (2Escape Tailored) ---
+            // --- NETWORKING ENGINE ---
             function hostGame() {
                 audio.beep(400, 'sine', 0.1, 0.1);
                 State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
@@ -420,17 +420,19 @@
                     try { State.peer.destroy(); } catch(e) {}
                 }
 
+                // 1. Immediately switch views so the user sees progress
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = 'Initializing secure host node...';
+                document.getElementById('connection-state').innerText = 'Registering host node on network...';
 
                 const qrContainer = document.getElementById('qrcode-container');
                 qrContainer.innerHTML = '';
                 QRCode.toCanvas(qrContainer, State.roomCode, { width: 140, margin: 1 });
 
-                // Initialize Peer with STUN config for NAT traversal and explicit cloud server settings
-                State.peer = new Peer(State.roomCode.toLowerCase(), {
+                // 2. Instantiate Peer with custom lowercase ID and STUN configuration
+                const customId = State.roomCode.toLowerCase();
+                State.peer = new Peer(customId, {
                     host: '0.peerjs.com',
                     port: 443,
                     secure: true,
@@ -439,24 +441,30 @@
                             { urls: 'stun:stun.l.google.com:19302' },
                             { urls: 'stun:global.stun.twilio.com:3478' }
                         ]
-                    },
-                    debug: 1
+                    }
                 });
 
-                State.peer.on('open', () => {
-                    document.getElementById('connection-state').innerText = 'Waiting for peer counterpart...';
+                // 3. Handle successful server registration
+                State.peer.on('open', (id) => {
+                    document.getElementById('connection-state').innerText = 'Waiting for peer connection...';
                 });
 
+                // 4. Handle incoming connection from joining client
                 State.peer.on('connection', (connection) => {
                     State.conn = connection;
                     setupConnectionHandlers();
-                    document.getElementById('connection-state').innerText = 'Secure link established! Launching...';
+                    document.getElementById('connection-state').innerText = 'Peer connected! Launching session...';
                     setTimeout(startGameSession, 1000);
                 });
 
+                // 5. Handle registration errors (e.g., duplicate ID collision)
                 State.peer.on('error', (err) => {
                     console.error("Host Peer Error:", err);
                     document.getElementById('connection-state').innerText = `Host Error: ${err.type}`;
+                    if (err.type === 'unavailable-id') {
+                        // If ID collision happens, auto-regenerate a new one
+                        setTimeout(hostGame, 1000);
+                    }
                 });
             }
 
@@ -472,26 +480,24 @@
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
-                document.getElementById('connection-state').innerText = attempt > 1 ? `Retrying connection (Attempt ${attempt}/4)...` : 'Connecting to host...';
+                document.getElementById('connection-state').innerText = attempt > 1 ? `Retrying connection (Attempt ${attempt}/4)...` : 'Connecting to host session...';
 
                 if (State.peer && attempt === 1) {
                     try { State.peer.destroy(); } catch(e) {}
                 }
 
-                if (!State.peer || State.peer.destroyed) {
-                    State.peer = new Peer({
-                        host: '0.peerjs.com',
-                        port: 443,
-                        secure: true,
-                        config: {
-                            iceServers: [
-                                { urls: 'stun:stun.l.google.com:19302' },
-                                { urls: 'stun:global.stun.twilio.com:3478' }
-                            ]
-                        },
-                        debug: 1
-                    });
-                }
+                // Initialize client peer
+                State.peer = new Peer({
+                    host: '0.peerjs.com',
+                    port: 443,
+                    secure: true,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:global.stun.twilio.com:3478' }
+                        ]
+                    }
+                });
 
                 State.peer.on('open', () => {
                     const targetId = State.roomCode.toLowerCase();
@@ -500,7 +506,7 @@
                     conn.on('open', () => {
                         State.conn = conn;
                         setupConnectionHandlers();
-                        document.getElementById('connection-state').innerText = 'Channel secure! Syncing session...';
+                        document.getElementById('connection-state').innerText = 'Secure channel established!';
                         setTimeout(startGameSession, 800);
                     });
 
@@ -512,7 +518,7 @@
                 State.peer.on('error', (err) => {
                     console.error("Join Peer Error:", err);
                     if (err.type === 'peer-unavailable' && attempt < 4) {
-                        // Automatically back off and retry if host registration is still propagating
+                        // If host is still propagating on the cloud broker, back off and retry automatically
                         setTimeout(() => joinGame(attempt + 1), 2000);
                     } else {
                         document.getElementById('connection-state').innerText = `Connection Failed: ${err.type}`;
