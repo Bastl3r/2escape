@@ -135,32 +135,30 @@
                 </div>
             </header>
 
-            <!-- Role Viewport: Field Operative -->
+            <!-- Role Viewport: Field Operative (Top Down) -->
             <div id="role-view-operative" class="flex-1 flex flex-col relative overflow-hidden hidden">
-                <div class="flex-1 relative bg-[#0a0c10] overflow-hidden">
-                    <canvas id="operative-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+                <div class="flex-1 relative bg-[#0a0c10] overflow-hidden flex items-center justify-center p-2">
+                    <canvas id="operative-canvas" class="w-full max-w-2xl h-[420px] bg-[#12161f] border border-[#00f0ff44] rounded shadow-2xl block"></canvas>
                     
-                    <div class="absolute top-3 left-3 bg-[#12161f]/80 backdrop-blur border border-[#00f0ff44] p-3 rounded text-xs pointer-events-none">
+                    <div class="absolute top-3 left-3 bg-[#12161f]/90 backdrop-blur border border-[#00f0ff44] p-2.5 rounded text-xs pointer-events-none shadow-lg">
                         <div class="font-orbitron font-bold text-[#00f0ff] mb-1">SECTOR OBJECTIVES</div>
-                        <div id="operative-objectives" class="space-y-1 text-gray-300">
-                            <div>• Bypass Room 1 [Keypad Alpha]</div>
-                            <div>• Bypass Room 2 [Frequency Beta]</div>
-                            <div>• Bypass Room 3 [Wires Gamma]</div>
-                            <div>• Bypass Room 4 [Power Delta]</div>
+                        <div id="operative-objectives" class="space-y-0.5 text-gray-300 text-[11px]">
+                            <div>• Room 1 [Alpha Nodes]</div>
+                            <div>• Room 2 [Beta Nodes]</div>
+                            <div>• Room 3 [Gamma Nodes]</div>
+                            <div>• Room 4 [Delta Nodes]</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="h-36 bg-[#12161f] border-t border-[#00f0ff33] flex items-center justify-between px-6 shrink-0 relative select-none">
-                    <div id="joystick-zone" class="w-28 h-28 rounded-full border-2 border-[#00f0ff44] bg-[#00f0ff08] relative flex items-center justify-center touch-none">
-                        <div id="joystick-knob" class="w-12 h-12 rounded-full bg-[#00f0ff] absolute shadow-lg shadow-[#00f0ff88] transition-transform duration-75 pointer-events-none"></div>
+                <!-- Repositioned Controls Panel (Lifted up from bottom screen edge) -->
+                <div class="h-32 bg-[#12161f] border-t border-[#00f0ff33] flex items-center justify-between px-8 py-2 shrink-0 relative select-none pb-6">
+                    <div id="joystick-zone" class="w-24 h-24 rounded-full border-2 border-[#00f0ff44] bg-[#00f0ff08] relative flex items-center justify-center touch-none">
+                        <div id="joystick-knob" class="w-10 h-10 rounded-full bg-[#00f0ff] absolute shadow-lg shadow-[#00f0ff88] transition-transform duration-75 pointer-events-none"></div>
                     </div>
                     <div class="flex items-center space-x-4">
                         <button id="btn-interact" class="w-16 h-16 rounded-full border-2 border-[#00ff66] bg-[#00ff6622] text-[#00ff66] font-orbitron font-bold text-xs flex items-center justify-center shadow-lg shadow-[#00ff6633] active:scale-95 transition cursor-pointer">
                             INTERACT
-                        </button>
-                        <button id="btn-jump" class="w-16 h-16 rounded-full border-2 border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron font-bold text-xs flex items-center justify-center shadow-lg shadow-[#00f0ff33] active:scale-95 transition cursor-pointer">
-                            JUMP
                         </button>
                     </div>
                 </div>
@@ -208,7 +206,7 @@
                         </div>
                         <div class="bg-[#12161f] border border-gray-800 rounded p-4">
                             <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE DELTA: POWER MATRIX</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed">Required Polarity State: <span class="text-[#00ff66]">All 9 nodes must be activated (Green).</span></p>
+                            <p class="text-xs text-gray-400 leading-relaxed">Required Polarity State: <span class="text-[#00ff66]">All nodes must be activated (Green).</span></p>
                         </div>
                     </div>
                 </div>
@@ -238,10 +236,10 @@
                         <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
                             <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2">SECURITY BARRIERS</h4>
                             <div class="space-y-1 text-gray-300" id="telemetry-nodes">
-                                <div>DOOR 1 (Alpha): <span class="text-yellow-400">LOCKED</span></div>
-                                <div>DOOR 2 (Beta): <span class="text-yellow-400">LOCKED</span></div>
-                                <div>DOOR 3 (Gamma): <span class="text-yellow-400">LOCKED</span></div>
-                                <div>DOOR 4 (Delta): <span class="text-yellow-400">LOCKED</span></div>
+                                <div>ROOM 1: <span class="text-yellow-400">LOCKED</span></div>
+                                <div>ROOM 2: <span class="text-yellow-400">LOCKED</span></div>
+                                <div>ROOM 3: <span class="text-yellow-400">LOCKED</span></div>
+                                <div>ROOM 4: <span class="text-yellow-400">LOCKED</span></div>
                             </div>
                         </div>
                     </div>
@@ -254,8 +252,8 @@
             <div class="max-w-lg w-full bg-[#12161f] border border-[#00f0ff] rounded-lg shadow-2xl overflow-hidden flex flex-col">
                 <div class="bg-[#0d0f12] border-b border-[#00f0ff44] px-4 py-3 flex items-center justify-between">
                     <div class="flex items-center space-x-2">
-                        <span id="puzzle-modal-tag" class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">NODE ALPHA</span>
-                        <h3 id="puzzle-modal-title" class="font-orbitron font-bold text-sm text-[#00f0ff] glow-cyan">KEYPAD OVERRIDE</h3>
+                        <span id="puzzle-modal-tag" class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">NODE</span>
+                        <h3 id="puzzle-modal-title" class="font-orbitron font-bold text-sm text-[#00f0ff] glow-cyan">OVERRIDE</h3>
                     </div>
                     <button id="btn-close-modal" class="text-gray-400 hover:text-red-400 font-bold text-sm cursor-pointer px-2">✕</button>
                 </div>
@@ -366,6 +364,38 @@
                 if (seedLbl) seedLbl.innerText = seedStr;
             }
 
+            // Dynamic puzzle count calculation (Level 5+formula: 3 + level - 4)
+            const levelNumber = 5; 
+            const puzzlesPerRoom = levelNumber >= 5 ? 3 + (levelNumber - 4) : 3;
+
+            // Generate Top-Down 4 Rooms with dynamic puzzles
+            const rooms = [];
+            const puzzleTypes = ['keypad', 'frequency', 'wires', 'power_grid'];
+            const roomNames = ['Alpha', 'Beta', 'Gamma', 'Delta'];
+
+            for(let r=0; r<4; r++) {
+                const pList = [];
+                for(let p=0; p<puzzlesPerRoom; p++) {
+                    const typeKey = puzzleTypes[p % puzzleTypes.length];
+                    pList.push({
+                        id: `room${r+1}_p${p+1}_${typeKey}`,
+                        name: `${roomNames[r]} P-${p+1} [${typeKey.toUpperCase()}]`,
+                        type: typeKey,
+                        x: 100 + (p * 150) % 350,
+                        y: 80 + Math.floor(p / 2) * 120,
+                        solved: false
+                    });
+                }
+                rooms.push({
+                    id: r + 1,
+                    xStart: r * 400,
+                    xEnd: (r + 1) * 400,
+                    width: 400,
+                    height: 300,
+                    puzzles: pList
+                });
+            }
+
             const State = {
                 role: 'operative',
                 seed: 'CB-9901',
@@ -375,13 +405,7 @@
                 conn: null,
                 soloMode: false,
                 activePuzzle: null,
-                puzzleStates: {
-                    puzzle_keypad: false,
-                    puzzle_frequency: false,
-                    puzzle_wires: false,
-                    puzzle_power_grid: false
-                },
-                operativePos: { x: 150, y: 300, vx: 0, vy: 0, grounded: false, room: 1 },
+                operativePos: { x: 200, y: 150, vx: 0, vy: 0, speed: 3.5, room: 1 },
                 missionTime: 300,
                 timerInterval: null,
                 gameOver: false
@@ -412,15 +436,9 @@
                 containerElem.innerHTML = '';
                 try {
                     if (window.QRCode) {
-                        new QRCode(containerElem, {
-                            text: text,
-                            width: 140,
-                            height: 140,
-                            colorDark : "#000000",
-                            colorLight : "#ffffff"
-                        });
+                        new QRCode(containerElem, { text: text, width: 140, height: 140, colorDark: "#000000", colorLight: "#ffffff" });
                     } else {
-                        containerElem.innerText = "[QR Code Ready]";
+                        containerElem.innerText = "[QR Ready]";
                     }
                 } catch(e) {
                     containerElem.innerText = text;
@@ -435,36 +453,24 @@
                 State.soloMode = false;
                 State.roomCode = 'CB-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-                if (State.peer) {
-                    try { State.peer.destroy(); } catch(e) {}
-                }
+                if (State.peer) { try { State.peer.destroy(); } catch(e) {} }
 
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
                 document.getElementById('display-room-code').innerText = State.roomCode;
                 document.getElementById('connection-state').innerText = 'Initializing Host Peer...';
 
-                const qrContainer = document.getElementById('qrcode-container');
-                safeRenderQR(qrContainer, State.roomCode);
+                safeRenderQR(document.getElementById('qrcode-container'), State.roomCode);
 
-                const peerId = State.roomCode.toLowerCase();
-                State.peer = new Peer(peerId);
-
-                State.peer.on('open', () => {
-                    document.getElementById('connection-state').innerText = 'Waiting for peer connection...';
-                });
-
+                State.peer = new Peer(State.roomCode.toLowerCase());
+                State.peer.on('open', () => { document.getElementById('connection-state').innerText = 'Waiting for peer connection...'; });
                 State.peer.on('connection', (connection) => {
                     State.conn = connection;
                     setupConnectionHandlers();
                     document.getElementById('connection-state').innerText = 'Peer connected! Launching session...';
                     setTimeout(startGameSession, 1000);
                 });
-
-                State.peer.on('error', (err) => {
-                    console.error("Host Error:", err);
-                    document.getElementById('connection-state').innerText = `Peer Error: ${err.type}`;
-                });
+                State.peer.on('error', (err) => { document.getElementById('connection-state').innerText = `Peer Error: ${err.type}`; });
             }
 
             function joinGame(attempt = 1) {
@@ -481,30 +487,19 @@
                 document.getElementById('display-room-code').innerText = State.roomCode;
                 document.getElementById('connection-state').innerText = attempt > 1 ? `Retrying connection (${attempt}/3)...` : 'Connecting to host session...';
 
-                if (State.peer && attempt === 1) {
-                    try { State.peer.destroy(); } catch(e) {}
-                }
-
+                if (State.peer && attempt === 1) { try { State.peer.destroy(); } catch(e) {} }
                 State.peer = new Peer();
 
                 State.peer.on('open', () => {
-                    const targetId = State.roomCode.toLowerCase();
-                    const conn = State.peer.connect(targetId);
-
+                    const conn = State.peer.connect(State.roomCode.toLowerCase());
                     conn.on('open', () => {
                         State.conn = conn;
                         setupConnectionHandlers();
                         document.getElementById('connection-state').innerText = 'Secure channel established!';
                         setTimeout(startGameSession, 800);
                     });
-
-                    conn.on('error', (err) => {
-                        console.error("Conn Error:", err);
-                    });
                 });
-
                 State.peer.on('error', (err) => {
-                    console.error("Join Error:", err);
                     if (err.type === 'peer-unavailable' && attempt < 3) {
                         setTimeout(() => joinGame(attempt + 1), 1500);
                     } else {
@@ -515,21 +510,12 @@
 
             function setupConnectionHandlers() {
                 if (!State.conn) return;
-
-                State.conn.on('data', (data) => {
-                    handleNetworkData(data);
-                });
-
-                State.conn.on('close', () => {
-                    alert('Peer disconnected.');
-                    quitGame();
-                });
+                State.conn.on('data', (data) => handleNetworkData(data));
+                State.conn.on('close', () => { alert('Peer disconnected.'); quitGame(); });
             }
 
             function cancelHosting() {
-                if (State.peer) {
-                    try { State.peer.destroy(); } catch(e) {}
-                }
+                if (State.peer) { try { State.peer.destroy(); } catch(e) {} }
                 document.getElementById('view-room').classList.add('hidden');
                 document.getElementById('view-lobby').classList.remove('hidden');
             }
@@ -542,9 +528,7 @@
             }
 
             function quitGame() {
-                if (State.peer) {
-                    try { State.peer.destroy(); } catch(e) {}
-                }
+                if (State.peer) { try { State.peer.destroy(); } catch(e) {} }
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 document.getElementById('view-game').classList.add('hidden');
                 document.getElementById('role-view-operative').classList.add('hidden');
@@ -559,7 +543,11 @@
                     State.operativePos.y = data.y;
                     State.operativePos.room = data.room;
                 } else if (data.type === 'puzzle_sync') {
-                    State.puzzleStates[data.puzzleId] = data.solved;
+                    const rObj = rooms.find(r => r.id === data.roomId);
+                    if (rObj) {
+                        const pObj = rObj.puzzles.find(p => p.id === data.puzzleId);
+                        if (pObj) pObj.solved = data.solved;
+                    }
                     updateTelemetryNodesDisplay();
                     checkMissionWinCondition();
                 } else if (data.type === 'terminal_cmd') {
@@ -622,51 +610,51 @@
                     title.innerText = "MISSION SUCCESS";
                     title.className = "text-2xl font-orbitron font-black mb-3 glow-green text-[#00ff66]";
                     box.className = "max-w-md w-full bg-[#12161f] border-2 border-[#00ff66] rounded-lg p-6 text-center shadow-2xl";
-                    desc.innerText = "All security nodes successfully bypassed. Sector 09 infiltration complete!";
+                    desc.innerText = "All security doors unlocked and sector infiltrated!";
                     audio.success();
                 } else {
                     title.innerText = "MISSION FAILED // LOCKDOWN";
                     title.className = "text-2xl font-orbitron font-black mb-3 glow-red text-[#ff2a2a]";
                     box.className = "max-w-md w-full bg-[#12161f] border-2 border-[#ff2a2a] rounded-lg p-6 text-center shadow-2xl";
-                    desc.innerText = "Countdown expired. Sector security forces have cornered the operative.";
+                    desc.innerText = "Countdown expired. Security forces trapped the operative.";
                     audio.error();
                 }
             }
 
             function checkMissionWinCondition() {
-                if (Object.values(State.puzzleStates).every(v => v === true)) {
-                    triggerGameOver(true);
-                }
+                const allSolved = rooms.every(r => r.puzzles.every(p => p.solved));
+                if (allSolved) triggerGameOver(true);
             }
 
-            const Input = { left: false, right: false, up: false, down: false, jump: false, interact: false, joystickActive: false, joystickX: 0, joystickY: 0 };
+            const Input = { x: 0, y: 0, joystickActive: false };
 
             window.addEventListener('keydown', (e) => {
                 if (State.role !== 'operative') return;
-                if (e.key === 'a' || e.key === 'ArrowLeft') Input.left = true;
-                if (e.key === 'd' || e.key === 'ArrowRight') Input.right = true;
-                if (e.key === 'w' || e.key === 'ArrowUp' || e.key === ' ') { Input.jump = true; e.preventDefault(); }
+                if (e.key === 'a' || e.key === 'ArrowLeft') Input.x = -1;
+                if (e.key === 'd' || e.key === 'ArrowRight') Input.x = 1;
+                if (e.key === 'w' || e.key === 'ArrowUp') Input.y = -1;
+                if (e.key === 's' || e.key === 'ArrowDown') Input.y = 1;
                 if (e.key === 'e' || e.key === 'E') triggerInteraction();
             });
 
             window.addEventListener('keyup', (e) => {
                 if (State.role !== 'operative') return;
-                if (e.key === 'a' || e.key === 'ArrowLeft') Input.left = false;
-                if (e.key === 'd' || e.key === 'ArrowRight') Input.right = false;
-                if (e.key === 'w' || e.key === 'ArrowUp' || e.key === ' ') Input.jump = false;
+                if ((e.key === 'a' || e.key === 'ArrowLeft' || e.key === 'd' || e.key === 'ArrowRight') && !Input.joystickActive) Input.x = 0;
+                if ((e.key === 'w' || e.key === 'ArrowUp' || e.key === 's' || e.key === 'ArrowDown') && !Input.joystickActive) Input.y = 0;
             });
 
             function initTouchControls() {
                 const zone = document.getElementById('joystick-zone');
                 const knob = document.getElementById('joystick-knob');
-                const maxDist = 40;
+                const maxDist = 35;
 
                 function handleTouch(clientX, clientY) {
                     const rect = zone.getBoundingClientRect();
                     const dx = Math.min(Math.max(clientX - (rect.left + rect.width / 2), -maxDist), maxDist);
                     const dy = Math.min(Math.max(clientY - (rect.top + rect.height / 2), -maxDist), maxDist);
                     knob.style.transform = `translate(${dx}px, ${dy}px)`;
-                    Input.joystickX = dx / maxDist;
+                    Input.x = dx / maxDist;
+                    Input.y = dy / maxDist;
                     Input.joystickActive = true;
                 }
 
@@ -674,45 +662,24 @@
                 zone.addEventListener('touchmove', (e) => { handleTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
                 zone.addEventListener('touchend', () => {
                     knob.style.transform = `translate(0px, 0px)`;
-                    Input.joystickX = 0;
+                    Input.x = 0;
+                    Input.y = 0;
                     Input.joystickActive = false;
                 });
 
-                document.getElementById('btn-jump').addEventListener('click', triggerJump);
                 document.getElementById('btn-interact').addEventListener('click', triggerInteraction);
-            }
-
-            function triggerJump() {
-                if (State.operativePos.grounded) {
-                    State.operativePos.vy = -10;
-                    State.operativePos.grounded = false;
-                    audio.beep(300, 'square', 0.1, 0.1);
-                }
             }
 
             function triggerInteraction() {
                 audio.beep(800, 'sine', 0.1, 0.1);
-                const x = State.operativePos.x;
-                if (x >= 250 && x <= 350 && !State.puzzleStates.puzzle_keypad) openPuzzleModal('puzzle_keypad');
-                else if (x >= 650 && x <= 750 && !State.puzzleStates.puzzle_frequency) openPuzzleModal('puzzle_frequency');
-                else if (x >= 1050 && x <= 1150 && !State.puzzleStates.puzzle_wires) openPuzzleModal('puzzle_wires');
-                else if (x >= 1450 && x <= 1550 && !State.puzzleStates.puzzle_power_grid) openPuzzleModal('puzzle_power_grid');
+                const currentRoom = rooms.find(r => r.id === State.operativePos.room) || rooms[0];
+                const nearbyPuzzle = currentRoom.puzzles.find(p => !p.solved && Math.hypot(State.operativePos.x - p.x, State.operativePos.y - p.y) < 45);
+                if (nearbyPuzzle) {
+                    openPuzzleModal(nearbyPuzzle);
+                }
             }
 
             let opCanvas, opCtx, lastTelemetrySend = 0;
-            const rooms = [
-                { id: 1, xStart: 0, xEnd: 400, node: { id: 'puzzle_keypad', x: 300, name: 'Alpha [Keypad]' } },
-                { id: 2, xStart: 400, xEnd: 800, node: { id: 'puzzle_frequency', x: 700, name: 'Beta [Frequency]' } },
-                { id: 3, xStart: 800, xEnd: 1200, node: { id: 'puzzle_wires', x: 1100, name: 'Gamma [Wires]' } },
-                { id: 4, xStart: 1200, xEnd: 1600, node: { id: 'puzzle_power_grid', x: 1500, name: 'Delta [Power]' } }
-            ];
-
-            const drones = [
-                { room: 1, x: 200, y: 200, vx: 2, minX: 100, maxX: 350 },
-                { room: 2, x: 600, y: 180, vx: -2.5, minX: 450, maxX: 750 },
-                { room: 3, x: 1000, y: 220, vx: 3, minX: 850, maxX: 1150 },
-                { room: 4, x: 1400, y: 190, vx: -3, minX: 1250, maxX: 1550 }
-            ];
 
             function initOperativeEngine() {
                 opCanvas = document.getElementById('operative-canvas');
@@ -729,114 +696,88 @@
                     opCanvas.height = opCanvas.clientHeight;
                 }
 
-                let moveDir = 0;
-                if (Input.left) moveDir = -1;
-                if (Input.right) moveDir = 1;
-                if (Input.joystickActive) moveDir = Input.joystickX;
+                // Top-down movement update
+                State.operativePos.x += Input.x * State.operativePos.speed;
+                State.operativePos.y += Input.y * State.operativePos.speed;
 
-                State.operativePos.vx = moveDir * 5;
-                State.operativePos.x += State.operativePos.vx;
+                // Room boundary & Sliding Door collision logic
+                const currentRoom = rooms.find(r => State.operativePos.x >= r.xStart && State.operativePos.x < r.xEnd) || rooms[0];
+                State.operativePos.room = currentRoom.id;
 
-                const currentRoomObj = rooms.find(r => State.operativePos.x >= r.xStart && State.operativePos.x <= r.xEnd) || rooms[0];
-                State.operativePos.room = currentRoomObj.id;
+                // Check if current room puzzles are all solved to open the exit door
+                const roomSolved = currentRoom.puzzles.every(p => p.solved);
 
-                if (currentRoomObj.id === 1 && State.operativePos.x > 380 && !State.puzzleStates.puzzle_keypad) State.operativePos.x = 380;
-                if (currentRoomObj.id === 2 && State.operativePos.x < 420 && !State.puzzleStates.puzzle_keypad) State.operativePos.x = 420;
-                if (currentRoomObj.id === 2 && State.operativePos.x > 780 && !State.puzzleStates.puzzle_frequency) State.operativePos.x = 780;
-                if (currentRoomObj.id === 3 && State.operativePos.x < 820 && !State.puzzleStates.puzzle_frequency) State.operativePos.x = 820;
-                if (currentRoomObj.id === 3 && State.operativePos.x > 1180 && !State.puzzleStates.puzzle_wires) State.operativePos.x = 1180;
-                if (currentRoomObj.id === 4 && State.operativePos.x < 1220 && !State.puzzleStates.puzzle_wires) State.operativePos.x = 1220;
+                // Clamp inside room bounds
+                const margin = 20;
+                State.operativePos.x = Math.max(currentRoom.xStart + margin, Math.min(currentRoom.xEnd - margin, State.operativePos.x));
+                State.operativePos.y = Math.max(margin, Math.min(opCanvas.height - margin, State.operativePos.y));
 
-                if (State.operativePos.x < 20) State.operativePos.x = 20;
-                if (State.operativePos.x > 1580) State.operativePos.x = 1580;
-
-                State.operativePos.vy += 0.5;
-                State.operativePos.y += State.operativePos.vy;
-                const floorY = opCanvas.height - 120;
-                if (State.operativePos.y > floorY) {
-                    State.operativePos.y = floorY;
-                    State.operativePos.vy = 0;
-                    State.operativePos.grounded = true;
+                // Inter-room door barrier check if not solved
+                if (!roomSolved && currentRoom.id < 4 && State.operativePos.x > currentRoom.xEnd - 25) {
+                    State.operativePos.x = currentRoom.xEnd - 25;
                 }
-
-                drones.forEach(d => {
-                    d.x += d.vx;
-                    if (d.x < d.minX || d.x > d.maxX) d.vx *= -1;
-
-                    const dist = Math.hypot(State.operativePos.x - d.x, (State.operativePos.y - 16) - d.y);
-                    if (dist < 25) {
-                        audio.error();
-                        State.operativePos.x = currentRoomObj.xStart + 50;
-                        State.operativePos.y = floorY;
-                    }
-                });
 
                 if (timestamp - lastTelemetrySend > 50) {
                     lastTelemetrySend = timestamp;
                     sendNetData({ type: 'telemetry', x: State.operativePos.x, y: State.operativePos.y, room: State.operativePos.room });
                 }
 
-                const cameraX = Math.max(0, Math.min(State.operativePos.x - opCanvas.width / 2, 1600 - opCanvas.width));
-
+                // Render Top-Down Plane
                 opCtx.fillStyle = '#0a0c10';
                 opCtx.fillRect(0, 0, opCanvas.width, opCanvas.height);
 
-                opCtx.save();
-                opCtx.translate(-cameraX, 0);
-
                 rooms.forEach((r, idx) => {
+                    // Room grid box
                     opCtx.fillStyle = idx % 2 === 0 ? '#12161f' : '#0e121a';
-                    opCtx.fillRect(r.xStart, floorY + 20, 400, 100);
-                    opCtx.strokeStyle = '#00f0ff44';
-                    opCtx.strokeRect(r.xStart, 0, 400, floorY + 20);
+                    opCtx.fillRect(r.xStart, 0, r.width, opCanvas.height);
+                    opCtx.strokeStyle = '#00f0ff33';
+                    opCtx.strokeRect(r.xStart, 0, r.width, opCanvas.height);
 
-                    const solved = State.puzzleStates[r.node.id];
-                    opCtx.fillStyle = solved ? '#00ff66' : '#ff2a2a';
-                    opCtx.beginPath();
-                    opCtx.arc(r.node.x, floorY, 16, 0, Math.PI * 2);
-                    opCtx.fill();
-                    opCtx.strokeStyle = '#ffffff';
-                    opCtx.lineWidth = 2;
-                    opCtx.stroke();
+                    // Room Title
+                    opCtx.fillStyle = '#00f0ff88';
+                    opCtx.font = '10px Orbitron';
+                    opCtx.fillText(`ROOM ${r.id} // ${roomNames[idx]}`, r.xStart + 15, 25);
 
-                    opCtx.fillStyle = '#ffffff';
-                    opCtx.font = '10px Share Tech Mono';
-                    opCtx.textAlign = 'center';
-                    opCtx.fillText(r.node.name, r.node.x, floorY - 24);
+                    // Puzzles
+                    r.puzzles.forEach(p => {
+                        opCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
+                        opCtx.beginPath();
+                        opCtx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+                        opCtx.fill();
+                        opCtx.strokeStyle = '#ffffff';
+                        opCtx.lineWidth = 1.5;
+                        opCtx.stroke();
+                    });
+
+                    // Sliding Door between rooms
+                    if (r.id < 4) {
+                        const solved = r.puzzles.every(p => p.solved);
+                        opCtx.fillStyle = solved ? 'rgba(0,255,102,0.2)' : 'rgba(255,42,42,0.8)';
+                        opCtx.fillRect(r.xEnd - 6, 0, 12, opCanvas.height);
+                        opCtx.fillStyle = '#ffffff';
+                        opCtx.font = '9px Share Tech Mono';
+                        opCtx.save();
+                        opCtx.translate(r.xEnd, opCanvas.height / 2);
+                        opCtx.rotate(-Math.PI / 2);
+                        opCtx.fillText(solved ? 'DOOR [OPEN]' : 'DOOR [LOCKED]', 0, -2);
+                        opCtx.restore();
+                    }
                 });
 
-                [400, 800, 1200].forEach((dx, i) => {
-                    const nodeKey = ['puzzle_keypad', 'puzzle_frequency', 'puzzle_wires'][i];
-                    const unlocked = State.puzzleStates[nodeKey];
-                    opCtx.fillStyle = unlocked ? '#00ff6622' : '#ff2a2a55';
-                    opCtx.fillRect(dx - 5, 0, 10, floorY + 20);
-                    opCtx.strokeStyle = unlocked ? '#00ff66' : '#ff2a2a';
-                    opCtx.strokeRect(dx - 5, 0, 10, floorY + 20);
-                });
-
-                drones.forEach(d => {
-                    opCtx.fillStyle = '#ff2a2a';
-                    opCtx.shadowColor = '#ff2a2a';
-                    opCtx.shadowBlur = 8;
-                    opCtx.beginPath();
-                    opCtx.arc(d.x, d.y, 10, 0, Math.PI * 2);
-                    opCtx.fill();
-                    opCtx.shadowBlur = 0;
-                });
-
+                // Render Operative Agent (Top Down Circle)
                 opCtx.fillStyle = '#00f0ff';
                 opCtx.shadowColor = '#00f0ff';
-                opCtx.shadowBlur = 12;
-                opCtx.fillRect(State.operativePos.x - 12, State.operativePos.y - 32, 24, 32);
+                opCtx.shadowBlur = 10;
+                opCtx.beginPath();
+                opCtx.arc(State.operativePos.x, State.operativePos.y, 10, 0, Math.PI * 2);
+                opCtx.fill();
                 opCtx.shadowBlur = 0;
-
-                opCtx.restore();
 
                 requestAnimationFrame(updateOperativeLoop);
             }
 
-            function openPuzzleModal(puzzleId) {
-                State.activePuzzle = puzzleId;
+            function openPuzzleModal(puzzle) {
+                State.activePuzzle = puzzle;
                 const modal = document.getElementById('puzzle-modal');
                 const titleElem = document.getElementById('puzzle-modal-title');
                 const tagElem = document.getElementById('puzzle-modal-tag');
@@ -845,24 +786,13 @@
 
                 modal.classList.remove('hidden');
                 bodyElem.innerHTML = '';
+                tagElem.innerText = puzzle.name;
+                titleElem.innerText = `${puzzle.type.toUpperCase()} OVERRIDE`;
 
-                if (puzzleId === 'puzzle_keypad') {
-                    tagElem.innerText = 'NODE ALPHA';
-                    titleElem.innerText = 'KEYPAD OVERRIDE';
-                    buildKeypadPuzzle(bodyElem, statusElem);
-                } else if (puzzleId === 'puzzle_frequency') {
-                    tagElem.innerText = 'NODE BETA';
-                    titleElem.innerText = 'FREQUENCY TUNER';
-                    buildFrequencyPuzzle(bodyElem, statusElem);
-                } else if (puzzleId === 'puzzle_wires') {
-                    tagElem.innerText = 'NODE GAMMA';
-                    titleElem.innerText = 'WIRE HARNESS CUTTER';
-                    buildWiresPuzzle(bodyElem, statusElem);
-                } else if (puzzleId === 'puzzle_power_grid') {
-                    tagElem.innerText = 'NODE DELTA';
-                    titleElem.innerText = 'POWER MATRIX ALLOCATOR';
-                    buildPowerGridPuzzle(bodyElem, statusElem);
-                }
+                if (puzzle.type === 'keypad') buildKeypadPuzzle(bodyElem, statusElem, puzzle);
+                else if (puzzle.type === 'frequency') buildFrequencyPuzzle(bodyElem, statusElem, puzzle);
+                else if (puzzle.type === 'wires') buildWiresPuzzle(bodyElem, statusElem, puzzle);
+                else if (puzzle.type === 'power_grid') buildPowerGridPuzzle(bodyElem, statusElem, puzzle);
             }
 
             function closePuzzleModal() {
@@ -870,16 +800,17 @@
                 State.activePuzzle = null;
             }
 
-            function solvePuzzle(puzzleId) {
-                State.puzzleStates[puzzleId] = true;
+            function solvePuzzle(puzzle) {
+                puzzle.solved = true;
                 audio.success();
-                sendNetData({ type: 'puzzle_sync', puzzleId: puzzleId, solved: true });
+                const rObj = rooms.find(r => r.puzzles.some(p => p.id === puzzle.id));
+                sendNetData({ type: 'puzzle_sync', roomId: rObj.id, puzzleId: puzzle.id, solved: true });
                 updateTelemetryNodesDisplay();
                 checkMissionWinCondition();
-                setTimeout(closePuzzleModal, 1200);
+                setTimeout(closePuzzleModal, 1000);
             }
 
-            function buildKeypadPuzzle(container, status) {
+            function buildKeypadPuzzle(container, status, puzzle) {
                 let entered = '';
                 container.innerHTML = `
                     <div class="text-center mb-4">
@@ -890,7 +821,7 @@
                 const gridElem = document.getElementById('keypad-grid');
                 [1,2,3,4,5,6,7,8,9,'C',0,'OK'].forEach(n => {
                     const btn = document.createElement('button');
-                    btn.className = "p-3 bg-[#0d0f12] border border-gray-700 hover:border-[#00f0ff] text-[#00f0ff] font-orbitron font-bold rounded cursor-pointer";
+                    btn.className = "p-2 bg-[#0d0f12] border border-gray-700 hover:border-[#00f0ff] text-[#00f0ff] font-orbitron font-bold rounded cursor-pointer";
                     btn.innerText = n;
                     btn.onclick = () => {
                         audio.beep(500, 'sine', 0.05, 0.05);
@@ -898,7 +829,7 @@
                         else if (n === 'OK') {
                             if (entered === PuzzleConfig.pin) {
                                 status.innerText = 'Override Accepted!';
-                                solvePuzzle('puzzle_keypad');
+                                solvePuzzle(puzzle);
                             } else {
                                 status.innerText = 'Incorrect PIN!';
                                 audio.error();
@@ -911,20 +842,14 @@
                 });
             }
 
-            function buildFrequencyPuzzle(container, status) {
+            function buildFrequencyPuzzle(container, status, puzzle) {
                 let freq = 200, phase = 30;
                 container.innerHTML = `
                     <div class="w-full flex flex-col items-center">
-                        <canvas id="freq-canvas" width="300" height="120" class="bg-[#0d0f12] border border-[#00f0ff44] rounded mb-4"></canvas>
-                        <div class="w-full space-y-3">
-                            <div>
-                                <label class="text-xs text-gray-400">Frequency: <span id="lbl-freq" class="text-[#00ff66]">200</span> Hz</label>
-                                <input type="range" min="100" max="800" value="200" id="slider-freq" class="w-full accent-[#00f0ff]">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-400">Phase Shift: <span id="lbl-phase" class="text-[#00ff66]">30</span>°</label>
-                                <input type="range" min="0" max="180" value="30" id="slider-phase" class="w-full accent-[#00f0ff]">
-                            </div>
+                        <canvas id="freq-canvas" width="280" height="100" class="bg-[#0d0f12] border border-[#00f0ff44] rounded mb-3"></canvas>
+                        <div class="w-full space-y-2 text-xs">
+                            <div><label class="text-gray-400">Freq: <span id="lbl-freq" class="text-[#00ff66]">200</span> Hz</label><input type="range" min="100" max="800" value="200" id="slider-freq" class="w-full accent-[#00f0ff]"></div>
+                            <div><label class="text-gray-400">Phase: <span id="lbl-phase" class="text-[#00ff66]">30</span>°</label><input type="range" min="0" max="180" value="30" id="slider-phase" class="w-full accent-[#00f0ff]"></div>
                         </div>
                     </div>
                 `;
@@ -935,12 +860,12 @@
 
                 function drawWave() {
                     ctx.fillStyle = '#0d0f12';
-                    ctx.fillRect(0, 0, 300, 120);
+                    ctx.fillRect(0, 0, 280, 100);
                     ctx.strokeStyle = '#00f0ff';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    for (let x = 0; x < 300; x++) {
-                        const y = 60 + Math.sin((x + phase) * (freq / 1000)) * 35;
+                    for (let x = 0; x < 280; x++) {
+                        const y = 50 + Math.sin((x + phase) * (freq / 1000)) * 30;
                         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
                     }
                     ctx.stroke();
@@ -951,57 +876,46 @@
                 drawWave();
 
                 function checkFreq() {
-                    if (Math.abs(freq - PuzzleConfig.targetFreq) < 15 && Math.abs(phase - PuzzleConfig.targetPhase) < 10) {
+                    if (Math.abs(freq - PuzzleConfig.targetFreq) < 20 && Math.abs(phase - PuzzleConfig.targetPhase) < 15) {
                         status.innerText = 'Frequency Synchronized!';
-                        solvePuzzle('puzzle_frequency');
+                        solvePuzzle(puzzle);
                     }
                 }
             }
 
-            function buildWiresPuzzle(container, status) {
+            function buildWiresPuzzle(container, status, puzzle) {
                 const wires = [
                     { color: 'Red', hex: '#ff2a2a' },
                     { color: 'Cyan', hex: '#00f0ff' },
                     { color: 'Yellow', hex: '#ffcc00' },
-                    { color: 'Green', hex: '#00ff66' },
-                    { color: 'Violet', hex: '#bf00ff' }
+                    { color: 'Green', hex: '#00ff66' }
                 ];
-                container.innerHTML = `
-                    <div class="w-full space-y-2" id="wires-container">
-                        <p class="text-xs text-gray-400 mb-2">Consult Hacker Manual for active wire rule.</p>
-                    </div>
-                `;
-                const wiresContainer = document.getElementById('wires-container');
+                container.innerHTML = `<div class="w-full space-y-2" id="wires-container"></div>`;
+                const wc = document.getElementById('wires-container');
                 wires.forEach((w, idx) => {
                     const btn = document.createElement('button');
-                    btn.className = "w-full p-3 bg-[#0d0f12] border border-gray-700 hover:border-[#00f0ff] rounded flex items-center justify-between cursor-pointer";
+                    btn.className = "w-full p-2.5 bg-[#0d0f12] border border-gray-700 hover:border-[#00f0ff] rounded flex items-center justify-between cursor-pointer";
                     btn.innerHTML = `<span class="font-orbitron font-bold text-xs" style="color: ${w.hex}">WIRE 0${idx+1}: ${w.color.toUpperCase()}</span><span class="text-xs text-gray-500">[CUT]</span>`;
                     btn.onclick = () => {
                         audio.beep(300, 'sawtooth', 0.15, 0.2);
                         if (idx === 2) {
                             status.innerText = 'Correct wire severed!';
-                            solvePuzzle('puzzle_wires');
+                            solvePuzzle(puzzle);
                         } else {
-                            status.innerText = 'WRONG WIRE! Penalty triggered.';
+                            status.innerText = 'WRONG WIRE!';
                             audio.error();
                         }
                     };
-                    wiresContainer.appendChild(btn);
+                    wc.appendChild(btn);
                 });
             }
 
-            function buildPowerGridPuzzle(container, status) {
+            function buildPowerGridPuzzle(container, status, puzzle) {
                 let grid = [0,0,0, 0,1,0, 0,0,0];
-                container.innerHTML = `
-                    <div class="w-full flex flex-col items-center">
-                        <p class="text-xs text-gray-400 mb-3">Activate all nodes to green polarity.</p>
-                        <div class="grid grid-cols-3 gap-2 w-64 h-64" id="power-grid-container"></div>
-                    </div>
-                `;
-                const gridContainer = document.getElementById('power-grid-container');
+                container.innerHTML = `<div class="w-full flex flex-col items-center"><div class="grid grid-cols-3 gap-2 w-56 h-56" id="power-grid-container"></div></div>`;
+                const gContainer = document.getElementById('power-grid-container');
                 grid.forEach((val, idx) => {
                     const btn = document.createElement('button');
-                    btn.id = `pnode-${idx}`;
                     btn.className = `border ${val ? 'bg-[#00ff6633] border-[#00ff66] text-[#00ff66]' : 'bg-[#0d0f12] border-gray-700 text-gray-600'} font-orbitron font-bold rounded flex items-center justify-center cursor-pointer text-xs`;
                     btn.innerText = `N-${idx+1}`;
                     btn.onclick = () => {
@@ -1010,10 +924,10 @@
                         btn.className = `border ${grid[idx] ? 'bg-[#00ff6633] border-[#00ff66] text-[#00ff66]' : 'bg-[#0d0f12] border-gray-700 text-gray-600'} font-orbitron font-bold rounded flex items-center justify-center cursor-pointer text-xs`;
                         if (grid.every(v => v === 1)) {
                             status.innerText = 'Power Grid Synchronized!';
-                            solvePuzzle('puzzle_power_grid');
+                            solvePuzzle(puzzle);
                         }
                     };
-                    gridContainer.appendChild(btn);
+                    gContainer.appendChild(btn);
                 });
             }
 
@@ -1049,25 +963,23 @@
                     radarCtx.stroke();
                 });
 
-                rooms.forEach((r, idx) => {
-                    const nx = ((r.node.x) / 1600) * radarCanvas.width;
-                    const ny = radarCanvas.height / 2;
-                    const solved = State.puzzleStates[r.node.id];
-                    radarCtx.fillStyle = solved ? '#00ff66' : '#ff2a2a';
-                    radarCtx.beginPath();
-                    radarCtx.arc(nx, ny, 8, 0, Math.PI * 2);
-                    radarCtx.fill();
+                rooms.forEach((r) => {
+                    r.puzzles.forEach(p => {
+                        const nx = (p.x + r.xStart) / 1600 * radarCanvas.width;
+                        const ny = (p.y / 300) * radarCanvas.height;
+                        radarCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
+                        radarCtx.beginPath();
+                        radarCtx.arc(nx, ny, 6, 0, Math.PI * 2);
+                        radarCtx.fill();
+                    });
                 });
 
                 const opX = (State.operativePos.x / 1600) * radarCanvas.width;
-                const opY = radarCanvas.height / 2;
+                const opY = (State.operativePos.y / 300) * radarCanvas.height;
                 radarCtx.fillStyle = '#00f0ff';
-                radarCtx.shadowColor = '#00f0ff';
-                radarCtx.shadowBlur = 10;
                 radarCtx.beginPath();
-                radarCtx.arc(opX, opY, 6, 0, Math.PI * 2);
+                radarCtx.arc(opX, opY, 5, 0, Math.PI * 2);
                 radarCtx.fill();
-                radarCtx.shadowBlur = 0;
 
                 document.getElementById('telemetry-x').innerText = State.operativePos.x.toFixed(2);
                 document.getElementById('telemetry-y').innerText = State.operativePos.y.toFixed(2);
@@ -1079,12 +991,10 @@
             function updateTelemetryNodesDisplay() {
                 const container = document.getElementById('telemetry-nodes');
                 if (!container) return;
-                container.innerHTML = `
-                    <div>DOOR 1 (Alpha): <span class="${State.puzzleStates.puzzle_keypad ? 'text-[#00ff66]' : 'text-yellow-400'}">${State.puzzleStates.puzzle_keypad ? 'UNLOCKED' : 'LOCKED'}</span></div>
-                    <div>DOOR 2 (Beta): <span class="${State.puzzleStates.puzzle_frequency ? 'text-[#00ff66]' : 'text-yellow-400'}">${State.puzzleStates.puzzle_frequency ? 'UNLOCKED' : 'LOCKED'}</span></div>
-                    <div>DOOR 3 (Gamma): <span class="${State.puzzleStates.puzzle_wires ? 'text-[#00ff66]' : 'text-yellow-400'}">${State.puzzleStates.puzzle_wires ? 'UNLOCKED' : 'LOCKED'}</span></div>
-                    <div>DOOR 4 (Delta): <span class="${State.puzzleStates.puzzle_power_grid ? 'text-[#00ff66]' : 'text-yellow-400'}">${State.puzzleStates.puzzle_power_grid ? 'UNLOCKED' : 'LOCKED'}</span></div>
-                `;
+                container.innerHTML = rooms.map(r => {
+                    const solved = r.puzzles.every(p => p.solved);
+                    return `<div>ROOM ${r.id}: <span class="${solved ? 'text-[#00ff66]' : 'text-yellow-400'}">${solved ? 'UNLOCKED' : 'LOCKED'}</span></div>`;
+                }).join('');
             }
 
             function executeTerminalCommand() {
@@ -1099,27 +1009,14 @@
 
                 const parts = cmdText.split(' ');
                 const cmd = parts[0].toLowerCase();
-                const arg = parts[1];
 
                 if (cmd === 'help') {
-                    appendTerminalOutput('AVAILABLE COMMANDS: help, statusReport, override [node_id], clear', '#00f0ff');
+                    appendTerminalOutput('AVAILABLE COMMANDS: help, statusReport, clear', '#00f0ff');
                 } else if (cmd === 'statusreport') {
-                    for (let [k, v] of Object.entries(State.puzzleStates)) {
-                        appendTerminalOutput(`  - ${k}: ${v ? 'SECURED [SOLVED]' : 'VULNERABLE [PENDING]'}`, v ? '#00ff66' : '#ff2a2a');
-                    }
-                } else if (cmd === 'override') {
-                    if (!arg || !State.puzzleStates.hasOwnProperty(arg)) {
-                        appendTerminalOutput('ERROR: Invalid node ID.', '#ff2a2a');
-                    } else {
-                        appendTerminalOutput(`Initiating override for ${arg}...`, '#yellow');
-                        setTimeout(() => {
-                            State.puzzleStates[arg] = true;
-                            updateTelemetryNodesDisplay();
-                            checkMissionWinCondition();
-                            appendTerminalOutput(`SUCCESS: Node ${arg} overridden!`, '#00ff66');
-                            audio.success();
-                        }, 1500);
-                    }
+                    rooms.forEach(r => {
+                        const solved = r.puzzles.every(p => p.solved);
+                        appendTerminalOutput(`  - Room ${r.id}: ${solved ? 'SECURED' : 'LOCKED'}`, solved ? '#00ff66' : '#ff2a2a');
+                    });
                 } else if (cmd === 'clear') {
                     document.getElementById('terminal-output').innerHTML = '';
                 } else {
@@ -1131,12 +1028,12 @@
                 const output = document.getElementById('terminal-output');
                 const div = document.createElement('div');
                 div.innerText = text;
-                div.className = color === '#00f0ff' ? 'text-[#00f0ff]' : color === '#00ff66' ? 'text-[#00ff66]' : color === '#ff2a2a' ? 'text-red-400' : color === '#yellow' ? 'text-yellow-400' : 'text-gray-300';
+                div.className = color === '#00f0ff' ? 'text-[#00f0ff]' : color === '#00ff66' ? 'text-[#00ff66]' : color === '#ff2a2a' ? 'text-red-400' : 'text-gray-300';
                 output.appendChild(div);
                 output.scrollTop = output.scrollHeight;
             }
 
-            // Safe DOM Event Binds
+            // DOM Event Listeners
             document.getElementById('btn-role-operative').addEventListener('click', () => selectRole('operative'));
             document.getElementById('btn-role-hacker').addEventListener('click', () => selectRole('hacker'));
             document.getElementById('btn-gen-seed').addEventListener('click', randomizeSeed);
