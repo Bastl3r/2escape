@@ -1212,40 +1212,49 @@
 
             function buildPressureCyclePuzzle(container, status, puzzle) {
                 const pd = puzzle.pressureData;
+                
                 container.innerHTML = `
-                    <div class="w-full flex flex-col items-center space-y-3 font-mono text-xs">
-                        <div class="w-full bg-[#0d0f12] border border-[#00f0ff44] rounded p-3">
-                            <pre class="text-[11px] leading-tight text-[#00f0ff] font-mono overflow-x-auto text-center" id="ascii-flow-art">
-         ${pd.p1.id.toUpperCase()}
-      +-----+
- -----|  ▶  |----->
-|      +-----+     |
-|       p1=${pd.p1.flow}%     |
-|                  |
-|                  |
-|                  v
-+-------+       +-------+
-| Level |       | Level | ${pd.targetTank === 2 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${pd.targetLevel}%]</span>` : ''}
-|  ${Math.round(pd.tank1)}%  |       |  ${Math.round(pd.tank2)}%  |
-| Tank1 |       | Tank2 |
-+-------+       +-------+
-${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${pd.targetLevel}%]</span>` : '^'}                    |
-|                    |
-|                    |
-|      ${pd.p2.id.toUpperCase()}         |
-|     +-----+        |
- &lt;----|  ◀  |--------
-      +-----+
-       p2=${pd.p2.flow}%
-                            </pre>
+                    <div class="w-full flex flex-col items-center space-y-4 font-mono text-xs">
+                        <div class="w-full grid grid-cols-2 gap-4 bg-[#0d0f12] border border-[#00f0ff44] rounded p-4">
+                            <!-- Tank 1 Progress Bar -->
+                            <div class="flex flex-col items-center">
+                                <div class="text-[#00f0ff] font-orbitron font-bold mb-1">TANK 1</div>
+                                <div class="relative w-16 h-36 bg-gray-900 border border-gray-700 rounded overflow-hidden flex flex-col justify-end">
+                                    <div id="tank1-fill" class="w-full bg-[#00ff66] transition-all duration-300" style="height: ${pd.tank1}%"></div>
+                                    ${pd.targetTank === 1 ? `<div class="absolute w-full border-t-2 border-red-500 z-10" style="bottom: ${pd.targetLevel}%"></div>` : ''}
+                                </div>
+                                <div class="mt-2 text-gray-300"><span id="tank1-val">${Math.round(pd.tank1)}</span>% ${pd.targetTank === 1 ? '<span class="text-red-400 font-bold">(Target)</span>' : ''}</div>
+                            </div>
+
+                            <!-- Tank 2 Progress Bar -->
+                            <div class="flex flex-col items-center">
+                                <div class="text-[#00f0ff] font-orbitron font-bold mb-1">TANK 2</div>
+                                <div class="relative w-16 h-36 bg-gray-900 border border-gray-700 rounded overflow-hidden flex flex-col justify-end">
+                                    <div id="tank2-fill" class="w-full bg-[#00ff66] transition-all duration-300" style="height: ${pd.tank2}%"></div>
+                                    ${pd.targetTank === 2 ? `<div class="absolute w-full border-t-2 border-red-500 z-10" style="bottom: ${pd.targetLevel}%"></div>` : ''}
+                                </div>
+                                <div class="mt-2 text-gray-300"><span id="tank2-val">${Math.round(pd.tank2)}</span>% ${pd.targetTank === 2 ? '<span class="text-red-400 font-bold">(Target)</span>' : ''}</div>
+                            </div>
                         </div>
-                        <div class="text-gray-300 text-center">
-                            Hacker command syntax: <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">${pd.p1.id} [0-100]</code> or <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">${pd.p2.id} [0-100]</code>
+
+                        <!-- Pumps Panel with Direct Flow Symbols & Rates -->
+                        <div class="w-full grid grid-cols-2 gap-2 text-center">
+                            <div class="bg-[#12161f] border border-gray-700 p-2 rounded">
+                                <div class="text-[#00f0ff] font-bold">${pd.p1.id.toUpperCase()} ▶</div>
+                                <div class="text-gray-400 text-[10px]">Rate: <span id="p1-rate" class="text-[#00ff66]">${pd.p1.flow}</span>%</div>
+                            </div>
+                            <div class="bg-[#12161f] border border-gray-700 p-2 rounded">
+                                <div class="text-[#00f0ff] font-bold">◀ ${pd.p2.id.toUpperCase()}</div>
+                                <div class="text-gray-400 text-[10px]">Rate: <span id="p2-rate" class="text-[#00ff66]">${pd.p2.flow}</span>%</div>
+                            </div>
+                        </div>
+
+                        <div class="text-gray-400 text-center">
+                            Hacker terminal commands: <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">${pd.p1.id} [0-100]</code> | <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">${pd.p2.id} [0-100]</code>
                         </div>
                     </div>
                 `;
 
-                // Simulation tick for pressure puzzle: 10% volume transfer every 3 seconds at 100% flow
                 const simInterval = setInterval(() => {
                     if (puzzle.solved || !State.activePuzzle || State.activePuzzle.id !== puzzle.id) {
                         clearInterval(simInterval);
@@ -1268,7 +1277,7 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
 
                     const currentTargetVal = pd.targetTank === 1 ? pd.tank1 : pd.tank2;
                     
-                    // Track if fluid has surged / surpassed the target level at least once
+                    // Track if fluid has surged / surpassed the target level from either direction
                     if (!pd.hasSurpassed) {
                         if ((pd.initialVal < pd.targetLevel && currentTargetVal >= pd.targetLevel) || 
                             (pd.initialVal > pd.targetLevel && currentTargetVal <= pd.targetLevel)) {
@@ -1276,11 +1285,11 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
                         }
                     }
 
-                    // Solve condition: Must have surpassed/crossed target threshold and now stabilized within ±2%
-                    if (pd.hasSurpassed && Math.abs(currentTargetVal - pd.targetLevel) <= 2) {
+                    // Solve condition: Must have surpassed or reached target threshold and stabilized within ±2%
+                    if ((pd.hasSurpassed || Math.abs(pd.initialVal - pd.targetLevel) <= 2) && Math.abs(currentTargetVal - pd.targetLevel) <= 2) {
                         pd.holdTimer = (pd.holdTimer || 0) + 3;
                         if (pd.holdTimer >= 3) {
-                            status.innerText = 'Pressure Cycle Over-Surpass & Balanced!';
+                            status.innerText = 'Pressure Cycle Balanced & Over-Surpassed!';
                             solvePuzzle(puzzle);
                             clearInterval(simInterval);
                         }
@@ -1288,32 +1297,20 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
                         pd.holdTimer = 0;
                     }
 
-                    const asciiElem = document.getElementById('ascii-flow-art');
-                    if (asciiElem) {
-                        asciiElem.innerHTML = `
-         ${pd.p1.id.toUpperCase()}
-      +-----+
- -----|  ▶  |----->
-|      +-----+     |
-|       p1=${pd.p1.flow}%     |
-|                  |
-|                  |
-|                  v
-+-------+       +-------+
-| Level |       | Level | ${pd.targetTank === 2 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${pd.targetLevel}%]</span>` : ''}
-|  ${Math.round(pd.tank1)}%  |       |  ${Math.round(pd.tank2)}%  |
-| Tank1 |       | Tank2 |
-+-------+       +-------+
-${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${pd.targetLevel}%]</span>` : '^'}                    |
-|                    |
-|                    |
-|      ${pd.p2.id.toUpperCase()}         |
-|     +-----+        |
- &lt;----|  ◀  |--------
-      +-----+
-       p2=${pd.p2.flow}%
-                        `;
-                    }
+                    // Update UI elements live
+                    const t1Fill = document.getElementById('tank1-fill');
+                    const t2Fill = document.getElementById('tank2-fill');
+                    const t1Val = document.getElementById('tank1-val');
+                    const t2Val = document.getElementById('tank2-val');
+                    const p1Rate = document.getElementById('p1-rate');
+                    const p2Rate = document.getElementById('p2-rate');
+
+                    if (t1Fill) t1Fill.style.height = `${pd.tank1}%`;
+                    if (t2Fill) t2Fill.style.height = `${pd.tank2}%`;
+                    if (t1Val) t1Val.innerText = Math.round(pd.tank1);
+                    if (t2Val) t2Val.innerText = Math.round(pd.tank2);
+                    if (p1Rate) p1Rate.innerText = pd.p1.flow;
+                    if (p2Rate) p2Rate.innerText = pd.p2.flow;
                 }, 3000);
 
                 window.recheckPressurePuzzle = () => {};
