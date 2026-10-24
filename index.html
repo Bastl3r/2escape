@@ -197,7 +197,7 @@
                 <div id="htab-content-3" class="flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
                     <div id="terminal-output" class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300">
                         <div class="text-[#00f0ff]">SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED</div>
-                        <div class="text-gray-500">Type 'help' to list available system commands, or enter phase override (e.g., 'cos(phi4)=15').</div>
+                        <div class="text-gray-500">Type 'help' to list available system commands, or enter phase override (e.g., 'cos(phi4[1])=15').</div>
                     </div>
                     <div class="flex gap-2">
                         <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
@@ -373,6 +373,7 @@
 
                     const pList = [];
                     let otherPuzzleIndex = 0;
+                    let freqPuzzleCount = 0;
 
                     selectedTypes.forEach((typeKey, pIdx) => {
                         let posX, posY;
@@ -394,6 +395,12 @@
                             otherPuzzleIndex++;
                         }
 
+                        let freqInRoomIndex = null;
+                        if (typeKey === 'frequency') {
+                            freqPuzzleCount++;
+                            freqInRoomIndex = freqPuzzleCount;
+                        }
+
                         const deviceMakeModel = generateDeviceName(roomPrng, typeKey);
                         const wireColors = ['Red', 'Cyan', 'Yellow', 'Green'];
                         const correctWireIdx = roomPrng.range(0, 3);
@@ -401,6 +408,7 @@
                         pList.push({
                             id: `r${r}_p${pIdx+1}_${typeKey}`,
                             room: r,
+                            freqInRoomIndex: freqInRoomIndex,
                             makeModel: deviceMakeModel,
                             type: typeKey,
                             x: posX,
@@ -413,6 +421,13 @@
                             correctWireIdx: correctWireIdx,
                             wireRule: `Sever Wire 0${correctWireIdx + 1} (${wireColors[correctWireIdx]})`
                         });
+                    });
+
+                    // Update total frequency puzzle count for the room
+                    pList.forEach(p => {
+                        if (p.type === 'frequency') {
+                            p.totalFreqPuzzlesInRoom = freqPuzzleCount;
+                        }
                     });
 
                     rooms.push({ id: r, puzzles: pList });
@@ -684,7 +699,8 @@
                 } else if (data.type === 'phase_sync') {
                     const rObj = rooms.find(r => r.id === data.roomId);
                     if (rObj) {
-                        const freqPuzzle = rObj.puzzles.find(p => p.type === 'frequency');
+                        const freqPuzzles = rObj.puzzles.filter(p => p.type === 'frequency');
+                        const freqPuzzle = data.freqIndex ? freqPuzzles.find(p => p.freqInRoomIndex === data.freqIndex) : freqPuzzles[0];
                         if (freqPuzzle) {
                             freqPuzzle.currentPhaseInput = data.phaseValue;
                             if (State.activePuzzle && State.activePuzzle.id === freqPuzzle.id) {
@@ -1003,6 +1019,9 @@
             function buildFrequencyPuzzle(container, status, puzzle) {
                 let freq = 200;
                 const roomNum = puzzle.room;
+                const isMultiple = (puzzle.totalFreqPuzzlesInRoom || 1) > 1;
+                const freqIndexStr = isMultiple ? `[${puzzle.freqInRoomIndex}]` : '';
+                const formulaStr = `cos(phi[${roomNum}]${freqIndexStr})=[phaseValue]`;
 
                 container.innerHTML = `
                     <div class="w-full flex flex-col items-center">
@@ -1020,9 +1039,9 @@
                             </div>
                             <div class="p-2.5 bg-[#0d0f12] border border-[#00f0ff33] rounded text-center font-mono">
                                 <div class="text-[#00f0ff] font-bold text-xs">
-                                    cos(φ${roomNum}) = <span id="disp-phase-angle" class="text-yellow-400">${puzzle.targetPhase}°</span>
+                                    cos(φ${roomNum}${freqIndexStr}) = <span id="disp-phase-angle" class="text-yellow-400">${puzzle.targetPhase}°</span>
                                 </div>
-                                <div class="text-[10px] text-gray-400 mt-1">requires terminal input</div>
+                                <div class="text-[10px] text-gray-400 mt-1">requires terminal input: <code class="bg-[#12161f] px-1.5 py-0.5 rounded text-[#00ff66] font-mono border border-gray-700">${formulaStr}</code></div>
                             </div>
                         </div>
                     </div>
@@ -1236,24 +1255,35 @@
                 inputElem.value = '';
                 sendNetData({ type: 'terminal_cmd', cmd: cmdText });
 
-                const cosMatch = cmdText.match(/^cos\(phi(\d+)\)\s*=\s*(\d+)$/i);
+                const cosMatch = cmdText.match(/^cos\(phi\[?(\d+)\]?(?:\[?(\d+)\]?)?\)\s*=\s*(\d+)$/i) || cmdText.match(/^cos\(phi(\d+)\)\s*=\s*(\d+)$/i);
 
                 if (cosMatch) {
-                    const roomNum = parseInt(cosMatch[1]);
-                    const phaseVal = parseInt(cosMatch[2]);
+                    let roomNum, freqIdx, phaseVal;
+                    if (cosMatch.length === 4) {
+                        roomNum = parseInt(cosMatch[1]);
+                        freqIdx = cosMatch[2] ? parseInt(cosMatch[2]) : 1;
+                        phaseVal = parseInt(cosMatch[3]);
+                    } else {
+                        roomNum = parseInt(cosMatch[1]);
+                        freqIdx = 1;
+                        phaseVal = parseInt(cosMatch[2]);
+                    }
 
                     const targetRoom = rooms.find(r => r.id === roomNum);
                     if (targetRoom) {
-                        const freqPuzzle = targetRoom.puzzles.find(p => p.type === 'frequency');
+                        const freqPuzzles = targetRoom.puzzles.filter(p => p.type === 'frequency');
+                        const freqPuzzle = freqPuzzles.find(p => p.freqInRoomIndex === freqIdx) || freqPuzzles[0];
+
                         if (freqPuzzle) {
                             freqPuzzle.currentPhaseInput = phaseVal;
-                            sendNetData({ type: 'phase_sync', roomId: roomNum, phaseValue: phaseVal });
+                            sendNetData({ type: 'phase_sync', roomId: roomNum, freqIndex: freqPuzzle.freqInRoomIndex, phaseValue: phaseVal });
                             
+                            const idxDisplay = freqPuzzle.totalFreqPuzzlesInRoom > 1 ? `[${freqPuzzle.freqInRoomIndex}]` : '';
                             if (phaseVal === freqPuzzle.targetPhase) {
-                                appendTerminalOutput(`SUCCESS: Phase angle ${phaseVal}° synced for Room ${roomNum}.`, '#00ff66');
+                                appendTerminalOutput(`SUCCESS: Phase angle ${phaseVal}° synced for Room ${roomNum}${idxDisplay}.`, '#00ff66');
                                 audio.success();
                             } else {
-                                appendTerminalOutput(`WARNING: Phase angle ${phaseVal}° transmitted to Room ${roomNum} (Mismatch with target ${freqPuzzle.targetPhase}°).`, 'text-yellow-400');
+                                appendTerminalOutput(`WARNING: Phase angle ${phaseVal}° transmitted to Room ${roomNum}${idxDisplay} (Mismatch with target ${freqPuzzle.targetPhase}°).`, 'text-yellow-400');
                             }
 
                             if (State.activePuzzle && State.activePuzzle.id === freqPuzzle.id) {
@@ -1262,7 +1292,7 @@
                                 }
                             }
                         } else {
-                            appendTerminalOutput(`ERROR: Room ${roomNum} does not contain a frequency synth node.`, '#ff2a2a');
+                            appendTerminalOutput(`ERROR: Room ${roomNum} does not contain frequency synth node ${freqIdx}.`, '#ff2a2a');
                         }
                     } else {
                         appendTerminalOutput(`ERROR: Invalid room number '${roomNum}'.`, '#ff2a2a');
@@ -1275,9 +1305,9 @@
 
                 if (cmd === 'help') {
                     appendTerminalOutput('AVAILABLE COMMANDS:', '#00f0ff');
-                    appendTerminalOutput('  - cos(phi[N])=[deg] : Override phase angle for Room N (e.g. cos(phi4)=15)', '#00f0ff');
-                    appendTerminalOutput('  - statusReport      : Display security status across all rooms', '#00f0ff');
-                    appendTerminalOutput('  - clear             : Clear terminal screen', '#00f0ff');
+                    appendTerminalOutput('  - cos(phi[N][M])=[deg] : Override phase angle for Room N, Frequency Puzzle M (e.g. cos(phi[4][1])=15)', '#00f0ff');
+                    appendTerminalOutput('  - statusReport          : Display security status across all rooms', '#00f0ff');
+                    appendTerminalOutput('  - clear                 : Clear terminal screen', '#00f0ff');
                 } else if (cmd === 'statusreport') {
                     rooms.forEach(r => {
                         const solved = r.puzzles.every(p => p.solved);
