@@ -1243,15 +1243,15 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
                     </div>
                 `;
 
-                // Simulation tick for pressure puzzle (updates every 5 seconds at 100% flow setting reference)
+                // Simulation tick for pressure puzzle: 10% volume transfer every 3 seconds at 100% flow
                 const simInterval = setInterval(() => {
                     if (puzzle.solved || !State.activePuzzle || State.activePuzzle.id !== puzzle.id) {
                         clearInterval(simInterval);
                         return;
                     }
 
-                    const flow1 = (pd.p1.flow / 100) * 5;
-                    const flow2 = (pd.p2.flow / 100) * 5;
+                    const flow1 = (pd.p1.flow / 100) * 10;
+                    const flow2 = (pd.p2.flow / 100) * 10;
                     const net = flow1 - flow2;
 
                     if (net > 0) {
@@ -1266,8 +1266,8 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
 
                     const currentTargetVal = pd.targetTank === 1 ? pd.tank1 : pd.tank2;
                     if (Math.abs(currentTargetVal - pd.targetLevel) <= 2) {
-                        pd.holdTimer = (pd.holdTimer || 0) + 5;
-                        if (pd.holdTimer >= 5) {
+                        pd.holdTimer = (pd.holdTimer || 0) + 3;
+                        if (pd.holdTimer >= 3) {
                             status.innerText = 'Pressure Levels Balanced!';
                             solvePuzzle(puzzle);
                             clearInterval(simInterval);
@@ -1302,7 +1302,7 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
        p2=${pd.p2.flow}%
                         `;
                     }
-                }, 5000);
+                }, 3000);
 
                 window.recheckPressurePuzzle = () => {};
             }
