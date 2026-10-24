@@ -511,7 +511,7 @@
                                 solutionHtml = `State: <span class="text-[#00ff66] font-bold">Synchronize nodes ${nodesList}</span>`;
                             }
                         } else if (p.type === 'pressure_cycle') {
-                            solutionHtml = `Target: <span class="text-red-400 font-bold">Tank ${p.pressureData.targetTank} @ ${p.pressureData.targetLevel}%</span> (Surpass allowed) | Pumps: <span class="text-[#00f0ff] font-mono">${p.pressureData.p1.id}, ${p.pressureData.p2.id}</span>`;
+                            solutionHtml = `Target: <span class="text-red-400 font-bold">Tank ${p.pressureData.targetTank} @ ${p.pressureData.targetLevel}%</span> (Surpass >±10% allowed) | Pumps: <span class="text-[#00f0ff] font-mono">${p.pressureData.p1.id}, ${p.pressureData.p2.id}</span>`;
                         }
 
                         item.innerHTML = `
@@ -1277,19 +1277,20 @@
 
                     const currentTargetVal = pd.targetTank === 1 ? pd.tank1 : pd.tank2;
                     
-                    // Track if fluid has surged / surpassed the target level from either direction
+                    // Track if fluid has surged / surpassed the target level by >±10% from the target level
                     if (!pd.hasSurpassed) {
-                        if ((pd.initialVal < pd.targetLevel && currentTargetVal >= pd.targetLevel) || 
-                            (pd.initialVal > pd.targetLevel && currentTargetVal <= pd.targetLevel)) {
+                        if (Math.abs(currentTargetVal - pd.targetLevel) >= 10 && 
+                            ((pd.initialVal < pd.targetLevel && currentTargetVal > pd.targetLevel) || 
+                             (pd.initialVal > pd.targetLevel && currentTargetVal < pd.targetLevel))) {
                             pd.hasSurpassed = true;
                         }
                     }
 
-                    // Solve condition: Must have surpassed or reached target threshold and stabilized within ±2%
-                    if ((pd.hasSurpassed || Math.abs(pd.initialVal - pd.targetLevel) <= 2) && Math.abs(currentTargetVal - pd.targetLevel) <= 2) {
+                    // Solve condition: Must have surpassed by >±10% or started close, and now stabilized within ±3% of target
+                    if ((pd.hasSurpassed || Math.abs(pd.initialVal - pd.targetLevel) <= 5) && Math.abs(currentTargetVal - pd.targetLevel) <= 3) {
                         pd.holdTimer = (pd.holdTimer || 0) + 3;
                         if (pd.holdTimer >= 3) {
-                            status.innerText = 'Pressure Cycle Balanced & Over-Surpassed!';
+                            status.innerText = 'Pressure Cycle Over-Surpass & Balanced!';
                             solvePuzzle(puzzle);
                             clearInterval(simInterval);
                         }
