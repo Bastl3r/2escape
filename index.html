@@ -445,7 +445,9 @@
                                 tank2: t2,
                                 p1: { id: p1Id, flow: p1Flow },
                                 p2: { id: p2Id, flow: p2Flow },
-                                holdTimer: 0
+                                holdTimer: 0,
+                                hasSurpassed: false,
+                                initialVal: targetTank === 1 ? t1 : t2
                             }
                         });
                     });
@@ -509,7 +511,7 @@
                                 solutionHtml = `State: <span class="text-[#00ff66] font-bold">Synchronize nodes ${nodesList}</span>`;
                             }
                         } else if (p.type === 'pressure_cycle') {
-                            solutionHtml = `Target: <span class="text-red-400 font-bold">Tank ${p.pressureData.targetTank} @ ${p.pressureData.targetLevel}%</span> | Pumps: <span class="text-[#00f0ff] font-mono">${p.pressureData.p1.id}, ${p.pressureData.p2.id}</span>`;
+                            solutionHtml = `Target: <span class="text-red-400 font-bold">Tank ${p.pressureData.targetTank} @ ${p.pressureData.targetLevel}%</span> (Surpass allowed) | Pumps: <span class="text-[#00f0ff] font-mono">${p.pressureData.p1.id}, ${p.pressureData.p2.id}</span>`;
                         }
 
                         item.innerHTML = `
@@ -1265,10 +1267,20 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
                     }
 
                     const currentTargetVal = pd.targetTank === 1 ? pd.tank1 : pd.tank2;
-                    if (Math.abs(currentTargetVal - pd.targetLevel) <= 2) {
+                    
+                    // Track if fluid has surged / surpassed the target level at least once
+                    if (!pd.hasSurpassed) {
+                        if ((pd.initialVal < pd.targetLevel && currentTargetVal >= pd.targetLevel) || 
+                            (pd.initialVal > pd.targetLevel && currentTargetVal <= pd.targetLevel)) {
+                            pd.hasSurpassed = true;
+                        }
+                    }
+
+                    // Solve condition: Must have surpassed/crossed target threshold and now stabilized within ±2%
+                    if (pd.hasSurpassed && Math.abs(currentTargetVal - pd.targetLevel) <= 2) {
                         pd.holdTimer = (pd.holdTimer || 0) + 3;
                         if (pd.holdTimer >= 3) {
-                            status.innerText = 'Pressure Levels Balanced!';
+                            status.innerText = 'Pressure Cycle Over-Surpass & Balanced!';
                             solvePuzzle(puzzle);
                             clearInterval(simInterval);
                         }
