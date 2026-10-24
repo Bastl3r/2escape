@@ -358,7 +358,7 @@
 
             function generateFullRunLayout(seedStr) {
                 rooms.length = 0;
-                globalPumpCounter = 1; // Reset unique global pump indexing per mission generation
+                globalPumpCounter = 1;
 
                 for (let r = 1; r <= totalRooms; r++) {
                     const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${r}`);
@@ -413,7 +413,6 @@
                         }
                         powerGridTargets.sort((a, b) => a - b);
 
-                        // Pressure Cycle / Pump specific parameters
                         const targetTank = roomPrng.range(1, 2);
                         const targetLevel = roomPrng.range(25, 95);
                         const t1 = roomPrng.range(15, 85);
@@ -1244,7 +1243,7 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
                     </div>
                 `;
 
-                // Simulation tick for pressure puzzle
+                // Simulation tick for pressure puzzle (updates every 5 seconds at 100% flow setting reference)
                 const simInterval = setInterval(() => {
                     if (puzzle.solved || !State.activePuzzle || State.activePuzzle.id !== puzzle.id) {
                         clearInterval(simInterval);
@@ -1267,8 +1266,8 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
 
                     const currentTargetVal = pd.targetTank === 1 ? pd.tank1 : pd.tank2;
                     if (Math.abs(currentTargetVal - pd.targetLevel) <= 2) {
-                        pd.holdTimer = (pd.holdTimer || 0) + 0.5;
-                        if (pd.holdTimer >= 1.5) {
+                        pd.holdTimer = (pd.holdTimer || 0) + 5;
+                        if (pd.holdTimer >= 5) {
                             status.innerText = 'Pressure Levels Balanced!';
                             solvePuzzle(puzzle);
                             clearInterval(simInterval);
@@ -1277,7 +1276,6 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
                         pd.holdTimer = 0;
                     }
 
-                    // Refresh ASCII view dynamically
                     const asciiElem = document.getElementById('ascii-flow-art');
                     if (asciiElem) {
                         asciiElem.innerHTML = `
@@ -1304,11 +1302,9 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
        p2=${pd.p2.flow}%
                         `;
                     }
-                }, 500);
+                }, 5000);
 
-                window.recheckPressurePuzzle = () => {
-                    // Triggered when hacker modifies pump flow via terminal
-                };
+                window.recheckPressurePuzzle = () => {};
             }
 
             let radarCanvas, radarCtx;
@@ -1417,7 +1413,6 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
                 inputElem.value = '';
                 sendNetData({ type: 'terminal_cmd', cmd: cmdText });
 
-                // Pump command matching: e.g. p3 85
                 const pumpMatch = cmdText.match(/^(p\d+)\s+(\d+)$/i);
                 if (pumpMatch) {
                     const pumpId = pumpMatch[1].toLowerCase();
@@ -1447,7 +1442,6 @@ ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${
                     return;
                 }
 
-                // Phase override matching
                 const cosMatch = cmdText.match(/^cos\(phi\[?(\d+)\]?(?:\[?(\d+)\]?)?\)\s*=\s*(\d+)$/i) || cmdText.match(/^cos\(phi(\d+)\)\s*=\s*(\d+)$/i);
                 if (cosMatch) {
                     let roomNum, freqIdx, phaseVal;
