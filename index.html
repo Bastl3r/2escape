@@ -124,8 +124,8 @@
                 </div>
                 <div class="flex items-center space-x-6">
                     <div class="flex items-center space-x-2 font-mono text-xs">
-                        <span class="text-gray-400">TIME:</span>
-                        <span id="hud-timer" class="text-[#ff2a2a] glow-red font-bold text-sm">05:00</span>
+                        <span class="text-gray-400">ROOM TIME:</span>
+                        <span id="hud-timer" class="text-[#ff2a2a] glow-red font-bold text-sm">[01:00]</span>
                     </div>
                     <div class="flex items-center space-x-2 text-xs font-mono">
                         <span class="inline-block w-2 h-2 rounded-full bg-[#00ff66] animate-ping" id="net-indicator"></span>
@@ -141,17 +141,14 @@
                     <canvas id="operative-canvas" class="w-full max-w-2xl h-[420px] bg-[#12161f] border border-[#00f0ff44] rounded shadow-2xl block"></canvas>
                     
                     <div class="absolute top-3 left-3 bg-[#12161f]/90 backdrop-blur border border-[#00f0ff44] p-2.5 rounded text-xs pointer-events-none shadow-lg">
-                        <div class="font-orbitron font-bold text-[#00f0ff] mb-1">SECTOR OBJECTIVES</div>
-                        <div id="operative-objectives" class="space-y-0.5 text-gray-300 text-[11px]">
-                            <div>• Room 1 [Alpha Nodes]</div>
-                            <div>• Room 2 [Beta Nodes]</div>
-                            <div>• Room 3 [Gamma Nodes]</div>
-                            <div>• Room 4 [Delta Nodes]</div>
+                        <div class="font-orbitron font-bold text-[#00f0ff] mb-1">SECTOR OBJECTIVES (20 ROOMS)</div>
+                        <div id="operative-objectives" class="space-y-0.5 text-gray-300 text-[11px] max-h-36 overflow-y-auto">
+                            <!-- Populated dynamically -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Repositioned Controls Panel (Lifted up from bottom screen edge) -->
+                <!-- Controls Panel -->
                 <div class="h-32 bg-[#12161f] border-t border-[#00f0ff33] flex items-center justify-between px-8 py-2 shrink-0 relative select-none pb-6">
                     <div id="joystick-zone" class="w-24 h-24 rounded-full border-2 border-[#00f0ff44] bg-[#00f0ff08] relative flex items-center justify-center touch-none">
                         <div id="joystick-knob" class="w-10 h-10 rounded-full bg-[#00f0ff] absolute shadow-lg shadow-[#00f0ff88] transition-transform duration-75 pointer-events-none"></div>
@@ -177,7 +174,7 @@
                     <div class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded relative overflow-hidden flex flex-col items-center justify-center">
                         <canvas id="hacker-radar-canvas" class="absolute inset-0 w-full h-full block"></canvas>
                         <div class="absolute top-3 left-3 bg-[#0d0f12]/90 border border-[#00f0ff44] p-2 rounded text-xs pointer-events-none">
-                            <span class="text-[#00f0ff] font-orbitron font-bold">MULTI-ROOM RADAR // SECTOR 09</span>
+                            <span class="text-[#00f0ff] font-orbitron font-bold">MULTI-ROOM RADAR // 20 ROOMS</span>
                             <div class="text-[10px] text-gray-400 mt-0.5">Tracking Operative position & security barrier status.</div>
                         </div>
                     </div>
@@ -213,7 +210,7 @@
 
                 <div id="htab-content-3" class="flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
                     <div id="terminal-output" class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300">
-                        <div class="text-[#00f0ff]">SYSTEM TERMINAL v3.0 // PHASE 3 ENCRYPTED</div>
+                        <div class="text-[#00f0ff]">SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED</div>
                         <div class="text-gray-500">Type 'help' to list available system commands.</div>
                     </div>
                     <div class="flex gap-2">
@@ -235,11 +232,8 @@
                         </div>
                         <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
                             <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2">SECURITY BARRIERS</h4>
-                            <div class="space-y-1 text-gray-300" id="telemetry-nodes">
-                                <div>ROOM 1: <span class="text-yellow-400">LOCKED</span></div>
-                                <div>ROOM 2: <span class="text-yellow-400">LOCKED</span></div>
-                                <div>ROOM 3: <span class="text-yellow-400">LOCKED</span></div>
-                                <div>ROOM 4: <span class="text-yellow-400">LOCKED</span></div>
+                            <div class="space-y-1 text-gray-300 max-h-40 overflow-y-auto" id="telemetry-nodes">
+                                <!-- Populated dynamically -->
                             </div>
                         </div>
                     </div>
@@ -269,7 +263,7 @@
         <div id="end-modal" class="absolute inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
             <div class="max-w-md w-full bg-[#12161f] border-2 rounded-lg p-6 text-center shadow-2xl" id="end-modal-box">
                 <h2 id="end-title" class="text-2xl font-orbitron font-black mb-3 glow-cyan">MISSION SUCCESS</h2>
-                <p id="end-desc" class="text-xs text-gray-300 mb-6 leading-relaxed">Sector 09 successfully infiltrated. All security nodes bypassed before system lockdown.</p>
+                <p id="end-desc" class="text-xs text-gray-300 mb-6 leading-relaxed">All 20 rooms successfully infiltrated. Security nodes bypassed.</p>
                 <button id="btn-return-lobby" class="px-6 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded hover:bg-[#00ff66] transition cursor-pointer">RETURN TO LOBBY</button>
             </div>
         </div>
@@ -364,34 +358,28 @@
                 if (seedLbl) seedLbl.innerText = seedStr;
             }
 
-            // Dynamic puzzle count calculation (Level 5+formula: 3 + level - 4)
-            const levelNumber = 5; 
-            const puzzlesPerRoom = levelNumber >= 5 ? 3 + (levelNumber - 4) : 3;
+            const totalRooms = 20;
+            const puzzlesPerRoom = 3; 
 
-            // Generate Top-Down 4 Rooms with dynamic puzzles
+            // Generate 20 Rooms
             const rooms = [];
             const puzzleTypes = ['keypad', 'frequency', 'wires', 'power_grid'];
-            const roomNames = ['Alpha', 'Beta', 'Gamma', 'Delta'];
 
-            for(let r=0; r<4; r++) {
+            for(let r=0; r<totalRooms; r++) {
                 const pList = [];
                 for(let p=0; p<puzzlesPerRoom; p++) {
                     const typeKey = puzzleTypes[p % puzzleTypes.length];
                     pList.push({
                         id: `room${r+1}_p${p+1}_${typeKey}`,
-                        name: `${roomNames[r]} P-${p+1} [${typeKey.toUpperCase()}]`,
+                        name: `R${r+1} P-${p+1} [${typeKey.toUpperCase()}]`,
                         type: typeKey,
-                        x: 100 + (p * 150) % 350,
-                        y: 80 + Math.floor(p / 2) * 120,
+                        x: 80 + (p * 100) % 240,
+                        y: 80 + Math.floor(p / 2) * 100,
                         solved: false
                     });
                 }
                 rooms.push({
                     id: r + 1,
-                    xStart: r * 400,
-                    xEnd: (r + 1) * 400,
-                    width: 400,
-                    height: 300,
                     puzzles: pList
                 });
             }
@@ -406,10 +394,41 @@
                 soloMode: false,
                 activePuzzle: null,
                 operativePos: { x: 200, y: 150, vx: 0, vy: 0, speed: 3.5, room: 1 },
-                missionTime: 300,
+                missionTime: 0,
                 timerInterval: null,
                 gameOver: false
             };
+
+            function getSecondsPerRoom(roomNum) {
+                // Formula: seconds per room = number of puzzles per room * 30 - ((roomcount - 5) * 15)
+                const calculated = (puzzlesPerRoom * 30) - ((roomNum - 5) * 15);
+                return Math.max(15, calculated); // minimum 15 seconds
+            }
+
+            function resetRoomTimer(roomNum) {
+                if (State.timerInterval) clearInterval(State.timerInterval);
+                State.missionTime = getSecondsPerRoom(roomNum);
+                
+                updateTimerDisplay();
+
+                State.timerInterval = setInterval(() => {
+                    if (State.gameOver) return;
+                    State.missionTime--;
+                    updateTimerDisplay();
+
+                    if (State.missionTime <= 0) {
+                        clearInterval(State.timerInterval);
+                        triggerGameOver(false);
+                    }
+                }, 1000);
+            }
+
+            function updateTimerDisplay() {
+                const m = Math.floor(State.missionTime / 60).toString().padStart(2, '0');
+                const s = (State.missionTime % 60).toString().padStart(2, '0');
+                const timerElem = document.getElementById('hud-timer');
+                if (timerElem) timerElem.innerText = `[${m}:${s}]`;
+            }
 
             function selectRole(role) {
                 State.role = role;
@@ -514,6 +533,10 @@
                 State.conn.on('close', () => { alert('Peer disconnected.'); quitGame(); });
             }
 
+            function sendNetData(data) {
+                if (State.conn && State.conn.open) State.conn.send(data);
+            }
+
             function cancelHosting() {
                 if (State.peer) { try { State.peer.destroy(); } catch(e) {} }
                 document.getElementById('view-room').classList.add('hidden');
@@ -541,7 +564,10 @@
                 if (data.type === 'telemetry') {
                     State.operativePos.x = data.x;
                     State.operativePos.y = data.y;
-                    State.operativePos.room = data.room;
+                    if (State.operativePos.room !== data.room) {
+                        State.operativePos.room = data.room;
+                        resetRoomTimer(State.operativePos.room);
+                    }
                 } else if (data.type === 'puzzle_sync') {
                     const rObj = rooms.find(r => r.id === data.roomId);
                     if (rObj) {
@@ -555,10 +581,6 @@
                 }
             }
 
-            function sendNetData(data) {
-                if (State.conn && State.conn.open) State.conn.send(data);
-            }
-
             function startGameSession() {
                 generateSessionParameters(State.seed);
                 document.getElementById('view-room').classList.add('hidden');
@@ -568,22 +590,15 @@
                 document.getElementById('hud-seed').innerText = State.seed;
                 document.getElementById('hud-role-badge').innerText = `ROLE: ${State.role.toUpperCase()}`;
 
-                State.missionTime = 300;
+                State.operativePos.x = 200;
+                State.operativePos.y = 150;
+                State.operativePos.room = 1;
                 State.gameOver = false;
-                if (State.timerInterval) clearInterval(State.timerInterval);
-                State.timerInterval = setInterval(() => {
-                    if (State.gameOver) return;
-                    State.missionTime--;
-                    const m = Math.floor(State.missionTime / 60).toString().padStart(2, '0');
-                    const s = (State.missionTime % 60).toString().padStart(2, '0');
-                    const timerElem = document.getElementById('hud-timer');
-                    if (timerElem) timerElem.innerText = `${m}:${s}`;
 
-                    if (State.missionTime <= 0) {
-                        clearInterval(State.timerInterval);
-                        triggerGameOver(false);
-                    }
-                }, 1000);
+                // Reset timer for room 1
+                resetRoomTimer(1);
+                updateObjectivesDisplay();
+                updateTelemetryNodesDisplay();
 
                 if (State.role === 'operative') {
                     document.getElementById('role-view-operative').classList.remove('hidden');
@@ -595,6 +610,12 @@
                     initHackerDashboard();
                 }
                 audio.success();
+            }
+
+            function updateObjectivesDisplay() {
+                const container = document.getElementById('operative-objectives');
+                if (!container) return;
+                container.innerHTML = rooms.map(r => `<div>• Room ${r.id} [${r.puzzles.every(p => p.solved) ? 'SECURED' : 'LOCKED'}]</div>`).join('');
             }
 
             function triggerGameOver(isWin) {
@@ -610,13 +631,13 @@
                     title.innerText = "MISSION SUCCESS";
                     title.className = "text-2xl font-orbitron font-black mb-3 glow-green text-[#00ff66]";
                     box.className = "max-w-md w-full bg-[#12161f] border-2 border-[#00ff66] rounded-lg p-6 text-center shadow-2xl";
-                    desc.innerText = "All security doors unlocked and sector infiltrated!";
+                    desc.innerText = "All 20 rooms successfully infiltrated and secured!";
                     audio.success();
                 } else {
                     title.innerText = "MISSION FAILED // LOCKDOWN";
                     title.className = "text-2xl font-orbitron font-black mb-3 glow-red text-[#ff2a2a]";
                     box.className = "max-w-md w-full bg-[#12161f] border-2 border-[#ff2a2a] rounded-lg p-6 text-center shadow-2xl";
-                    desc.innerText = "Countdown expired. Security forces trapped the operative.";
+                    desc.innerText = "Room timer expired. Security forces trapped the operative.";
                     audio.error();
                 }
             }
@@ -696,25 +717,44 @@
                     opCanvas.height = opCanvas.clientHeight;
                 }
 
-                // Top-down movement update
                 State.operativePos.x += Input.x * State.operativePos.speed;
                 State.operativePos.y += Input.y * State.operativePos.speed;
 
-                // Room boundary & Sliding Door collision logic
-                const currentRoom = rooms.find(r => State.operativePos.x >= r.xStart && State.operativePos.x < r.xEnd) || rooms[0];
-                State.operativePos.room = currentRoom.id;
+                const currentRoom = rooms.find(r => r.id === State.operativePos.room) || rooms[0];
+                const isRoomSolved = currentRoom.puzzles.every(p => p.solved);
 
-                // Check if current room puzzles are all solved to open the exit door
-                const roomSolved = currentRoom.puzzles.every(p => p.solved);
+                const doorHeight = 70;
+                const doorYStart = (opCanvas.height - doorHeight) / 2;
+                const doorYEnd = doorYStart + doorHeight;
+                const margin = 18;
 
-                // Clamp inside room bounds
-                const margin = 20;
-                State.operativePos.x = Math.max(currentRoom.xStart + margin, Math.min(currentRoom.xEnd - margin, State.operativePos.x));
                 State.operativePos.y = Math.max(margin, Math.min(opCanvas.height - margin, State.operativePos.y));
 
-                // Inter-room door barrier check if not solved
-                if (!roomSolved && currentRoom.id < 4 && State.operativePos.x > currentRoom.xEnd - 25) {
-                    State.operativePos.x = currentRoom.xEnd - 25;
+                // Right Wall & Exit Portal
+                if (State.operativePos.x >= opCanvas.width - margin) {
+                    if (currentRoom.id < totalRooms && isRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYEnd) {
+                        State.operativePos.room += 1;
+                        State.operativePos.x = margin + 10;
+                        resetRoomTimer(State.operativePos.room);
+                        audio.beep(880, 'sine', 0.15, 0.15);
+                    } else {
+                        State.operativePos.x = opCanvas.width - margin;
+                    }
+                }
+
+                // Left Wall & Entrance Portal
+                if (State.operativePos.x <= margin) {
+                    const prevRoom = rooms.find(r => r.id === currentRoom.id - 1);
+                    const isPrevRoomSolved = prevRoom ? prevRoom.puzzles.every(p => p.solved) : false;
+
+                    if (currentRoom.id > 1 && isPrevRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYEnd) {
+                        State.operativePos.room -= 1;
+                        State.operativePos.x = opCanvas.width - margin - 10;
+                        resetRoomTimer(State.operativePos.room);
+                        audio.beep(660, 'sine', 0.15, 0.15);
+                    } else {
+                        State.operativePos.x = margin;
+                    }
                 }
 
                 if (timestamp - lastTelemetrySend > 50) {
@@ -722,54 +762,55 @@
                     sendNetData({ type: 'telemetry', x: State.operativePos.x, y: State.operativePos.y, room: State.operativePos.room });
                 }
 
-                // Render Top-Down Plane
-                opCtx.fillStyle = '#0a0c10';
+                opCtx.fillStyle = '#12161f';
                 opCtx.fillRect(0, 0, opCanvas.width, opCanvas.height);
 
-                rooms.forEach((r, idx) => {
-                    // Room grid box
-                    opCtx.fillStyle = idx % 2 === 0 ? '#12161f' : '#0e121a';
-                    opCtx.fillRect(r.xStart, 0, r.width, opCanvas.height);
-                    opCtx.strokeStyle = '#00f0ff33';
-                    opCtx.strokeRect(r.xStart, 0, r.width, opCanvas.height);
+                opCtx.strokeStyle = '#00f0ff11';
+                opCtx.lineWidth = 1;
+                for (let x = 0; x < opCanvas.width; x += 40) {
+                    opCtx.beginPath(); opCtx.moveTo(x, 0); opCtx.lineTo(x, opCanvas.height); opCtx.stroke();
+                }
+                for (let y = 0; y < opCanvas.height; y += 40) {
+                    opCtx.beginPath(); opCtx.moveTo(0, y); opCtx.lineTo(opCanvas.width, y); opCtx.stroke();
+                }
 
-                    // Room Title
-                    opCtx.fillStyle = '#00f0ff88';
-                    opCtx.font = '10px Orbitron';
-                    opCtx.fillText(`ROOM ${r.id} // ${roomNames[idx]}`, r.xStart + 15, 25);
+                opCtx.strokeStyle = '#00f0ff44';
+                opCtx.lineWidth = 3;
+                opCtx.strokeRect(0, 0, opCanvas.width, opCanvas.height);
 
-                    // Puzzles
-                    r.puzzles.forEach(p => {
-                        opCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
-                        opCtx.beginPath();
-                        opCtx.arc(p.x, p.y, 12, 0, Math.PI * 2);
-                        opCtx.fill();
-                        opCtx.strokeStyle = '#ffffff';
-                        opCtx.lineWidth = 1.5;
-                        opCtx.stroke();
-                    });
+                opCtx.fillStyle = '#00f0ff88';
+                opCtx.font = '12px Orbitron';
+                opCtx.fillText(`CURRENT FOCUS: ROOM ${currentRoom.id} / ${totalRooms}`, 20, 30);
 
-                    // Sliding Door between rooms
-                    if (r.id < 4) {
-                        const solved = r.puzzles.every(p => p.solved);
-                        opCtx.fillStyle = solved ? 'rgba(0,255,102,0.2)' : 'rgba(255,42,42,0.8)';
-                        opCtx.fillRect(r.xEnd - 6, 0, 12, opCanvas.height);
-                        opCtx.fillStyle = '#ffffff';
-                        opCtx.font = '9px Share Tech Mono';
-                        opCtx.save();
-                        opCtx.translate(r.xEnd, opCanvas.height / 2);
-                        opCtx.rotate(-Math.PI / 2);
-                        opCtx.fillText(solved ? 'DOOR [OPEN]' : 'DOOR [LOCKED]', 0, -2);
-                        opCtx.restore();
-                    }
+                currentRoom.puzzles.forEach(p => {
+                    opCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
+                    opCtx.beginPath();
+                    opCtx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+                    opCtx.fill();
+                    opCtx.strokeStyle = '#ffffff';
+                    opCtx.lineWidth = 2;
+                    opCtx.stroke();
+
+                    opCtx.fillStyle = '#ffffff';
+                    opCtx.font = '9px Share Tech Mono';
+                    opCtx.fillText(p.name, p.x - 25, p.y + 26);
                 });
 
-                // Render Operative Agent (Top Down Circle)
+                if (currentRoom.id < totalRooms) {
+                    opCtx.fillStyle = isRoomSolved ? '#00ff66' : '#ff2a2a';
+                    opCtx.fillRect(opCanvas.width - 8, doorYStart, 8, doorHeight);
+                }
+
+                if (currentRoom.id > 1) {
+                    opCtx.fillStyle = '#00ff66';
+                    opCtx.fillRect(0, doorYStart, 8, doorHeight);
+                }
+
                 opCtx.fillStyle = '#00f0ff';
                 opCtx.shadowColor = '#00f0ff';
-                opCtx.shadowBlur = 10;
+                opCtx.shadowBlur = 12;
                 opCtx.beginPath();
-                opCtx.arc(State.operativePos.x, State.operativePos.y, 10, 0, Math.PI * 2);
+                opCtx.arc(State.operativePos.x, State.operativePos.y, 11, 0, Math.PI * 2);
                 opCtx.fill();
                 opCtx.shadowBlur = 0;
 
@@ -806,6 +847,7 @@
                 const rObj = rooms.find(r => r.puzzles.some(p => p.id === puzzle.id));
                 sendNetData({ type: 'puzzle_sync', roomId: rObj.id, puzzleId: puzzle.id, solved: true });
                 updateTelemetryNodesDisplay();
+                updateObjectivesDisplay();
                 checkMissionWinCondition();
                 setTimeout(closePuzzleModal, 1000);
             }
@@ -954,32 +996,39 @@
                 radarCtx.fillStyle = '#0a0c10';
                 radarCtx.fillRect(0, 0, radarCanvas.width, radarCanvas.height);
 
-                radarCtx.strokeStyle = '#00f0ff33';
-                radarCtx.lineWidth = 1;
-                [0.25, 0.5, 0.75].forEach(pct => {
-                    radarCtx.beginPath();
-                    radarCtx.moveTo(pct * radarCanvas.width, 0);
-                    radarCtx.lineTo(pct * radarCanvas.width, radarCanvas.height);
-                    radarCtx.stroke();
-                });
+                const roomWidth = radarCanvas.width / totalRooms;
 
-                rooms.forEach((r) => {
+                rooms.forEach((r, idx) => {
+                    const rx = idx * roomWidth;
+                    radarCtx.strokeStyle = '#00f0ff33';
+                    radarCtx.strokeRect(rx, 0, roomWidth, radarCanvas.height);
+
+                    if (State.operativePos.room === r.id) {
+                        radarCtx.fillStyle = 'rgba(0, 240, 255, 0.05)';
+                        radarCtx.fillRect(rx, 0, roomWidth, radarCanvas.height);
+                    }
+
                     r.puzzles.forEach(p => {
-                        const nx = (p.x + r.xStart) / 1600 * radarCanvas.width;
+                        const nx = rx + (p.x / 400) * roomWidth;
                         const ny = (p.y / 300) * radarCanvas.height;
                         radarCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
                         radarCtx.beginPath();
-                        radarCtx.arc(nx, ny, 6, 0, Math.PI * 2);
+                        radarCtx.arc(nx, ny, 3, 0, Math.PI * 2);
                         radarCtx.fill();
                     });
                 });
 
-                const opX = (State.operativePos.x / 1600) * radarCanvas.width;
+                const activeRoomIdx = State.operativePos.room - 1;
+                const opX = (activeRoomIdx * roomWidth) + (State.operativePos.x / 400) * roomWidth;
                 const opY = (State.operativePos.y / 300) * radarCanvas.height;
+
                 radarCtx.fillStyle = '#00f0ff';
+                radarCtx.shadowColor = '#00f0ff';
+                radarCtx.shadowBlur = 8;
                 radarCtx.beginPath();
                 radarCtx.arc(opX, opY, 5, 0, Math.PI * 2);
                 radarCtx.fill();
+                radarCtx.shadowBlur = 0;
 
                 document.getElementById('telemetry-x').innerText = State.operativePos.x.toFixed(2);
                 document.getElementById('telemetry-y').innerText = State.operativePos.y.toFixed(2);
@@ -1033,7 +1082,6 @@
                 output.scrollTop = output.scrollHeight;
             }
 
-            // DOM Event Listeners
             document.getElementById('btn-role-operative').addEventListener('click', () => selectRole('operative'));
             document.getElementById('btn-role-hacker').addEventListener('click', () => selectRole('hacker'));
             document.getElementById('btn-gen-seed').addEventListener('click', randomizeSeed);
