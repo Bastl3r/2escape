@@ -194,11 +194,11 @@
                     </div>
                 </div>
 
-                <!-- Tab 3: Hacker Terminal (Max height adjusted to max 50vh for onscreen keyboard) -->
+                <!-- Tab 3: Hacker Terminal -->
                 <div id="htab-content-3" class="max-h-[50vh] flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
                     <div id="terminal-output" class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300 min-h-[120px]">
                         <div class="text-[#00f0ff]">SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED</div>
-                        <div class="text-gray-500">Type 'help' to list available system commands, or enter phase override (e.g., 'cos(phi4[1])=15').</div>
+                        <div class="text-gray-500">Type 'help' to list available system commands, or enter overrides (e.g., 'p3 65').</div>
                     </div>
                     <div class="flex gap-2 shrink-0">
                         <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
@@ -339,21 +339,26 @@
                 else if (type === 'frequency') typeLabel = 'Beep Synth';
                 else if (type === 'wires') typeLabel = 'Breaker Box';
                 else if (type === 'power_grid') typeLabel = 'Matrix Grid';
+                else if (type === 'pressure_cycle') typeLabel = 'Hydro Station';
 
                 return `${brand} ${typeLabel} ${series}`;
             }
 
             const rooms = [];
-            const puzzleTypes = ['keypad', 'frequency', 'wires', 'power_grid'];
+            const puzzleTypes = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle'];
             const puzzleTypeDisplayNames = {
                 'keypad': 'KEYPAD BYPASS',
                 'frequency': 'FREQUENCY TUNER',
                 'wires': 'WIRE CUTTER',
-                'power_grid': 'POWER MATRIX'
+                'power_grid': 'POWER MATRIX',
+                'pressure_cycle': 'PRESSURE CYCLE'
             };
+
+            let globalPumpCounter = 1;
 
             function generateFullRunLayout(seedStr) {
                 rooms.length = 0;
+                globalPumpCounter = 1; // Reset unique global pump indexing per mission generation
 
                 for (let r = 1; r <= totalRooms; r++) {
                     const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${r}`);
@@ -408,6 +413,16 @@
                         }
                         powerGridTargets.sort((a, b) => a - b);
 
+                        // Pressure Cycle / Pump specific parameters
+                        const targetTank = roomPrng.range(1, 2);
+                        const targetLevel = roomPrng.range(25, 95);
+                        const t1 = roomPrng.range(15, 85);
+                        const t2 = 100 - t1;
+                        const p1Id = `p${globalPumpCounter++}`;
+                        const p2Id = `p${globalPumpCounter++}`;
+                        const p1Flow = roomPrng.range(15, 100);
+                        const p2Flow = roomPrng.range(15, 100);
+
                         pList.push({
                             id: `r${r}_p${pIdx+1}_${typeKey}`,
                             room: r,
@@ -423,7 +438,16 @@
                             currentPhaseInput: null,
                             correctWireIdx: correctWireIdx,
                             wireRule: `Sever Wire 0${correctWireIdx + 1} (${wireColors[correctWireIdx]})`,
-                            powerGridTargets: powerGridTargets
+                            powerGridTargets: powerGridTargets,
+                            pressureData: {
+                                targetTank: targetTank,
+                                targetLevel: targetLevel,
+                                tank1: t1,
+                                tank2: t2,
+                                p1: { id: p1Id, flow: p1Flow },
+                                p2: { id: p2Id, flow: p2Flow },
+                                holdTimer: 0
+                            }
                         });
                     });
 
@@ -480,11 +504,13 @@
                             solutionHtml = `Instruction: <span class="text-[#00f0ff] font-bold font-mono">${p.wireRule}</span>`;
                         } else if (p.type === 'power_grid') {
                             if (p.powerGridTargets.length === 9) {
-                                solutionHtml = `State: <span class="text-[#00ff66] font-bold">Synchronize all 9 node elements to green</span>`;
+                                solutionHtml = `State: <span class="text-[#00ff66] font-bold">Synchronize all 9 node elements</span>`;
                             } else {
                                 const nodesList = p.powerGridTargets.map(n => n + 1).join(', ').replace(/, ([^,]*)$/, ' and $1');
-                                solutionHtml = `State: <span class="text-[#00ff66] font-bold">Synchronize node elements ${nodesList} to green</span>`;
+                                solutionHtml = `State: <span class="text-[#00ff66] font-bold">Synchronize nodes ${nodesList}</span>`;
                             }
+                        } else if (p.type === 'pressure_cycle') {
+                            solutionHtml = `Target: <span class="text-red-400 font-bold">Tank ${p.pressureData.targetTank} @ ${p.pressureData.targetLevel}%</span> | Pumps: <span class="text-[#00f0ff] font-mono">${p.pressureData.p1.id}, ${p.pressureData.p2.id}</span>`;
                         }
 
                         item.innerHTML = `
@@ -715,6 +741,20 @@
                                     window.recheckFrequencyPuzzle();
                                 }
                             }
+                        }
+                    }
+                } else if (data.type === 'pump_sync') {
+                    rooms.forEach(r => {
+                        r.puzzles.forEach(p => {
+                            if (p.type === 'pressure_cycle') {
+                                if (p.pressureData.p1.id === data.pumpId) p.pressureData.p1.flow = data.flow;
+                                if (p.pressureData.p2.id === data.pumpId) p.pressureData.p2.flow = data.flow;
+                            }
+                        });
+                    });
+                    if (State.activePuzzle && State.activePuzzle.type === 'pressure_cycle') {
+                        if (typeof window.recheckPressurePuzzle === 'function') {
+                            window.recheckPressurePuzzle();
                         }
                     }
                 } else if (data.type === 'terminal_cmd') {
@@ -974,12 +1014,14 @@
                 else if (puzzle.type === 'frequency') buildFrequencyPuzzle(bodyElem, statusElem, puzzle);
                 else if (puzzle.type === 'wires') buildWiresPuzzle(bodyElem, statusElem, puzzle);
                 else if (puzzle.type === 'power_grid') buildPowerGridPuzzle(bodyElem, statusElem, puzzle);
+                else if (puzzle.type === 'pressure_cycle') buildPressureCyclePuzzle(bodyElem, statusElem, puzzle);
             }
 
             function closePuzzleModal() {
                 document.getElementById('puzzle-modal').classList.add('hidden');
                 State.activePuzzle = null;
                 window.recheckFrequencyPuzzle = null;
+                window.recheckPressurePuzzle = null;
             }
 
             function solvePuzzle(puzzle) {
@@ -1167,6 +1209,108 @@
                 });
             }
 
+            function buildPressureCyclePuzzle(container, status, puzzle) {
+                const pd = puzzle.pressureData;
+                container.innerHTML = `
+                    <div class="w-full flex flex-col items-center space-y-3 font-mono text-xs">
+                        <div class="w-full bg-[#0d0f12] border border-[#00f0ff44] rounded p-3">
+                            <pre class="text-[11px] leading-tight text-[#00f0ff] font-mono overflow-x-auto text-center" id="ascii-flow-art">
+         ${pd.p1.id.toUpperCase()}
+      +-----+
+ -----|  ▶  |----->
+|      +-----+     |
+|       p1=${pd.p1.flow}%     |
+|                  |
+|                  |
+|                  v
++-------+       +-------+
+| Level |       | Level | ${pd.targetTank === 2 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${pd.targetLevel}%]</span>` : ''}
+|  ${Math.round(pd.tank1)}%  |       |  ${Math.round(pd.tank2)}%  |
+| Tank1 |       | Tank2 |
++-------+       +-------+
+${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${pd.targetLevel}%]</span>` : '^'}                    |
+|                    |
+|                    |
+|      ${pd.p2.id.toUpperCase()}         |
+|     +-----+        |
+ &lt;----|  ◀  |--------
+      +-----+
+       p2=${pd.p2.flow}%
+                            </pre>
+                        </div>
+                        <div class="text-gray-300 text-center">
+                            Hacker command syntax: <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">${pd.p1.id} [0-100]</code> or <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">${pd.p2.id} [0-100]</code>
+                        </div>
+                    </div>
+                `;
+
+                // Simulation tick for pressure puzzle
+                const simInterval = setInterval(() => {
+                    if (puzzle.solved || !State.activePuzzle || State.activePuzzle.id !== puzzle.id) {
+                        clearInterval(simInterval);
+                        return;
+                    }
+
+                    const flow1 = (pd.p1.flow / 100) * 5;
+                    const flow2 = (pd.p2.flow / 100) * 5;
+                    const net = flow1 - flow2;
+
+                    if (net > 0) {
+                        const tr = Math.min(net, pd.tank1);
+                        pd.tank1 -= tr;
+                        pd.tank2 += tr;
+                    } else if (net < 0) {
+                        const tr = Math.min(Math.abs(net), pd.tank2);
+                        pd.tank1 += tr;
+                        pd.tank2 -= tr;
+                    }
+
+                    const currentTargetVal = pd.targetTank === 1 ? pd.tank1 : pd.tank2;
+                    if (Math.abs(currentTargetVal - pd.targetLevel) <= 2) {
+                        pd.holdTimer = (pd.holdTimer || 0) + 0.5;
+                        if (pd.holdTimer >= 1.5) {
+                            status.innerText = 'Pressure Levels Balanced!';
+                            solvePuzzle(puzzle);
+                            clearInterval(simInterval);
+                        }
+                    } else {
+                        pd.holdTimer = 0;
+                    }
+
+                    // Refresh ASCII view dynamically
+                    const asciiElem = document.getElementById('ascii-flow-art');
+                    if (asciiElem) {
+                        asciiElem.innerHTML = `
+         ${pd.p1.id.toUpperCase()}
+      +-----+
+ -----|  ▶  |----->
+|      +-----+     |
+|       p1=${pd.p1.flow}%     |
+|                  |
+|                  |
+|                  v
++-------+       +-------+
+| Level |       | Level | ${pd.targetTank === 2 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${pd.targetLevel}%]</span>` : ''}
+|  ${Math.round(pd.tank1)}%  |       |  ${Math.round(pd.tank2)}%  |
+| Tank1 |       | Tank2 |
++-------+       +-------+
+${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">&lt;-- Target: [${pd.targetLevel}%]</span>` : '^'}                    |
+|                    |
+|                    |
+|      ${pd.p2.id.toUpperCase()}         |
+|     +-----+        |
+ &lt;----|  ◀  |--------
+      +-----+
+       p2=${pd.p2.flow}%
+                        `;
+                    }
+                }, 500);
+
+                window.recheckPressurePuzzle = () => {
+                    // Triggered when hacker modifies pump flow via terminal
+                };
+            }
+
             let radarCanvas, radarCtx;
 
             function initHackerDashboard() {
@@ -1273,8 +1417,38 @@
                 inputElem.value = '';
                 sendNetData({ type: 'terminal_cmd', cmd: cmdText });
 
-                const cosMatch = cmdText.match(/^cos\(phi\[?(\d+)\]?(?:\[?(\d+)\]?)?\)\s*=\s*(\d+)$/i) || cmdText.match(/^cos\(phi(\d+)\)\s*=\s*(\d+)$/i);
+                // Pump command matching: e.g. p3 85
+                const pumpMatch = cmdText.match(/^(p\d+)\s+(\d+)$/i);
+                if (pumpMatch) {
+                    const pumpId = pumpMatch[1].toLowerCase();
+                    const flowVal = Math.min(100, Math.max(0, parseInt(pumpMatch[2])));
+                    let found = false;
 
+                    rooms.forEach(r => {
+                        r.puzzles.forEach(p => {
+                            if (p.type === 'pressure_cycle') {
+                                if (p.pressureData.p1.id === pumpId || p.pressureData.p2.id === pumpId) {
+                                    if (p.pressureData.p1.id === pumpId) p.pressureData.p1.flow = flowVal;
+                                    if (p.pressureData.p2.id === pumpId) p.pressureData.p2.flow = flowVal;
+                                    found = true;
+                                }
+                            }
+                        });
+                    });
+
+                    if (found) {
+                        sendNetData({ type: 'pump_sync', pumpId: pumpId, flow: flowVal });
+                        appendTerminalOutput(`SUCCESS: Pump ${pumpId.toUpperCase()} set to flow ${flowVal}%.`, '#00ff66');
+                        audio.success();
+                        if (typeof window.recheckPressurePuzzle === 'function') window.recheckPressurePuzzle();
+                    } else {
+                        appendTerminalOutput(`ERROR: Pump ID '${pumpId}' not found or inactive.`, '#ff2a2a');
+                    }
+                    return;
+                }
+
+                // Phase override matching
+                const cosMatch = cmdText.match(/^cos\(phi\[?(\d+)\]?(?:\[?(\d+)\]?)?\)\s*=\s*(\d+)$/i) || cmdText.match(/^cos\(phi(\d+)\)\s*=\s*(\d+)$/i);
                 if (cosMatch) {
                     let roomNum, freqIdx, phaseVal;
                     if (cosMatch.length === 4) {
@@ -1323,7 +1497,8 @@
 
                 if (cmd === 'help') {
                     appendTerminalOutput('AVAILABLE COMMANDS:', '#00f0ff');
-                    appendTerminalOutput('  - cos(phi[N][M])=[deg] : Override phase angle for Room N, Frequency Puzzle M (e.g. cos(phi[4][1])=15)', '#00f0ff');
+                    appendTerminalOutput('  - p[index] [0-100]      : Set pump flow rate (e.g., "p3 75")', '#00f0ff');
+                    appendTerminalOutput('  - cos(phi[N][M])=[deg] : Override phase angle for Room N, Frequency Puzzle M', '#00f0ff');
                     appendTerminalOutput('  - statusReport          : Display security status across all rooms', '#00f0ff');
                     appendTerminalOutput('  - clear                 : Clear terminal screen', '#00f0ff');
                 } else if (cmd === 'statusreport') {
