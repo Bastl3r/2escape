@@ -174,8 +174,8 @@
                     <div class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded relative overflow-hidden flex flex-col items-center justify-center">
                         <canvas id="hacker-radar-canvas" class="absolute inset-0 w-full h-full block"></canvas>
                         <div class="absolute top-3 left-3 bg-[#0d0f12]/90 border border-[#00f0ff44] p-2 rounded text-xs pointer-events-none">
-                            <span class="text-[#00f0ff] font-orbitron font-bold">MULTI-ROOM RADAR // 20 ROOMS</span>
-                            <div class="text-[10px] text-gray-400 mt-0.5">Tracking Operative position & security barrier status.</div>
+                            <span class="text-[#00f0ff] font-orbitron font-bold">OPERATIVE BLUEPRINT RADAR</span>
+                            <div class="text-[10px] text-gray-400 mt-0.5">Tracking current room security barriers and agent vector.</div>
                         </div>
                     </div>
                 </div>
@@ -184,7 +184,7 @@
                     <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
                         <h3 class="font-orbitron text-sm text-[#00f0ff] mb-2 font-bold">DYNAMIC PRNG MANUAL LOGS // SEED: <span id="manual-seed-lbl" class="text-[#00ff66]">CB-9901</span></h3>
                         <p class="text-xs text-gray-300 leading-relaxed">
-                            Parameters below are cryptographically derived from the active session seed. Relay precise metrics to your operative agent.
+                            Parameters below are cryptographically derived per-room based on the seed. Relay precise metrics to your operative agent.
                         </p>
                     </div>
 
@@ -199,7 +199,7 @@
                         </div>
                         <div class="bg-[#12161f] border border-gray-800 rounded p-4">
                             <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE GAMMA: WIRE CUTTER</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed" id="manual-wire-rule">Rule: If serial contains odd digit, cut designated wire.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed" id="manual-wire-rule">Rule: Cut designated wire based on room protocol.</p>
                         </div>
                         <div class="bg-[#12161f] border border-gray-800 rounded p-4">
                             <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE DELTA: POWER MATRIX</h4>
@@ -331,53 +331,97 @@
                 range(min, max) { return min + Math.floor(this.next() * (max - min + 1)); }
             }
 
-            const PuzzleConfig = {
-                pin: '4892',
-                targetFreq: 440,
-                targetPhase: 90,
-                wireRule: 'Cut 3rd wire if serial contains odd digit.'
-            };
+            const totalRooms = 20;
+            const puzzlesPerRoom = 3; 
+
+            // Room specific solution parameters map
+            const RoomPuzzleConfigs = {};
 
             function generateSessionParameters(seedStr) {
-                const prng = new SeededPRNG(seedStr);
-                PuzzleConfig.pin = String(prng.range(1000, 9999));
-                PuzzleConfig.targetFreq = prng.range(200, 700);
-                PuzzleConfig.targetPhase = prng.range(30, 150);
-                PuzzleConfig.wireRule = prng.next() > 0.5 ? 'Cut 3rd wire (Yellow) if serial has odd digit.' : 'Cut 1st wire (Red) if cyan count <= 1.';
-                
+                for (let r = 1; r <= totalRooms; r++) {
+                    // Unique seed per room by combining mission seed with room number
+                    const prng = new SeededPRNG(`${seedStr}-R${r}`);
+                    const correctWireIdx = prng.range(0, 3);
+                    const wireColors = ['Red', 'Cyan', 'Yellow', 'Green'];
+                    RoomPuzzleConfigs[r] = {
+                        pin: String(prng.range(1000, 9999)),
+                        targetFreq: prng.range(200, 700),
+                        targetPhase: prng.range(30, 150),
+                        correctWireIdx: correctWireIdx,
+                        wireRule: `Sever Wire 0${correctWireIdx + 1} (${wireColors[correctWireIdx]}) to bypass sector junction.`
+                    };
+                }
+                updateHackerManualDisplay(State.operativePos.room);
+            }
+
+            function updateHackerManualDisplay(roomNum) {
+                const config = RoomPuzzleConfigs[roomNum] || RoomPuzzleConfigs[1];
+                if (!config) return;
+
                 const pinLbl = document.getElementById('manual-pin');
                 const freqLbl = document.getElementById('manual-freq');
                 const phaseLbl = document.getElementById('manual-phase');
                 const ruleLbl = document.getElementById('manual-wire-rule');
                 const seedLbl = document.getElementById('manual-seed-lbl');
 
-                if (pinLbl) pinLbl.innerText = PuzzleConfig.pin;
-                if (freqLbl) freqLbl.innerText = PuzzleConfig.targetFreq;
-                if (phaseLbl) phaseLbl.innerText = PuzzleConfig.targetPhase;
-                if (ruleLbl) ruleLbl.innerText = `Rule: ${PuzzleConfig.wireRule}`;
-                if (seedLbl) seedLbl.innerText = seedStr;
+                if (pinLbl) pinLbl.innerText = config.pin;
+                if (freqLbl) freqLbl.innerText = config.targetFreq;
+                if (phaseLbl) phaseLbl.innerText = config.targetPhase;
+                if (ruleLbl) ruleLbl.innerText = `Rule (Room ${roomNum}): ${config.wireRule}`;
+                if (seedLbl) seedLbl.innerText = `${State.seed} [ROOM ${roomNum}]`;
             }
 
-            const totalRooms = 20;
-            const puzzlesPerRoom = 3; 
-
-            // Generate 20 Rooms
+            // Generate 20 Rooms with variance and keypad placed next to exit door
             const rooms = [];
             const puzzleTypes = ['keypad', 'frequency', 'wires', 'power_grid'];
 
             for(let r=0; r<totalRooms; r++) {
                 const pList = [];
+                // PRNG to randomize puzzle selection per room
+                const roomPrng = new SeededPRNG(`LAYOUT-ROOM-${r+1}`);
+                
+                // Select 3 unique puzzle types for this room
+                const availableTypes = [...puzzleTypes];
+                const selectedTypes = [];
                 for(let p=0; p<puzzlesPerRoom; p++) {
-                    const typeKey = puzzleTypes[p % puzzleTypes.length];
+                    const idx = roomPrng.range(0, availableTypes.length - 1);
+                    selectedTypes.push(availableTypes.splice(idx, 1)[0]);
+                }
+
+                // If keypad is present, place it at the exit door location (right edge)
+                const hasKeypad = selectedTypes.includes('keypad');
+                let otherPuzzleIndex = 0;
+
+                selectedTypes.forEach((typeKey, pIdx) => {
+                    let posX, posY;
+                    if (typeKey === 'keypad') {
+                        // Positioned strictly next to the door on the right wall
+                        posX = 600; // Right side wall next to exit door
+                        posY = 210; // Center vertically near the door (door is Y=175 to 245)
+                    } else {
+                        // Vary remaining puzzle positions across the room
+                        const gridPositions = [
+                            { x: 120, y: 100 },
+                            { x: 340, y: 100 },
+                            { x: 120, y: 320 },
+                            { x: 340, y: 320 }
+                        ];
+                        const pos = gridPositions[otherPuzzleIndex % gridPositions.length];
+                        posX = pos.x + roomPrng.range(-20, 20);
+                        posY = pos.y + roomPrng.range(-20, 20);
+                        otherPuzzleIndex++;
+                    }
+
                     pList.push({
-                        id: `room${r+1}_p${p+1}_${typeKey}`,
-                        name: `R${r+1} P-${p+1} [${typeKey.toUpperCase()}]`,
+                        id: `room${r+1}_p${pIdx+1}_${typeKey}`,
+                        name: `R${r+1} P-${pIdx+1} [${typeKey.toUpperCase()}]`,
                         type: typeKey,
-                        x: 80 + (p * 100) % 240,
-                        y: 80 + Math.floor(p / 2) * 100,
+                        x: posX,
+                        y: posY,
                         solved: false
                     });
-                }
+                });
+
                 rooms.push({
                     id: r + 1,
                     puzzles: pList
@@ -400,9 +444,8 @@
             };
 
             function getSecondsPerRoom(roomNum) {
-                // Formula: seconds per room = number of puzzles per room * 30 - ((roomcount - 5) * 15)
                 const calculated = (puzzlesPerRoom * 30) - ((roomNum - 5) * 15);
-                return Math.max(15, calculated); // minimum 15 seconds
+                return Math.max(15, calculated);
             }
 
             function resetRoomTimer(roomNum) {
@@ -567,6 +610,7 @@
                     if (State.operativePos.room !== data.room) {
                         State.operativePos.room = data.room;
                         resetRoomTimer(State.operativePos.room);
+                        updateHackerManualDisplay(State.operativePos.room);
                     }
                 } else if (data.type === 'puzzle_sync') {
                     const rObj = rooms.find(r => r.id === data.roomId);
@@ -595,7 +639,6 @@
                 State.operativePos.room = 1;
                 State.gameOver = false;
 
-                // Reset timer for room 1
                 resetRoomTimer(1);
                 updateObjectivesDisplay();
                 updateTelemetryNodesDisplay();
@@ -736,6 +779,7 @@
                         State.operativePos.room += 1;
                         State.operativePos.x = margin + 10;
                         resetRoomTimer(State.operativePos.room);
+                        updateHackerManualDisplay(State.operativePos.room);
                         audio.beep(880, 'sine', 0.15, 0.15);
                     } else {
                         State.operativePos.x = opCanvas.width - margin;
@@ -751,6 +795,7 @@
                         State.operativePos.room -= 1;
                         State.operativePos.x = opCanvas.width - margin - 10;
                         resetRoomTimer(State.operativePos.room);
+                        updateHackerManualDisplay(State.operativePos.room);
                         audio.beep(660, 'sine', 0.15, 0.15);
                     } else {
                         State.operativePos.x = margin;
@@ -854,6 +899,7 @@
 
             function buildKeypadPuzzle(container, status, puzzle) {
                 let entered = '';
+                const roomConfig = RoomPuzzleConfigs[State.operativePos.room];
                 container.innerHTML = `
                     <div class="text-center mb-4">
                         <div id="keypad-display" class="w-48 bg-[#0d0f12] border border-[#00f0ff] p-2 rounded text-xl font-mono text-[#00ff66] tracking-widest mb-3 glow-green">____</div>
@@ -869,7 +915,7 @@
                         audio.beep(500, 'sine', 0.05, 0.05);
                         if (n === 'C') entered = '';
                         else if (n === 'OK') {
-                            if (entered === PuzzleConfig.pin) {
+                            if (entered === roomConfig.pin) {
                                 status.innerText = 'Override Accepted!';
                                 solvePuzzle(puzzle);
                             } else {
@@ -886,6 +932,7 @@
 
             function buildFrequencyPuzzle(container, status, puzzle) {
                 let freq = 200, phase = 30;
+                const roomConfig = RoomPuzzleConfigs[State.operativePos.room];
                 container.innerHTML = `
                     <div class="w-full flex flex-col items-center">
                         <canvas id="freq-canvas" width="280" height="100" class="bg-[#0d0f12] border border-[#00f0ff44] rounded mb-3"></canvas>
@@ -918,7 +965,7 @@
                 drawWave();
 
                 function checkFreq() {
-                    if (Math.abs(freq - PuzzleConfig.targetFreq) < 20 && Math.abs(phase - PuzzleConfig.targetPhase) < 15) {
+                    if (Math.abs(freq - roomConfig.targetFreq) < 20 && Math.abs(phase - roomConfig.targetPhase) < 15) {
                         status.innerText = 'Frequency Synchronized!';
                         solvePuzzle(puzzle);
                     }
@@ -926,6 +973,7 @@
             }
 
             function buildWiresPuzzle(container, status, puzzle) {
+                const roomConfig = RoomPuzzleConfigs[State.operativePos.room];
                 const wires = [
                     { color: 'Red', hex: '#ff2a2a' },
                     { color: 'Cyan', hex: '#00f0ff' },
@@ -940,7 +988,7 @@
                     btn.innerHTML = `<span class="font-orbitron font-bold text-xs" style="color: ${w.hex}">WIRE 0${idx+1}: ${w.color.toUpperCase()}</span><span class="text-xs text-gray-500">[CUT]</span>`;
                     btn.onclick = () => {
                         audio.beep(300, 'sawtooth', 0.15, 0.2);
-                        if (idx === 2) {
+                        if (idx === roomConfig.correctWireIdx) {
                             status.innerText = 'Correct wire severed!';
                             solvePuzzle(puzzle);
                         } else {
@@ -996,39 +1044,70 @@
                 radarCtx.fillStyle = '#0a0c10';
                 radarCtx.fillRect(0, 0, radarCanvas.width, radarCanvas.height);
 
-                const roomWidth = radarCanvas.width / totalRooms;
+                // Render strictly the active room the operative is currently occupying
+                const currentRoom = rooms.find(r => r.id === State.operativePos.room) || rooms[0];
 
-                rooms.forEach((r, idx) => {
-                    const rx = idx * roomWidth;
-                    radarCtx.strokeStyle = '#00f0ff33';
-                    radarCtx.strokeRect(rx, 0, roomWidth, radarCanvas.height);
+                // Grid background for room blueprint
+                radarCtx.strokeStyle = '#00f0ff11';
+                radarCtx.lineWidth = 1;
+                for (let x = 0; x < radarCanvas.width; x += 40) {
+                    radarCtx.beginPath(); radarCtx.moveTo(x, 0); radarCtx.lineTo(x, radarCanvas.height); radarCtx.stroke();
+                }
+                for (let y = 0; y < radarCanvas.height; y += 40) {
+                    radarCtx.beginPath(); radarCtx.moveTo(0, y); radarCtx.lineTo(radarCanvas.width, y); radarCtx.stroke();
+                }
 
-                    if (State.operativePos.room === r.id) {
-                        radarCtx.fillStyle = 'rgba(0, 240, 255, 0.05)';
-                        radarCtx.fillRect(rx, 0, roomWidth, radarCanvas.height);
-                    }
+                // Room boundary
+                radarCtx.strokeStyle = '#00f0ff66';
+                radarCtx.lineWidth = 3;
+                radarCtx.strokeRect(0, 0, radarCanvas.width, radarCanvas.height);
 
-                    r.puzzles.forEach(p => {
-                        const nx = rx + (p.x / 400) * roomWidth;
-                        const ny = (p.y / 300) * radarCanvas.height;
-                        radarCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
-                        radarCtx.beginPath();
-                        radarCtx.arc(nx, ny, 3, 0, Math.PI * 2);
-                        radarCtx.fill();
-                    });
+                // Header info
+                radarCtx.fillStyle = '#00f0ff';
+                radarCtx.font = '12px Orbitron';
+                radarCtx.fillText(`LIVE BLUEPRINT: ROOM ${currentRoom.id} / ${totalRooms}`, 16, 24);
+
+                // Scale factor from operative canvas size (assuming standard 672x420) to hacker radar canvas
+                const scaleX = radarCanvas.width / 672;
+                const scaleY = radarCanvas.height / 420;
+
+                // Render current room puzzle nodes
+                currentRoom.puzzles.forEach(p => {
+                    const nx = p.x * scaleX;
+                    const ny = p.y * scaleY;
+
+                    radarCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
+                    radarCtx.beginPath();
+                    radarCtx.arc(nx, ny, 10, 0, Math.PI * 2);
+                    radarCtx.fill();
+                    radarCtx.strokeStyle = '#ffffff';
+                    radarCtx.lineWidth = 2;
+                    radarCtx.stroke();
+
+                    radarCtx.fillStyle = '#ffffff';
+                    radarCtx.font = '10px Share Tech Mono';
+                    radarCtx.fillText(p.name, nx - 30, ny + 22);
                 });
 
-                const activeRoomIdx = State.operativePos.room - 1;
-                const opX = (activeRoomIdx * roomWidth) + (State.operativePos.x / 400) * roomWidth;
-                const opY = (State.operativePos.y / 300) * radarCanvas.height;
+                // Render Operative Marker
+                const opX = State.operativePos.x * scaleX;
+                const opY = State.operativePos.y * scaleY;
 
                 radarCtx.fillStyle = '#00f0ff';
                 radarCtx.shadowColor = '#00f0ff';
-                radarCtx.shadowBlur = 8;
+                radarCtx.shadowBlur = 12;
                 radarCtx.beginPath();
-                radarCtx.arc(opX, opY, 5, 0, Math.PI * 2);
+                radarCtx.arc(opX, opY, 8, 0, Math.PI * 2);
                 radarCtx.fill();
                 radarCtx.shadowBlur = 0;
+
+                // Radar pulse effect around operative
+                const pulse = (Date.now() % 1000) / 1000;
+                radarCtx.strokeStyle = `rgba(0, 240, 255, ${1 - pulse})`;
+                radarCtx.lineWidth = 2;
+                radarCtx.beginPath();
+                radarCtx.arc(opX, opY, 8 + pulse * 20, 0, Math.PI * 2);
+                radarCtx.stroke();
 
                 document.getElementById('telemetry-x').innerText = State.operativePos.x.toFixed(2);
                 document.getElementById('telemetry-y').innerText = State.operativePos.y.toFixed(2);
