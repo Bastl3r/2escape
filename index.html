@@ -197,7 +197,7 @@
                 <div id="htab-content-3" class="flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
                     <div id="terminal-output" class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300">
                         <div class="text-[#00f0ff]">SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED</div>
-                        <div class="text-gray-500">Type 'help' to list available system commands.</div>
+                        <div class="text-gray-500">Type 'help' to list available system commands, or enter phase override (e.g., 'cos(phi4)=15').</div>
                     </div>
                     <div class="flex gap-2">
                         <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
@@ -320,7 +320,6 @@
             const totalRooms = 20;
             const puzzlesPerRoom = 3; 
 
-            // Device Naming Component Libraries for Procedural Make & Model Generation
             const deviceBrands = ['Aegis', 'CipherGrid', 'VoltTech', 'OmniKey', 'Nexus', 'Krypton', 'ZeroSec', 'Titan', 'Spectra', 'Helix', 'Vortex', 'Synapse'];
             const deviceSeries = ['Alpha', 'Pro', 'MK-IV', 'v3', '3000', 'X-Series', 'Quantum', 'Q5', 'EX', 'Ultra', 'Core', 'Prime'];
 
@@ -336,7 +335,6 @@
                 return `${brand} ${typeLabel} ${series}`;
             }
 
-            // Global Puzzles Master List and Room Configurations
             const rooms = [];
             const puzzleTypes = ['keypad', 'frequency', 'wires', 'power_grid'];
             const puzzleTypeDisplayNames = {
@@ -347,7 +345,7 @@
             };
 
             function generateFullRunLayout(seedStr) {
-                rooms.length = 0; // Reset existing room list
+                rooms.length = 0;
 
                 for (let r = 1; r <= totalRooms; r++) {
                     const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${r}`);
@@ -380,7 +378,6 @@
                             otherPuzzleIndex++;
                         }
 
-                        // Generate unique Make and Model and solution parameters
                         const deviceMakeModel = generateDeviceName(roomPrng, typeKey);
                         const wireColors = ['Red', 'Cyan', 'Yellow', 'Green'];
                         const correctWireIdx = roomPrng.range(0, 3);
@@ -393,10 +390,10 @@
                             x: posX,
                             y: posY,
                             solved: false,
-                            // Solution parameters
                             pin: String(roomPrng.range(1000, 9999)),
                             targetFreq: roomPrng.range(200, 700),
                             targetPhase: roomPrng.range(30, 150),
+                            currentPhaseInput: null, // Holds terminal override phase input for operative checking
                             correctWireIdx: correctWireIdx,
                             wireRule: `Sever Wire 0${correctWireIdx + 1} (${wireColors[correctWireIdx]})`
                         });
@@ -416,15 +413,11 @@
                 if (seedLbl) seedLbl.innerText = State.seed;
                 manualContainer.innerHTML = '';
 
-                // Gather all puzzles from all 20 rooms into a single array
                 const allPuzzles = [];
                 rooms.forEach(r => allPuzzles.push(...r.puzzles));
 
-                // Group puzzles by type
                 puzzleTypes.forEach(typeKey => {
                     const group = allPuzzles.filter(p => p.type === typeKey);
-                    
-                    // Sort alphabetically by makeModel within each type
                     group.sort((a, b) => a.makeModel.localeCompare(b.makeModel));
 
                     if (group.length === 0) return;
@@ -448,7 +441,7 @@
                         if (p.type === 'keypad') {
                             solutionHtml = `PIN Code: <span class="text-[#00f0ff] font-bold font-mono text-sm">${p.pin}</span>`;
                         } else if (p.type === 'frequency') {
-                            solutionHtml = `Freq: <span class="text-[#00f0ff] font-bold font-mono">${p.targetFreq} Hz</span> | Phase: <span class="text-[#00f0ff] font-bold font-mono">${p.targetPhase}°</span>`;
+                            solutionHtml = `Target Freq: <span class="text-[#00f0ff] font-bold font-mono">${p.targetFreq} Hz</span>`;
                         } else if (p.type === 'wires') {
                             solutionHtml = `Instruction: <span class="text-[#00f0ff] font-bold font-mono">${p.wireRule}</span>`;
                         } else if (p.type === 'power_grid') {
@@ -551,7 +544,6 @@
                 }
             }
 
-            // --- NETWORKING ENGINE ---
             function hostGame() {
                 audio.beep(400, 'sine', 0.1, 0.1);
                 State.seed = document.getElementById('input-seed').value.trim() || 'CB-9901';
@@ -663,6 +655,19 @@
                     }
                     updateTelemetryNodesDisplay();
                     checkMissionWinCondition();
+                } else if (data.type === 'phase_sync') {
+                    const rObj = rooms.find(r => r.id === data.roomId);
+                    if (rObj) {
+                        const freqPuzzle = rObj.puzzles.find(p => p.type === 'frequency');
+                        if (freqPuzzle) {
+                            freqPuzzle.currentPhaseInput = data.phaseValue;
+                            if (State.activePuzzle && State.activePuzzle.id === freqPuzzle.id) {
+                                if (typeof window.recheckFrequencyPuzzle === 'function') {
+                                    window.recheckFrequencyPuzzle();
+                                }
+                            }
+                        }
+                    }
                 } else if (data.type === 'terminal_cmd') {
                     appendTerminalOutput(`[REMOTE] > ${data.cmd}`, '#00f0ff');
                 }
@@ -815,7 +820,6 @@
 
                 State.operativePos.y = Math.max(margin, Math.min(opCanvas.height - margin, State.operativePos.y));
 
-                // Right Wall & Exit Portal
                 if (State.operativePos.x >= opCanvas.width - margin) {
                     if (currentRoom.id < totalRooms && isRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYStart + doorHeight) {
                         State.operativePos.room += 1;
@@ -827,7 +831,6 @@
                     }
                 }
 
-                // Left Wall & Entrance Portal
                 if (State.operativePos.x <= margin) {
                     const prevRoom = rooms.find(r => r.id === currentRoom.id - 1);
                     const isPrevRoomSolved = prevRoom ? prevRoom.puzzles.every(p => p.solved) : false;
@@ -867,7 +870,6 @@
                 opCtx.font = '12px Orbitron';
                 opCtx.fillText(`CURRENT FOCUS: ROOM ${currentRoom.id} / ${totalRooms}`, 20, 30);
 
-                // Render Puzzle Nodes with Make & Model Labeling
                 currentRoom.puzzles.forEach(p => {
                     opCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
                     opCtx.beginPath();
@@ -877,7 +879,6 @@
                     opCtx.lineWidth = 2;
                     opCtx.stroke();
 
-                    // Render Imaginative Make and Model label on Operative view
                     opCtx.fillStyle = '#ffffff';
                     opCtx.font = '9px Share Tech Mono';
                     opCtx.fillText(p.makeModel, p.x - 35, p.y + 26);
@@ -915,7 +916,6 @@
                 modal.classList.remove('hidden');
                 bodyElem.innerHTML = '';
                 
-                // Show Puzzle Type in [ ] brackets and Make & Model as Title
                 tagElem.innerText = `[${puzzle.type.toUpperCase()}]`;
                 titleElem.innerText = puzzle.makeModel;
 
@@ -928,6 +928,7 @@
             function closePuzzleModal() {
                 document.getElementById('puzzle-modal').classList.add('hidden');
                 State.activePuzzle = null;
+                window.recheckFrequencyPuzzle = null;
             }
 
             function solvePuzzle(puzzle) {
@@ -974,20 +975,38 @@
             }
 
             function buildFrequencyPuzzle(container, status, puzzle) {
-                let freq = 200, phase = 30;
+                let freq = 200;
+                const roomNum = puzzle.room;
+
                 container.innerHTML = `
                     <div class="w-full flex flex-col items-center">
                         <canvas id="freq-canvas" width="280" height="100" class="bg-[#0d0f12] border border-[#00f0ff44] rounded mb-3"></canvas>
-                        <div class="w-full space-y-2 text-xs">
-                            <div><label class="text-gray-400">Freq: <span id="lbl-freq" class="text-[#00ff66]">200</span> Hz</label><input type="range" min="100" max="800" value="200" id="slider-freq" class="w-full accent-[#00f0ff]"></div>
-                            <div><label class="text-gray-400">Phase: <span id="lbl-phase" class="text-[#00ff66]">30</span>°</label><input type="range" min="0" max="180" value="30" id="slider-phase" class="w-full accent-[#00f0ff]"></div>
+                        <div class="w-full space-y-3 text-xs">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-gray-400">Freq: <span id="lbl-freq" class="text-[#00ff66] font-mono font-bold">${freq}</span> Hz</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button id="btn-freq-minus" class="px-3 py-1 bg-[#12161f] border border-[#00f0ff] text-[#00f0ff] font-bold rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] cursor-pointer text-sm">-</button>
+                                    <input type="range" min="100" max="800" value="${freq}" id="slider-freq" class="flex-1 accent-[#00f0ff] cursor-pointer">
+                                    <button id="btn-freq-plus" class="px-3 py-1 bg-[#12161f] border border-[#00f0ff] text-[#00f0ff] font-bold rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] cursor-pointer text-sm">+</button>
+                                </div>
+                            </div>
+                            <div class="p-2.5 bg-[#0d0f12] border border-[#00f0ff33] rounded text-center font-mono">
+                                <div class="text-[#00f0ff] font-bold text-xs">
+                                    cos(φ${roomNum}) = <span id="disp-phase-angle" class="text-yellow-400">${puzzle.targetPhase}°</span>
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-1">requires terminal input</div>
+                            </div>
                         </div>
                     </div>
                 `;
+
                 const canvas = document.getElementById('freq-canvas');
                 const ctx = canvas.getContext('2d');
                 const fSlider = document.getElementById('slider-freq');
-                const pSlider = document.getElementById('slider-phase');
+                const btnMinus = document.getElementById('btn-freq-minus');
+                const btnPlus = document.getElementById('btn-freq-plus');
 
                 function drawWave() {
                     ctx.fillStyle = '#0d0f12';
@@ -995,23 +1014,46 @@
                     ctx.strokeStyle = '#00f0ff';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
+                    const activePhase = puzzle.currentPhaseInput !== null ? puzzle.currentPhaseInput : 30;
                     for (let x = 0; x < 280; x++) {
-                        const y = 50 + Math.sin((x + phase) * (freq / 1000)) * 30;
+                        const y = 50 + Math.sin((x + activePhase) * (freq / 1000)) * 30;
                         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
                     }
                     ctx.stroke();
                 }
 
-                fSlider.oninput = (e) => { freq = parseInt(e.target.value); document.getElementById('lbl-freq').innerText = freq; drawWave(); checkFreq(); };
-                pSlider.oninput = (e) => { phase = parseInt(e.target.value); document.getElementById('lbl-phase').innerText = phase; drawWave(); checkFreq(); };
+                function updateFreqValue(newVal) {
+                    freq = Math.min(800, Math.max(100, newVal));
+                    fSlider.value = freq;
+                    document.getElementById('lbl-freq').innerText = freq;
+                    drawWave();
+                    checkFreq();
+                }
+
+                fSlider.oninput = (e) => { updateFreqValue(parseInt(e.target.value)); };
+                btnMinus.onclick = () => { audio.beep(400, 'sine', 0.05, 0.05); updateFreqValue(freq - 5); };
+                btnPlus.onclick = () => { audio.beep(400, 'sine', 0.05, 0.05); updateFreqValue(freq + 5); };
+
                 drawWave();
 
                 function checkFreq() {
-                    if (Math.abs(freq - puzzle.targetFreq) < 20 && Math.abs(phase - puzzle.targetPhase) < 15) {
-                        status.innerText = 'Frequency Synchronized!';
+                    const freqMatched = Math.abs(freq - puzzle.targetFreq) < 20;
+                    const phaseMatched = puzzle.currentPhaseInput !== null && Math.abs(puzzle.currentPhaseInput - puzzle.targetPhase) < 5;
+
+                    if (freqMatched && phaseMatched) {
+                        status.innerText = 'Frequency & Phase Synchronized!';
                         solvePuzzle(puzzle);
+                    } else if (freqMatched && !phaseMatched) {
+                        status.innerText = 'Frequency Matched. Terminal Phase Sync Required...';
+                    } else {
+                        status.innerText = 'Awaiting Tuning & Terminal Phase Sync...';
                     }
                 }
+
+                window.recheckFrequencyPuzzle = () => {
+                    drawWave();
+                    checkFreq();
+                };
             }
 
             function buildWiresPuzzle(container, status, puzzle) {
@@ -1168,11 +1210,49 @@
                 inputElem.value = '';
                 sendNetData({ type: 'terminal_cmd', cmd: cmdText });
 
+                // Match cos(phi[roomnumber])=[value]
+                const cosMatch = cmdText.match(/^cos\(phi(\d+)\)\s*=\s*(\d+)$/i);
+
+                if (cosMatch) {
+                    const roomNum = parseInt(cosMatch[1]);
+                    const phaseVal = parseInt(cosMatch[2]);
+
+                    const targetRoom = rooms.find(r => r.id === roomNum);
+                    if (targetRoom) {
+                        const freqPuzzle = targetRoom.puzzles.find(p => p.type === 'frequency');
+                        if (freqPuzzle) {
+                            freqPuzzle.currentPhaseInput = phaseVal;
+                            sendNetData({ type: 'phase_sync', roomId: roomNum, phaseValue: phaseVal });
+                            
+                            if (phaseVal === freqPuzzle.targetPhase) {
+                                appendTerminalOutput(`SUCCESS: Phase angle ${phaseVal}° synced for Room ${roomNum}.`, '#00ff66');
+                                audio.success();
+                            } else {
+                                appendTerminalOutput(`WARNING: Phase angle ${phaseVal}° transmitted to Room ${roomNum} (Mismatch with target ${freqPuzzle.targetPhase}°).`, 'text-yellow-400');
+                            }
+
+                            if (State.activePuzzle && State.activePuzzle.id === freqPuzzle.id) {
+                                if (typeof window.recheckFrequencyPuzzle === 'function') {
+                                    window.recheckFrequencyPuzzle();
+                                }
+                            }
+                        } else {
+                            appendTerminalOutput(`ERROR: Room ${roomNum} does not contain a frequency synth node.`, '#ff2a2a');
+                        }
+                    } else {
+                        appendTerminalOutput(`ERROR: Invalid room number '${roomNum}'.`, '#ff2a2a');
+                    }
+                    return;
+                }
+
                 const parts = cmdText.split(' ');
                 const cmd = parts[0].toLowerCase();
 
                 if (cmd === 'help') {
-                    appendTerminalOutput('AVAILABLE COMMANDS: help, statusReport, clear', '#00f0ff');
+                    appendTerminalOutput('AVAILABLE COMMANDS:', '#00f0ff');
+                    appendTerminalOutput('  - cos(phi[N])=[deg] : Override phase angle for Room N (e.g. cos(phi4)=15)', '#00f0ff');
+                    appendTerminalOutput('  - statusReport      : Display security status across all rooms', '#00f0ff');
+                    appendTerminalOutput('  - clear             : Clear terminal screen', '#00f0ff');
                 } else if (cmd === 'statusreport') {
                     rooms.forEach(r => {
                         const solved = r.puzzles.every(p => p.solved);
@@ -1181,7 +1261,7 @@
                 } else if (cmd === 'clear') {
                     document.getElementById('terminal-output').innerHTML = '';
                 } else {
-                    appendTerminalOutput(`ERROR: Unknown command '${cmd}'.`, '#ff2a2a');
+                    appendTerminalOutput(`ERROR: Unknown command '${cmd}'. Type 'help' for syntax.`, '#ff2a2a');
                 }
             }
 
