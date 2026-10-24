@@ -180,31 +180,17 @@
                     </div>
                 </div>
 
+                <!-- Tab 2: Full Hacker's Manual Directory (Full Run Sorted) -->
                 <div id="htab-content-2" class="flex-1 hidden flex flex-col p-4 overflow-y-auto space-y-4">
                     <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
-                        <h3 class="font-orbitron text-sm text-[#00f0ff] mb-2 font-bold">DYNAMIC PRNG MANUAL LOGS // SEED: <span id="manual-seed-lbl" class="text-[#00ff66]">CB-9901</span></h3>
+                        <h3 class="font-orbitron text-sm text-[#00f0ff] mb-1 font-bold">FULL SECTOR MANUAL DIRECTORY // SEED: <span id="manual-seed-lbl" class="text-[#00ff66]">CB-9901</span></h3>
                         <p class="text-xs text-gray-300 leading-relaxed">
-                            Parameters below are cryptographically derived per-room based on the seed. Relay precise metrics to your operative agent.
+                            Complete encryption database for all 20 sector rooms. Puzzles are organized by device type and sorted alphabetically by Make & Model.
                         </p>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-[#12161f] border border-gray-800 rounded p-4">
-                            <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE ALPHA: KEYPAD BYPASS</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed">Required Access PIN: <span id="manual-pin" class="text-[#00f0ff] font-mono font-bold text-sm">----</span></p>
-                        </div>
-                        <div class="bg-[#12161f] border border-gray-800 rounded p-4">
-                            <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE BETA: FREQUENCY TUNER</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed">Target Hz: <span id="manual-freq" class="text-[#00f0ff] font-mono font-bold">---</span> Hz | Phase: <span id="manual-phase" class="text-[#00f0ff] font-mono font-bold">--</span>°</p>
-                        </div>
-                        <div class="bg-[#12161f] border border-gray-800 rounded p-4">
-                            <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE GAMMA: WIRE CUTTER</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed" id="manual-wire-rule">Rule: Cut designated wire based on room protocol.</p>
-                        </div>
-                        <div class="bg-[#12161f] border border-gray-800 rounded p-4">
-                            <h4 class="font-orbitron text-xs text-[#00ff66] font-bold mb-1">NODE DELTA: POWER MATRIX</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed">Required Polarity State: <span class="text-[#00ff66]">All nodes must be activated (Green).</span></p>
-                        </div>
+                    <div id="manual-puzzle-list" class="space-y-6">
+                        <!-- Populated dynamically -->
                     </div>
                 </div>
 
@@ -246,7 +232,7 @@
             <div class="max-w-lg w-full bg-[#12161f] border border-[#00f0ff] rounded-lg shadow-2xl overflow-hidden flex flex-col">
                 <div class="bg-[#0d0f12] border-b border-[#00f0ff44] px-4 py-3 flex items-center justify-between">
                     <div class="flex items-center space-x-2">
-                        <span id="puzzle-modal-tag" class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">NODE</span>
+                        <span id="puzzle-modal-tag" class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">[PUZZLE TYPE]</span>
                         <h3 id="puzzle-modal-title" class="font-orbitron font-bold text-sm text-[#00f0ff] glow-cyan">OVERRIDE</h3>
                     </div>
                     <button id="btn-close-modal" class="text-gray-400 hover:text-red-400 font-bold text-sm cursor-pointer px-2">✕</button>
@@ -334,97 +320,155 @@
             const totalRooms = 20;
             const puzzlesPerRoom = 3; 
 
-            // Room specific solution parameters map
-            const RoomPuzzleConfigs = {};
+            // Device Naming Component Libraries for Procedural Make & Model Generation
+            const deviceBrands = ['Aegis', 'CipherGrid', 'VoltTech', 'OmniKey', 'Nexus', 'Krypton', 'ZeroSec', 'Titan', 'Spectra', 'Helix', 'Vortex', 'Synapse'];
+            const deviceSeries = ['Alpha', 'Pro', 'MK-IV', 'v3', '3000', 'X-Series', 'Quantum', 'Q5', 'EX', 'Ultra', 'Core', 'Prime'];
 
-            function generateSessionParameters(seedStr) {
-                for (let r = 1; r <= totalRooms; r++) {
-                    // Unique seed per room by combining mission seed with room number
-                    const prng = new SeededPRNG(`${seedStr}-R${r}`);
-                    const correctWireIdx = prng.range(0, 3);
-                    const wireColors = ['Red', 'Cyan', 'Yellow', 'Green'];
-                    RoomPuzzleConfigs[r] = {
-                        pin: String(prng.range(1000, 9999)),
-                        targetFreq: prng.range(200, 700),
-                        targetPhase: prng.range(30, 150),
-                        correctWireIdx: correctWireIdx,
-                        wireRule: `Sever Wire 0${correctWireIdx + 1} (${wireColors[correctWireIdx]}) to bypass sector junction.`
-                    };
-                }
-                updateHackerManualDisplay(State.operativePos.room);
+            function generateDeviceName(prng, type) {
+                const brand = deviceBrands[prng.range(0, deviceBrands.length - 1)];
+                const series = deviceSeries[prng.range(0, deviceSeries.length - 1)];
+                let typeLabel = 'Terminal';
+                if (type === 'keypad') typeLabel = 'Numpad';
+                else if (type === 'frequency') typeLabel = 'Beep Synth';
+                else if (type === 'wires') typeLabel = 'Breaker Box';
+                else if (type === 'power_grid') typeLabel = 'Matrix Grid';
+
+                return `${brand} ${typeLabel} ${series}`;
             }
 
-            function updateHackerManualDisplay(roomNum) {
-                const config = RoomPuzzleConfigs[roomNum] || RoomPuzzleConfigs[1];
-                if (!config) return;
-
-                const pinLbl = document.getElementById('manual-pin');
-                const freqLbl = document.getElementById('manual-freq');
-                const phaseLbl = document.getElementById('manual-phase');
-                const ruleLbl = document.getElementById('manual-wire-rule');
-                const seedLbl = document.getElementById('manual-seed-lbl');
-
-                if (pinLbl) pinLbl.innerText = config.pin;
-                if (freqLbl) freqLbl.innerText = config.targetFreq;
-                if (phaseLbl) phaseLbl.innerText = config.targetPhase;
-                if (ruleLbl) ruleLbl.innerText = `Rule (Room ${roomNum}): ${config.wireRule}`;
-                if (seedLbl) seedLbl.innerText = `${State.seed} [ROOM ${roomNum}]`;
-            }
-
-            // Generate 20 Rooms with variance and keypad placed next to exit door
+            // Global Puzzles Master List and Room Configurations
             const rooms = [];
             const puzzleTypes = ['keypad', 'frequency', 'wires', 'power_grid'];
+            const puzzleTypeDisplayNames = {
+                'keypad': 'KEYPAD BYPASS',
+                'frequency': 'FREQUENCY TUNER',
+                'wires': 'WIRE CUTTER',
+                'power_grid': 'POWER MATRIX'
+            };
 
-            for(let r=0; r<totalRooms; r++) {
-                const pList = [];
-                // PRNG to randomize puzzle selection per room
-                const roomPrng = new SeededPRNG(`LAYOUT-ROOM-${r+1}`);
-                
-                // Select 3 unique puzzle types for this room
-                const availableTypes = [...puzzleTypes];
-                const selectedTypes = [];
-                for(let p=0; p<puzzlesPerRoom; p++) {
-                    const idx = roomPrng.range(0, availableTypes.length - 1);
-                    selectedTypes.push(availableTypes.splice(idx, 1)[0]);
-                }
+            function generateFullRunLayout(seedStr) {
+                rooms.length = 0; // Reset existing room list
 
-                // If keypad is present, place it at the exit door location (right edge)
-                const hasKeypad = selectedTypes.includes('keypad');
-                let otherPuzzleIndex = 0;
+                for (let r = 1; r <= totalRooms; r++) {
+                    const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${r}`);
+                    const selectedTypes = [];
+                    const availableTypes = [...puzzleTypes];
 
-                selectedTypes.forEach((typeKey, pIdx) => {
-                    let posX, posY;
-                    if (typeKey === 'keypad') {
-                        // Positioned strictly next to the door on the right wall
-                        posX = 600; // Right side wall next to exit door
-                        posY = 210; // Center vertically near the door (door is Y=175 to 245)
-                    } else {
-                        // Vary remaining puzzle positions across the room
-                        const gridPositions = [
-                            { x: 120, y: 100 },
-                            { x: 340, y: 100 },
-                            { x: 120, y: 320 },
-                            { x: 340, y: 320 }
-                        ];
-                        const pos = gridPositions[otherPuzzleIndex % gridPositions.length];
-                        posX = pos.x + roomPrng.range(-20, 20);
-                        posY = pos.y + roomPrng.range(-20, 20);
-                        otherPuzzleIndex++;
+                    for (let p = 0; p < puzzlesPerRoom; p++) {
+                        const idx = roomPrng.range(0, availableTypes.length - 1);
+                        selectedTypes.push(availableTypes.splice(idx, 1)[0]);
                     }
 
-                    pList.push({
-                        id: `room${r+1}_p${pIdx+1}_${typeKey}`,
-                        name: `R${r+1} P-${pIdx+1} [${typeKey.toUpperCase()}]`,
-                        type: typeKey,
-                        x: posX,
-                        y: posY,
-                        solved: false
-                    });
-                });
+                    const pList = [];
+                    let otherPuzzleIndex = 0;
 
-                rooms.push({
-                    id: r + 1,
-                    puzzles: pList
+                    selectedTypes.forEach((typeKey, pIdx) => {
+                        let posX, posY;
+                        if (typeKey === 'keypad') {
+                            posX = 600;
+                            posY = 210;
+                        } else {
+                            const gridPositions = [
+                                { x: 120, y: 100 },
+                                { x: 340, y: 100 },
+                                { x: 120, y: 320 },
+                                { x: 340, y: 320 }
+                            ];
+                            const pos = gridPositions[otherPuzzleIndex % gridPositions.length];
+                            posX = pos.x + roomPrng.range(-20, 20);
+                            posY = pos.y + roomPrng.range(-20, 20);
+                            otherPuzzleIndex++;
+                        }
+
+                        // Generate unique Make and Model and solution parameters
+                        const deviceMakeModel = generateDeviceName(roomPrng, typeKey);
+                        const wireColors = ['Red', 'Cyan', 'Yellow', 'Green'];
+                        const correctWireIdx = roomPrng.range(0, 3);
+
+                        pList.push({
+                            id: `r${r}_p${pIdx+1}_${typeKey}`,
+                            room: r,
+                            makeModel: deviceMakeModel,
+                            type: typeKey,
+                            x: posX,
+                            y: posY,
+                            solved: false,
+                            // Solution parameters
+                            pin: String(roomPrng.range(1000, 9999)),
+                            targetFreq: roomPrng.range(200, 700),
+                            targetPhase: roomPrng.range(30, 150),
+                            correctWireIdx: correctWireIdx,
+                            wireRule: `Sever Wire 0${correctWireIdx + 1} (${wireColors[correctWireIdx]})`
+                        });
+                    });
+
+                    rooms.push({ id: r, puzzles: pList });
+                }
+
+                populateHackerManualDirectory();
+            }
+
+            function populateHackerManualDirectory() {
+                const manualContainer = document.getElementById('manual-puzzle-list');
+                const seedLbl = document.getElementById('manual-seed-lbl');
+                if (!manualContainer) return;
+
+                if (seedLbl) seedLbl.innerText = State.seed;
+                manualContainer.innerHTML = '';
+
+                // Gather all puzzles from all 20 rooms into a single array
+                const allPuzzles = [];
+                rooms.forEach(r => allPuzzles.push(...r.puzzles));
+
+                // Group puzzles by type
+                puzzleTypes.forEach(typeKey => {
+                    const group = allPuzzles.filter(p => p.type === typeKey);
+                    
+                    // Sort alphabetically by makeModel within each type
+                    group.sort((a, b) => a.makeModel.localeCompare(b.makeModel));
+
+                    if (group.length === 0) return;
+
+                    const groupSection = document.createElement('div');
+                    groupSection.className = "bg-[#12161f] border border-[#00f0ff33] rounded p-4 space-y-3";
+
+                    const title = document.createElement('h4');
+                    title.className = "font-orbitron text-xs text-[#00ff66] font-bold border-b border-gray-800 pb-2 flex items-center justify-between";
+                    title.innerHTML = `<span>CATEGORY: [${puzzleTypeDisplayNames[typeKey]}]</span><span class="text-gray-500 font-normal">COUNT: ${group.length}</span>`;
+                    groupSection.appendChild(title);
+
+                    const grid = document.createElement('div');
+                    grid.className = "grid grid-cols-1 md:grid-cols-2 gap-3";
+
+                    group.forEach(p => {
+                        const item = document.createElement('div');
+                        item.className = "bg-[#0d0f12] border border-gray-800 rounded p-3 text-xs flex flex-col justify-between";
+
+                        let solutionHtml = '';
+                        if (p.type === 'keypad') {
+                            solutionHtml = `PIN Code: <span class="text-[#00f0ff] font-bold font-mono text-sm">${p.pin}</span>`;
+                        } else if (p.type === 'frequency') {
+                            solutionHtml = `Freq: <span class="text-[#00f0ff] font-bold font-mono">${p.targetFreq} Hz</span> | Phase: <span class="text-[#00f0ff] font-bold font-mono">${p.targetPhase}°</span>`;
+                        } else if (p.type === 'wires') {
+                            solutionHtml = `Instruction: <span class="text-[#00f0ff] font-bold font-mono">${p.wireRule}</span>`;
+                        } else if (p.type === 'power_grid') {
+                            solutionHtml = `State: <span class="text-[#00ff66] font-bold">Synchronize all 9 node elements to Green.</span>`;
+                        }
+
+                        item.innerHTML = `
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-orbitron font-bold text-[#00f0ff]">${p.makeModel}</span>
+                                    <span class="text-[10px] text-gray-500 font-mono">ROOM ${p.room}</span>
+                                </div>
+                                <div class="text-gray-300 mt-1">${solutionHtml}</div>
+                            </div>
+                        `;
+                        grid.appendChild(item);
+                    });
+
+                    groupSection.appendChild(grid);
+                    manualContainer.appendChild(groupSection);
                 });
             }
 
@@ -610,7 +654,6 @@
                     if (State.operativePos.room !== data.room) {
                         State.operativePos.room = data.room;
                         resetRoomTimer(State.operativePos.room);
-                        updateHackerManualDisplay(State.operativePos.room);
                     }
                 } else if (data.type === 'puzzle_sync') {
                     const rObj = rooms.find(r => r.id === data.roomId);
@@ -626,7 +669,7 @@
             }
 
             function startGameSession() {
-                generateSessionParameters(State.seed);
+                generateFullRunLayout(State.seed);
                 document.getElementById('view-room').classList.add('hidden');
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-game').classList.remove('hidden');
@@ -768,18 +811,16 @@
 
                 const doorHeight = 70;
                 const doorYStart = (opCanvas.height - doorHeight) / 2;
-                const doorYEnd = doorYStart + doorHeight;
                 const margin = 18;
 
                 State.operativePos.y = Math.max(margin, Math.min(opCanvas.height - margin, State.operativePos.y));
 
                 // Right Wall & Exit Portal
                 if (State.operativePos.x >= opCanvas.width - margin) {
-                    if (currentRoom.id < totalRooms && isRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYEnd) {
+                    if (currentRoom.id < totalRooms && isRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYStart + doorHeight) {
                         State.operativePos.room += 1;
                         State.operativePos.x = margin + 10;
                         resetRoomTimer(State.operativePos.room);
-                        updateHackerManualDisplay(State.operativePos.room);
                         audio.beep(880, 'sine', 0.15, 0.15);
                     } else {
                         State.operativePos.x = opCanvas.width - margin;
@@ -791,11 +832,10 @@
                     const prevRoom = rooms.find(r => r.id === currentRoom.id - 1);
                     const isPrevRoomSolved = prevRoom ? prevRoom.puzzles.every(p => p.solved) : false;
 
-                    if (currentRoom.id > 1 && isPrevRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYEnd) {
+                    if (currentRoom.id > 1 && isPrevRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYStart + doorHeight) {
                         State.operativePos.room -= 1;
                         State.operativePos.x = opCanvas.width - margin - 10;
                         resetRoomTimer(State.operativePos.room);
-                        updateHackerManualDisplay(State.operativePos.room);
                         audio.beep(660, 'sine', 0.15, 0.15);
                     } else {
                         State.operativePos.x = margin;
@@ -827,6 +867,7 @@
                 opCtx.font = '12px Orbitron';
                 opCtx.fillText(`CURRENT FOCUS: ROOM ${currentRoom.id} / ${totalRooms}`, 20, 30);
 
+                // Render Puzzle Nodes with Make & Model Labeling
                 currentRoom.puzzles.forEach(p => {
                     opCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
                     opCtx.beginPath();
@@ -836,9 +877,10 @@
                     opCtx.lineWidth = 2;
                     opCtx.stroke();
 
+                    // Render Imaginative Make and Model label on Operative view
                     opCtx.fillStyle = '#ffffff';
                     opCtx.font = '9px Share Tech Mono';
-                    opCtx.fillText(p.name, p.x - 25, p.y + 26);
+                    opCtx.fillText(p.makeModel, p.x - 35, p.y + 26);
                 });
 
                 if (currentRoom.id < totalRooms) {
@@ -872,8 +914,10 @@
 
                 modal.classList.remove('hidden');
                 bodyElem.innerHTML = '';
-                tagElem.innerText = puzzle.name;
-                titleElem.innerText = `${puzzle.type.toUpperCase()} OVERRIDE`;
+                
+                // Show Puzzle Type in [ ] brackets and Make & Model as Title
+                tagElem.innerText = `[${puzzle.type.toUpperCase()}]`;
+                titleElem.innerText = puzzle.makeModel;
 
                 if (puzzle.type === 'keypad') buildKeypadPuzzle(bodyElem, statusElem, puzzle);
                 else if (puzzle.type === 'frequency') buildFrequencyPuzzle(bodyElem, statusElem, puzzle);
@@ -899,7 +943,6 @@
 
             function buildKeypadPuzzle(container, status, puzzle) {
                 let entered = '';
-                const roomConfig = RoomPuzzleConfigs[State.operativePos.room];
                 container.innerHTML = `
                     <div class="text-center mb-4">
                         <div id="keypad-display" class="w-48 bg-[#0d0f12] border border-[#00f0ff] p-2 rounded text-xl font-mono text-[#00ff66] tracking-widest mb-3 glow-green">____</div>
@@ -915,7 +958,7 @@
                         audio.beep(500, 'sine', 0.05, 0.05);
                         if (n === 'C') entered = '';
                         else if (n === 'OK') {
-                            if (entered === roomConfig.pin) {
+                            if (entered === puzzle.pin) {
                                 status.innerText = 'Override Accepted!';
                                 solvePuzzle(puzzle);
                             } else {
@@ -932,7 +975,6 @@
 
             function buildFrequencyPuzzle(container, status, puzzle) {
                 let freq = 200, phase = 30;
-                const roomConfig = RoomPuzzleConfigs[State.operativePos.room];
                 container.innerHTML = `
                     <div class="w-full flex flex-col items-center">
                         <canvas id="freq-canvas" width="280" height="100" class="bg-[#0d0f12] border border-[#00f0ff44] rounded mb-3"></canvas>
@@ -965,7 +1007,7 @@
                 drawWave();
 
                 function checkFreq() {
-                    if (Math.abs(freq - roomConfig.targetFreq) < 20 && Math.abs(phase - roomConfig.targetPhase) < 15) {
+                    if (Math.abs(freq - puzzle.targetFreq) < 20 && Math.abs(phase - puzzle.targetPhase) < 15) {
                         status.innerText = 'Frequency Synchronized!';
                         solvePuzzle(puzzle);
                     }
@@ -973,7 +1015,6 @@
             }
 
             function buildWiresPuzzle(container, status, puzzle) {
-                const roomConfig = RoomPuzzleConfigs[State.operativePos.room];
                 const wires = [
                     { color: 'Red', hex: '#ff2a2a' },
                     { color: 'Cyan', hex: '#00f0ff' },
@@ -988,7 +1029,7 @@
                     btn.innerHTML = `<span class="font-orbitron font-bold text-xs" style="color: ${w.hex}">WIRE 0${idx+1}: ${w.color.toUpperCase()}</span><span class="text-xs text-gray-500">[CUT]</span>`;
                     btn.onclick = () => {
                         audio.beep(300, 'sawtooth', 0.15, 0.2);
-                        if (idx === roomConfig.correctWireIdx) {
+                        if (idx === puzzle.correctWireIdx) {
                             status.innerText = 'Correct wire severed!';
                             solvePuzzle(puzzle);
                         } else {
@@ -1044,10 +1085,8 @@
                 radarCtx.fillStyle = '#0a0c10';
                 radarCtx.fillRect(0, 0, radarCanvas.width, radarCanvas.height);
 
-                // Render strictly the active room the operative is currently occupying
                 const currentRoom = rooms.find(r => r.id === State.operativePos.room) || rooms[0];
 
-                // Grid background for room blueprint
                 radarCtx.strokeStyle = '#00f0ff11';
                 radarCtx.lineWidth = 1;
                 for (let x = 0; x < radarCanvas.width; x += 40) {
@@ -1057,21 +1096,17 @@
                     radarCtx.beginPath(); radarCtx.moveTo(0, y); radarCtx.lineTo(radarCanvas.width, y); radarCtx.stroke();
                 }
 
-                // Room boundary
                 radarCtx.strokeStyle = '#00f0ff66';
                 radarCtx.lineWidth = 3;
                 radarCtx.strokeRect(0, 0, radarCanvas.width, radarCanvas.height);
 
-                // Header info
                 radarCtx.fillStyle = '#00f0ff';
                 radarCtx.font = '12px Orbitron';
                 radarCtx.fillText(`LIVE BLUEPRINT: ROOM ${currentRoom.id} / ${totalRooms}`, 16, 24);
 
-                // Scale factor from operative canvas size (assuming standard 672x420) to hacker radar canvas
                 const scaleX = radarCanvas.width / 672;
                 const scaleY = radarCanvas.height / 420;
 
-                // Render current room puzzle nodes
                 currentRoom.puzzles.forEach(p => {
                     const nx = p.x * scaleX;
                     const ny = p.y * scaleY;
@@ -1086,10 +1121,9 @@
 
                     radarCtx.fillStyle = '#ffffff';
                     radarCtx.font = '10px Share Tech Mono';
-                    radarCtx.fillText(p.name, nx - 30, ny + 22);
+                    radarCtx.fillText(p.makeModel, nx - 35, ny + 22);
                 });
 
-                // Render Operative Marker
                 const opX = State.operativePos.x * scaleX;
                 const opY = State.operativePos.y * scaleY;
 
@@ -1101,7 +1135,6 @@
                 radarCtx.fill();
                 radarCtx.shadowBlur = 0;
 
-                // Radar pulse effect around operative
                 const pulse = (Date.now() % 1000) / 1000;
                 radarCtx.strokeStyle = `rgba(0, 240, 255, ${1 - pulse})`;
                 radarCtx.lineWidth = 2;
