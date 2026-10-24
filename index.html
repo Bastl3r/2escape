@@ -125,7 +125,7 @@
                 <div class="flex items-center space-x-6">
                     <div class="flex items-center space-x-2 font-mono text-xs">
                         <span class="text-gray-400">ROOM TIME:</span>
-                        <span id="hud-timer" class="text-[#ff2a2a] glow-red font-bold text-sm">[01:00]</span>
+                        <span id="hud-timer" class="text-[#ff2a2a] glow-red font-bold text-sm">[03:00]</span>
                     </div>
                     <div class="flex items-center space-x-2 text-xs font-mono">
                         <span class="inline-block w-2 h-2 rounded-full bg-[#00ff66] animate-ping" id="net-indicator"></span>
@@ -318,7 +318,21 @@
             }
 
             const totalRooms = 20;
-            const puzzlesPerRoom = 3; 
+
+            /**
+             * Puzzle Scaling Rule:
+             * Room < 5: 3 puzzles
+             * 5 <= Room < 10: 4 puzzles
+             * 10 <= Room < 15: 5 puzzles
+             * 15 <= Room <= 20: 6 puzzles
+             */
+            function getPuzzleCountForRoom(roomNum) {
+                if (roomNum > 20) throw new Error("Maximum allowed room number is 20.");
+                if (roomNum < 5) return 3;
+                if (roomNum < 10) return 4;
+                if (roomNum < 15) return 5;
+                return 6;
+            }
 
             const deviceBrands = ['Aegis', 'CipherGrid', 'VoltTech', 'OmniKey', 'Nexus', 'Krypton', 'ZeroSec', 'Titan', 'Spectra', 'Helix', 'Vortex', 'Synapse'];
             const deviceSeries = ['Alpha', 'Pro', 'MK-IV', 'v3', '3000', 'X-Series', 'Quantum', 'Q5', 'EX', 'Ultra', 'Core', 'Prime'];
@@ -349,12 +363,12 @@
 
                 for (let r = 1; r <= totalRooms; r++) {
                     const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${r}`);
+                    const puzzleCount = getPuzzleCountForRoom(r);
                     const selectedTypes = [];
-                    const availableTypes = [...puzzleTypes];
 
-                    for (let p = 0; p < puzzlesPerRoom; p++) {
-                        const idx = roomPrng.range(0, availableTypes.length - 1);
-                        selectedTypes.push(availableTypes.splice(idx, 1)[0]);
+                    for (let p = 0; p < puzzleCount; p++) {
+                        const idx = roomPrng.range(0, puzzleTypes.length - 1);
+                        selectedTypes.push(puzzleTypes[idx]);
                     }
 
                     const pList = [];
@@ -370,11 +384,13 @@
                                 { x: 120, y: 100 },
                                 { x: 340, y: 100 },
                                 { x: 120, y: 320 },
-                                { x: 340, y: 320 }
+                                { x: 340, y: 320 },
+                                { x: 230, y: 210 },
+                                { x: 450, y: 210 }
                             ];
                             const pos = gridPositions[otherPuzzleIndex % gridPositions.length];
-                            posX = pos.x + roomPrng.range(-20, 20);
-                            posY = pos.y + roomPrng.range(-20, 20);
+                            posX = pos.x + roomPrng.range(-15, 15);
+                            posY = pos.y + roomPrng.range(-15, 15);
                             otherPuzzleIndex++;
                         }
 
@@ -393,7 +409,7 @@
                             pin: String(roomPrng.range(1000, 9999)),
                             targetFreq: roomPrng.range(200, 700),
                             targetPhase: roomPrng.range(30, 150),
-                            currentPhaseInput: null, // Holds terminal override phase input for operative checking
+                            currentPhaseInput: null,
                             correctWireIdx: correctWireIdx,
                             wireRule: `Sever Wire 0${correctWireIdx + 1} (${wireColors[correctWireIdx]})`
                         });
@@ -480,11 +496,21 @@
                 gameOver: false
             };
 
+            /**
+             * Time Calculation (with Hard Floor):
+             * Base time starts at 180 seconds (3 minutes) for Room 1.
+             * Decreases by 10 seconds per room: 180 - (room_number - 1) * 10
+             * Minimum hard floor of 120 seconds (2 minutes).
+             */
             function getSecondsPerRoom(roomNum) {
-                const calculated = (puzzlesPerRoom * 30) - ((roomNum - 5) * 15);
-                return Math.max(15, calculated);
+                const safeRoomNum = Math.min(Math.max(1, roomNum), 20);
+                const calculated = 180 - (safeRoomNum - 1) * 10;
+                return Math.max(120, calculated);
             }
 
+            /**
+             * Reset Room Timer upon room entry
+             */
             function resetRoomTimer(roomNum) {
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 State.missionTime = getSecondsPerRoom(roomNum);
@@ -1210,7 +1236,6 @@
                 inputElem.value = '';
                 sendNetData({ type: 'terminal_cmd', cmd: cmdText });
 
-                // Match cos(phi[roomnumber])=[value]
                 const cosMatch = cmdText.match(/^cos\(phi(\d+)\)\s*=\s*(\d+)$/i);
 
                 if (cosMatch) {
