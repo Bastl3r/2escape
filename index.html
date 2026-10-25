@@ -198,7 +198,7 @@
                 <div id="htab-content-3" class="max-h-[50vh] flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
                     <div id="terminal-output" class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300 min-h-[120px]">
                         <div class="text-[#00f0ff]">SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED</div>
-                        <div class="text-gray-500">Type 'help' to list available system commands, or enter overrides (e.g., 'p3 65').</div>
+                        <div class="text-gray-500">Type 'help' to list available system commands, or enter overrides (e.g., 'p1 65' or 'cos(phi)=45').</div>
                     </div>
                     <div class="flex gap-2 shrink-0">
                         <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
@@ -500,7 +500,7 @@
                         if (p.type === 'keypad') {
                             solutionHtml = `PIN Code: <span class="text-[#00f0ff] font-bold font-mono text-sm">${p.pin}</span>`;
                         } else if (p.type === 'frequency') {
-                            solutionHtml = `Target Freq: <span class="text-[#00f0ff] font-bold font-mono">${p.targetFreq} Hz</span>`;
+                            solutionHtml = `Target Freq: <span class="text-[#00f0ff] font-bold font-mono">${p.targetFreq} Hz</span> | Terminal Override: <code class="text-[#00ff66] font-mono">cos(phi)=${p.targetPhase}</code>`;
                         } else if (p.type === 'wires') {
                             solutionHtml = `Instruction: <span class="text-[#00f0ff] font-bold font-mono">${p.wireRule}</span>`;
                         } else if (p.type === 'power_grid') {
@@ -511,7 +511,7 @@
                                 solutionHtml = `State: <span class="text-[#00ff66] font-bold">Synchronize nodes ${nodesList}</span>`;
                             }
                         } else if (p.type === 'pressure_cycle') {
-                            solutionHtml = `Target: <span class="text-red-400 font-bold">Tank ${p.pressureData.targetTank} @ ${p.pressureData.targetLevel}%</span> (Surpass >±10% allowed) | Pumps: <span class="text-[#00f0ff] font-mono">${p.pressureData.p1.id}, ${p.pressureData.p2.id}</span>`;
+                            solutionHtml = `Target: <span class="text-red-400 font-bold">Tank ${p.pressureData.targetTank} @ ${p.pressureData.targetLevel}%</span> | Terminal Commands: <code class="text-[#00f0ff] font-mono">p1 [0-100]</code>, <code class="text-[#00f0ff] font-mono">p2 [0-100]</code>`;
                         }
 
                         item.innerHTML = `
@@ -748,8 +748,8 @@
                     rooms.forEach(r => {
                         r.puzzles.forEach(p => {
                             if (p.type === 'pressure_cycle') {
-                                if (p.pressureData.p1.id === data.pumpId) p.pressureData.p1.flow = data.flow;
-                                if (p.pressureData.p2.id === data.pumpId) p.pressureData.p2.flow = data.flow;
+                                if (p.pressureData.p1.id === data.pumpId || data.pumpId === 'p1') p.pressureData.p1.flow = data.flow;
+                                if (p.pressureData.p2.id === data.pumpId || data.pumpId === 'p2') p.pressureData.p2.flow = data.flow;
                             }
                         });
                     });
@@ -772,6 +772,7 @@
                 document.getElementById('view-game').classList.remove('hidden');
 
                 document.getElementById('hud-seed').innerText = State.seed;
+                document.getElementById('hud-[#00f0ff]');
                 document.getElementById('hud-role-badge').innerText = `ROLE: ${State.role.toUpperCase()}`;
 
                 State.operativePos.x = 200;
@@ -1070,10 +1071,7 @@
 
             function buildFrequencyPuzzle(container, status, puzzle) {
                 let freq = 200;
-                const roomNum = puzzle.room;
-                const isMultiple = (puzzle.totalFreqPuzzlesInRoom || 1) > 1;
-                const freqIndexStr = isMultiple ? `[${puzzle.freqInRoomIndex}]` : '';
-                const formulaStr = `cos(phi[${roomNum}]${freqIndexStr})=[phaseValue]`;
+                const formulaStr = `cos(phi)=[phaseValue]`;
 
                 container.innerHTML = `
                     <div class="w-full flex flex-col items-center">
@@ -1091,7 +1089,7 @@
                             </div>
                             <div class="p-2.5 bg-[#0d0f12] border border-[#00f0ff33] rounded text-center font-mono">
                                 <div class="text-[#00f0ff] font-bold text-xs">
-                                    cos(φ${roomNum}${freqIndexStr}) = <span id="disp-phase-angle" class="text-yellow-400">${puzzle.targetPhase}°</span>
+                                    cos(φ) = <span id="disp-phase-angle" class="text-yellow-400">${puzzle.targetPhase}°</span>
                                 </div>
                                 <div class="text-[10px] text-gray-400 mt-1">requires terminal input: <code class="bg-[#12161f] px-1.5 py-0.5 rounded text-[#00ff66] font-mono border border-gray-700">${formulaStr}</code></div>
                             </div>
@@ -1240,17 +1238,17 @@
                         <!-- Pumps Panel with Direct Flow Symbols & Rates -->
                         <div class="w-full grid grid-cols-2 gap-2 text-center">
                             <div class="bg-[#12161f] border border-gray-700 p-2 rounded">
-                                <div class="text-[#00f0ff] font-bold">${pd.p1.id.toUpperCase()} ▶</div>
+                                <div class="text-[#00f0ff] font-bold">P1 ▶</div>
                                 <div class="text-gray-400 text-[10px]">Rate: <span id="p1-rate" class="text-[#00ff66]">${pd.p1.flow}</span>%</div>
                             </div>
                             <div class="bg-[#12161f] border border-gray-700 p-2 rounded">
-                                <div class="text-[#00f0ff] font-bold">◀ ${pd.p2.id.toUpperCase()}</div>
+                                <div class="text-[#00f0ff] font-bold">◀ P2</div>
                                 <div class="text-gray-400 text-[10px]">Rate: <span id="p2-rate" class="text-[#00ff66]">${pd.p2.flow}</span>%</div>
                             </div>
                         </div>
 
                         <div class="text-gray-400 text-center">
-                            Hacker terminal commands: <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">${pd.p1.id} [0-100]</code> | <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">${pd.p2.id} [0-100]</code>
+                            Hacker terminal commands: <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">p1 [0-100]</code> | <code class="text-[#00ff66] bg-[#0d0f12] px-1 py-0.5 border border-gray-700 rounded">p2 [0-100]</code>
                         </div>
                     </div>
                 `;
@@ -1423,63 +1421,71 @@
                 inputElem.value = '';
                 sendNetData({ type: 'terminal_cmd', cmd: cmdText });
 
+                // Find active room & active puzzle target
+                const activeRoomNum = State.operativePos.room;
+                const activeRoom = rooms.find(r => r.id === activeRoomNum) || rooms[0];
+
+                // Simplified pump control: p1 [flow] or p2 [flow], or p[globalIdx] [flow]
                 const pumpMatch = cmdText.match(/^(p\d+)\s+(\d+)$/i);
                 if (pumpMatch) {
-                    const pumpId = pumpMatch[1].toLowerCase();
+                    const rawPumpId = pumpMatch[1].toLowerCase();
                     const flowVal = Math.min(100, Math.max(0, parseInt(pumpMatch[2])));
-                    let found = false;
 
-                    rooms.forEach(r => {
-                        r.puzzles.forEach(p => {
-                            if (p.type === 'pressure_cycle') {
-                                if (p.pressureData.p1.id === pumpId || p.pressureData.p2.id === pumpId) {
-                                    if (p.pressureData.p1.id === pumpId) p.pressureData.p1.flow = flowVal;
-                                    if (p.pressureData.p2.id === pumpId) p.pressureData.p2.flow = flowVal;
-                                    found = true;
-                                }
-                            }
-                        });
-                    });
+                    // Find pressure puzzle in current operative room
+                    const pressurePuzzle = activeRoom.puzzles.find(p => p.type === 'pressure_cycle');
 
-                    if (found) {
-                        sendNetData({ type: 'pump_sync', pumpId: pumpId, flow: flowVal });
-                        appendTerminalOutput(`SUCCESS: Pump ${pumpId.toUpperCase()} set to flow ${flowVal}%.`, '#00ff66');
-                        audio.success();
-                        if (typeof window.recheckPressurePuzzle === 'function') window.recheckPressurePuzzle();
+                    if (pressurePuzzle) {
+                        let targetPumpKey = null;
+                        if (rawPumpId === 'p1' || pressurePuzzle.pressureData.p1.id === rawPumpId) {
+                            targetPumpKey = 'p1';
+                            pressurePuzzle.pressureData.p1.flow = flowVal;
+                        } else if (rawPumpId === 'p2' || pressurePuzzle.pressureData.p2.id === rawPumpId) {
+                            targetPumpKey = 'p2';
+                            pressurePuzzle.pressureData.p2.flow = flowVal;
+                        }
+
+                        if (targetPumpKey) {
+                            const actualPumpId = pressurePuzzle.pressureData[targetPumpKey].id;
+                            sendNetData({ type: 'pump_sync', pumpId: actualPumpId, flow: flowVal });
+                            appendTerminalOutput(`SUCCESS: Room ${activeRoomNum} Pump ${targetPumpKey.toUpperCase()} set to ${flowVal}%.`, '#00ff66');
+                            audio.success();
+                            if (typeof window.recheckPressurePuzzle === 'function') window.recheckPressurePuzzle();
+                        } else {
+                            appendTerminalOutput(`ERROR: Pump ID '${rawPumpId}' does not belong to active Room ${activeRoomNum}.`, '#ff2a2a');
+                        }
                     } else {
-                        appendTerminalOutput(`ERROR: Pump ID '${pumpId}' not found or inactive.`, '#ff2a2a');
+                        appendTerminalOutput(`ERROR: Active Room ${activeRoomNum} does not contain an active Pressure Cycle node.`, '#ff2a2a');
                     }
                     return;
                 }
 
-                const cosMatch = cmdText.match(/^cos\(phi\[?(\d+)\]?(?:\[?(\d+)\]?)?\)\s*=\s*(\d+)$/i) || cmdText.match(/^cos\(phi(\d+)\)\s*=\s*(\d+)$/i);
+                // Simplified frequency phase input: cos(phi)=[val] or cos(phi[room])=[val]
+                const cosMatch = cmdText.match(/^cos\(phi(?:\[?(\d+)\]?)?\)\s*=\s*(\d+)$/i) || cmdText.match(/^cos\(phi\)\s*=\s*(\d+)$/i);
                 if (cosMatch) {
-                    let roomNum, freqIdx, phaseVal;
-                    if (cosMatch.length === 4) {
-                        roomNum = parseInt(cosMatch[1]);
-                        freqIdx = cosMatch[2] ? parseInt(cosMatch[2]) : 1;
-                        phaseVal = parseInt(cosMatch[3]);
-                    } else {
-                        roomNum = parseInt(cosMatch[1]);
-                        freqIdx = 1;
+                    let targetRoomNum = activeRoomNum;
+                    let phaseVal;
+
+                    if (cosMatch.length === 3 && cosMatch[1]) {
+                        targetRoomNum = parseInt(cosMatch[1]);
                         phaseVal = parseInt(cosMatch[2]);
+                    } else {
+                        phaseVal = parseInt(cosMatch[1] || cosMatch[2]);
                     }
 
-                    const targetRoom = rooms.find(r => r.id === roomNum);
+                    const targetRoom = rooms.find(r => r.id === targetRoomNum);
                     if (targetRoom) {
                         const freqPuzzles = targetRoom.puzzles.filter(p => p.type === 'frequency');
-                        const freqPuzzle = freqPuzzles.find(p => p.freqInRoomIndex === freqIdx) || freqPuzzles[0];
+                        const freqPuzzle = freqPuzzles.find(p => !p.solved) || freqPuzzles[0];
 
                         if (freqPuzzle) {
                             freqPuzzle.currentPhaseInput = phaseVal;
-                            sendNetData({ type: 'phase_sync', roomId: roomNum, freqIndex: freqPuzzle.freqInRoomIndex, phaseValue: phaseVal });
+                            sendNetData({ type: 'phase_sync', roomId: targetRoomNum, freqIndex: freqPuzzle.freqInRoomIndex, phaseValue: phaseVal });
                             
-                            const idxDisplay = freqPuzzle.totalFreqPuzzlesInRoom > 1 ? `[${freqPuzzle.freqInRoomIndex}]` : '';
                             if (phaseVal === freqPuzzle.targetPhase) {
-                                appendTerminalOutput(`SUCCESS: Phase angle ${phaseVal}° synced for Room ${roomNum}${idxDisplay}.`, '#00ff66');
+                                appendTerminalOutput(`SUCCESS: Phase angle ${phaseVal}° synced for Room ${targetRoomNum}.`, '#00ff66');
                                 audio.success();
                             } else {
-                                appendTerminalOutput(`WARNING: Phase angle ${phaseVal}° transmitted to Room ${roomNum}${idxDisplay} (Mismatch with target ${freqPuzzle.targetPhase}°).`, 'text-yellow-400');
+                                appendTerminalOutput(`WARNING: Phase angle ${phaseVal}° transmitted to Room ${targetRoomNum} (Mismatch with target ${freqPuzzle.targetPhase}°).`, 'text-yellow-400');
                             }
 
                             if (State.activePuzzle && State.activePuzzle.id === freqPuzzle.id) {
@@ -1488,10 +1494,10 @@
                                 }
                             }
                         } else {
-                            appendTerminalOutput(`ERROR: Room ${roomNum} does not contain frequency synth node ${freqIdx}.`, '#ff2a2a');
+                            appendTerminalOutput(`ERROR: Room ${targetRoomNum} does not contain an active frequency synth node.`, '#ff2a2a');
                         }
                     } else {
-                        appendTerminalOutput(`ERROR: Invalid room number '${roomNum}'.`, '#ff2a2a');
+                        appendTerminalOutput(`ERROR: Invalid room number '${targetRoomNum}'.`, '#ff2a2a');
                     }
                     return;
                 }
@@ -1501,8 +1507,9 @@
 
                 if (cmd === 'help') {
                     appendTerminalOutput('AVAILABLE COMMANDS:', '#00f0ff');
-                    appendTerminalOutput('  - p[index] [0-100]      : Set pump flow rate (e.g., "p3 75")', '#00f0ff');
-                    appendTerminalOutput('  - cos(phi[N][M])=[deg] : Override phase angle for Room N, Frequency Puzzle M', '#00f0ff');
+                    appendTerminalOutput('  - p1 [0-100]           : Set Pump 1 flow rate for active room (e.g., "p1 75")', '#00f0ff');
+                    appendTerminalOutput('  - p2 [0-100]           : Set Pump 2 flow rate for active room (e.g., "p2 40")', '#00f0ff');
+                    appendTerminalOutput('  - cos(phi)=[deg]       : Override phase angle for active room Frequency puzzle', '#00f0ff');
                     appendTerminalOutput('  - statusReport          : Display security status across all rooms', '#00f0ff');
                     appendTerminalOutput('  - clear                 : Clear terminal screen', '#00f0ff');
                 } else if (cmd === 'statusreport') {
