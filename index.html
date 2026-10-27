@@ -581,6 +581,8 @@
             function applyTimePenalty(seconds) {
                 State.missionTime = Math.max(0, State.missionTime - seconds);
                 updateTimerDisplay();
+                // Operative owns the clock: push the absolute remaining time so the peer stays identical
+                sendNetData({ type: 'timer_sync', seconds: State.missionTime });
                 if (State.missionTime <= 0) {
                     triggerGameOver(false);
                 }
@@ -746,6 +748,12 @@
                         State.operativePos.room = data.room;
                         resetRoomTimer(State.operativePos.room);
                     }
+                    // The operative owns the room clock; mirror it so penalties and resets never drift apart
+                    if (typeof data.missionTime === 'number') {
+                        State.missionTime = Math.max(0, Math.round(data.missionTime));
+                        updateTimerDisplay();
+                        if (State.missionTime <= 0 && !State.gameOver) triggerGameOver(false);
+                    }
                 } else if (data.type === 'puzzle_sync') {
                     const rObj = rooms.find(r => r.id === data.roomId);
                     if (rObj) {
@@ -791,8 +799,15 @@
                     State.operativePuzzleId = data.puzzleId || null;
                 } else if (data.type === 'terminal_cmd') {
                     appendTerminalOutput(`[REMOTE] > ${data.cmd}`, '#00f0ff');
+                } else if (data.type === 'timer_sync') {
+                    State.missionTime = Math.max(0, Math.round(data.seconds));
+                    updateTimerDisplay();
+                    if (State.missionTime <= 0 && !State.gameOver) triggerGameOver(false);
                 } else if (data.type === 'wire_penalty' || data.type === 'keypad_penalty') {
-                    applyTimePenalty(10);
+                    // Legacy delta payloads from older clients; current clients sync absolute time instead
+                    State.missionTime = Math.max(0, State.missionTime - 10);
+                    updateTimerDisplay();
+                    if (State.missionTime <= 0 && !State.gameOver) triggerGameOver(false);
                 }
             }
 
@@ -978,7 +993,7 @@
 
                 if (timestamp - lastTelemetrySend > 50) {
                     lastTelemetrySend = timestamp;
-                    sendNetData({ type: 'telemetry', x: State.operativePos.x, y: State.operativePos.y, room: State.operativePos.room });
+                    sendNetData({ type: 'telemetry', x: State.operativePos.x, y: State.operativePos.y, room: State.operativePos.room, missionTime: State.missionTime });
                 }
 
                 opCtx.fillStyle = '#12161f';
@@ -1103,7 +1118,6 @@
                                 status.innerText = 'Incorrect PIN! Time Penalty: -10s';
                                 audio.error();
                                 applyTimePenalty(10);
-                                sendNetData({ type: 'keypad_penalty' });
                                 entered = '';
                             }
                         } else { if (entered.length < 4) entered += n; }
@@ -1217,7 +1231,6 @@
                             audio.error();
                             status.innerText = 'WRONG WIRE! Time Penalty: -10s';
                             applyTimePenalty(10);
-                            sendNetData({ type: 'wire_penalty' });
                         }
                     };
                     wc.appendChild(btn);
