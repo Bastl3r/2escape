@@ -445,8 +445,6 @@
                                 tank2: t2,
                                 p1: { id: p1Id, flow: p1Flow },
                                 p2: { id: p2Id, flow: p2Flow },
-                                holdTimer: 0,
-                                hasSurpassed: false,
                                 initialVal: targetTank === 1 ? t1 : t2
                             }
                         });
@@ -1207,6 +1205,32 @@
                 });
             }
 
+            function checkPuzzleSolved(puzzleData) {
+                const { initialTank1, currentTank1, target } = puzzleData;
+                const thresholdDelta = 10; // 10% range
+
+                let isSolved = false;
+
+                if (initialTank1 > target) {
+                    // Started above target: Accepted range is [target - 10%, target]
+                    const minAllowed = target - thresholdDelta;
+                    const maxAllowed = target;
+
+                    isSolved = (currentTank1 >= minAllowed && currentTank1 <= maxAllowed);
+                } else if (initialTank1 < target) {
+                    // Started below target: Accepted range is [target, target + 10%]
+                    const minAllowed = target;
+                    const maxAllowed = target + thresholdDelta;
+
+                    isSolved = (currentTank1 >= minAllowed && currentTank1 <= maxAllowed);
+                } else {
+                    // Edge case: Initial value equals target
+                    isSolved = (currentTank1 === target);
+                }
+
+                return isSolved;
+            }
+
             function buildPressureCyclePuzzle(container, status, puzzle) {
                 const pd = puzzle.pressureData;
                 
@@ -1220,7 +1244,7 @@
                                     <div id="tank1-fill" class="w-full bg-[#00ff66] transition-all duration-300" style="height: ${pd.tank1}%"></div>
                                     ${pd.targetTank === 1 ? `<div class="absolute w-full border-t-2 border-red-500 z-10" style="bottom: ${pd.targetLevel}%"></div>` : ''}
                                 </div>
-                                <div class="mt-2 text-gray-300"><span id="tank1-val">${Math.round(pd.tank1)}</span>% ${pd.targetTank === 1 ? '<span class="text-red-400 font-bold">(Target)</span>' : ''}</div>
+                                <div class="mt-2 text-gray-300"><span id="tank1-val">${Math.round(pd.tank1)}</span>% ${pd.targetTank === 1 ? `<span class="text-red-400 font-bold">(Target: ${pd.targetLevel}%)</span>` : ''}</div>
                             </div>
 
                             <!-- Tank 2 Progress Bar -->
@@ -1230,7 +1254,7 @@
                                     <div id="tank2-fill" class="w-full bg-[#00ff66] transition-all duration-300" style="height: ${pd.tank2}%"></div>
                                     ${pd.targetTank === 2 ? `<div class="absolute w-full border-t-2 border-red-500 z-10" style="bottom: ${pd.targetLevel}%"></div>` : ''}
                                 </div>
-                                <div class="mt-2 text-gray-300"><span id="tank2-val">${Math.round(pd.tank2)}</span>% ${pd.targetTank === 2 ? '<span class="text-red-400 font-bold">(Target)</span>' : ''}</div>
+                                <div class="mt-2 text-gray-300"><span id="tank2-val">${Math.round(pd.tank2)}</span>% ${pd.targetTank === 2 ? `<span class="text-red-400 font-bold">(Target: ${pd.targetLevel}%)</span>` : ''}</div>
                             </div>
                         </div>
 
@@ -1273,26 +1297,17 @@
                     }
 
                     const currentTargetVal = pd.targetTank === 1 ? pd.tank1 : pd.tank2;
-                    
-                    // Track if fluid has surged / surpassed the target level by >±10% from the target level
-                    if (!pd.hasSurpassed) {
-                        if (Math.abs(currentTargetVal - pd.targetLevel) >= 10 && 
-                            ((pd.initialVal < pd.targetLevel && currentTargetVal > pd.targetLevel) || 
-                             (pd.initialVal > pd.targetLevel && currentTargetVal < pd.targetLevel))) {
-                            pd.hasSurpassed = true;
-                        }
-                    }
 
-                    // Solve condition: Must have surpassed by >±10% or started close, and now stabilized within ±3% of target
-                    if ((pd.hasSurpassed || Math.abs(pd.initialVal - pd.targetLevel) <= 5) && Math.abs(currentTargetVal - pd.targetLevel) <= 3) {
-                        pd.holdTimer = (pd.holdTimer || 0) + 3;
-                        if (pd.holdTimer >= 3) {
-                            status.innerText = 'Pressure Cycle Over-Surpass & Balanced!';
-                            solvePuzzle(puzzle);
-                            clearInterval(simInterval);
-                        }
-                    } else {
-                        pd.holdTimer = 0;
+                    // Solve condition: target tank must sit inside the one-sided tolerance window
+                    // (approached from above => [target - 10%, target], from below => [target, target + 10%])
+                    if (checkPuzzleSolved({
+                        initialTank1: pd.initialVal,
+                        currentTank1: currentTargetVal,
+                        target: pd.targetLevel
+                    })) {
+                        status.innerText = 'Pressure Cycle Balanced!';
+                        solvePuzzle(puzzle);
+                        clearInterval(simInterval);
                     }
 
                     // Update UI elements live
