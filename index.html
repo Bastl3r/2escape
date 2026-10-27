@@ -791,7 +791,7 @@
                     State.operativePuzzleId = data.puzzleId || null;
                 } else if (data.type === 'terminal_cmd') {
                     appendTerminalOutput(`[REMOTE] > ${data.cmd}`, '#00f0ff');
-                } else if (data.type === 'wire_penalty') {
+                } else if (data.type === 'wire_penalty' || data.type === 'keypad_penalty') {
                     applyTimePenalty(10);
                 }
             }
@@ -1100,8 +1100,10 @@
                                 status.innerText = 'Override Accepted!';
                                 solvePuzzle(puzzle);
                             } else {
-                                status.innerText = 'Incorrect PIN!';
+                                status.innerText = 'Incorrect PIN! Time Penalty: -10s';
                                 audio.error();
+                                applyTimePenalty(10);
+                                sendNetData({ type: 'keypad_penalty' });
                                 entered = '';
                             }
                         } else { if (entered.length < 4) entered += n; }
