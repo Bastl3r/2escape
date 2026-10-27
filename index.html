@@ -538,6 +538,9 @@
                 conn: null,
                 soloMode: false,
                 activePuzzle: null,
+                operativePuzzleId: null,
+                pendingSeedTimeout: null,
+                sessionStarted: false,
                 operativePos: { x: 200, y: 150, vx: 0, vy: 0, speed: 3.5, room: 1 },
                 missionTime: 0,
                 timerInterval: null,
@@ -639,6 +642,10 @@
                     State.conn = connection;
                     setupConnectionHandlers();
                     document.getElementById('connection-state').innerText = 'Peer connected! Launching session...';
+                    // Host seed is authoritative: hand it over before either side builds the run layout
+                    const sendSeed = () => sendNetData({ type: 'seed', seed: State.seed });
+                    if (connection.open) sendSeed();
+                    connection.on('open', sendSeed);
                     setTimeout(startGameSession, 1000);
                 });
                 State.peer.on('error', (err) => { document.getElementById('connection-state').innerText = `Peer Error: ${err.type}`; });
@@ -666,8 +673,10 @@
                     conn.on('open', () => {
                         State.conn = conn;
                         setupConnectionHandlers();
-                        document.getElementById('connection-state').innerText = 'Secure channel established!';
-                        setTimeout(startGameSession, 800);
+                        sendNetData({ type: 'seed_request' });
+                        document.getElementById('connection-state').innerText = 'Secure channel established! Syncing host seed...';
+                        // Wait for the host seed before generating the run; timeout keeps a slow/lost message playable
+                        State.pendingSeedTimeout = setTimeout(startGameSession, 4000);
                     });
                 });
                 State.peer.on('error', (err) => {
@@ -705,6 +714,10 @@
             function quitGame() {
                 if (State.peer) { try { State.peer.destroy(); } catch(e) {} }
                 if (State.timerInterval) clearInterval(State.timerInterval);
+                if (State.pendingSeedTimeout) { clearTimeout(State.pendingSeedTimeout); State.pendingSeedTimeout = null; }
+                State.sessionStarted = false;
+                State.activePuzzle = null;
+                State.operativePuzzleId = null;
                 document.getElementById('view-game').classList.add('hidden');
                 document.getElementById('role-view-operative').classList.add('hidden');
                 document.getElementById('role-view-hacker').classList.add('hidden');
@@ -713,6 +726,19 @@
             }
 
             function handleNetworkData(data) {
+                if (data.type === 'seed') {
+                    if (!State.sessionStarted) {
+                        State.seed = String(data.seed || '').trim() || State.seed;
+                        startGameSession();
+                    }
+                    return;
+                }
+
+                if (data.type === 'seed_request') {
+                    sendNetData({ type: 'seed', seed: State.seed });
+                    return;
+                }
+
                 if (data.type === 'telemetry') {
                     State.operativePos.x = data.x;
                     State.operativePos.y = data.y;
@@ -745,10 +771,15 @@
                 } else if (data.type === 'pump_sync') {
                     rooms.forEach(r => {
                         r.puzzles.forEach(p => {
-                            if (p.type === 'pressure_cycle') {
-                                if (p.pressureData.p1.id === data.pumpId || data.pumpId === 'p1') p.pressureData.p1.flow = data.flow;
-                                if (p.pressureData.p2.id === data.pumpId || data.pumpId === 'p2') p.pressureData.p2.flow = data.flow;
+                            if (p.type !== 'pressure_cycle') return;
+                            if (data.puzzleId && p.id !== data.puzzleId) return;
+
+                            let pumpKey = data.pumpKey || null;
+                            if (!pumpKey) {
+                                if (p.pressureData.p1.id === data.pumpId || data.pumpId === 'p1') pumpKey = 'p1';
+                                else if (p.pressureData.p2.id === data.pumpId || data.pumpId === 'p2') pumpKey = 'p2';
                             }
+                            if (pumpKey) p.pressureData[pumpKey].flow = data.flow;
                         });
                     });
                     if (State.activePuzzle && State.activePuzzle.type === 'pressure_cycle') {
@@ -756,6 +787,8 @@
                             window.recheckPressurePuzzle();
                         }
                     }
+                } else if (data.type === 'active_puzzle') {
+                    State.operativePuzzleId = data.puzzleId || null;
                 } else if (data.type === 'terminal_cmd') {
                     appendTerminalOutput(`[REMOTE] > ${data.cmd}`, '#00f0ff');
                 } else if (data.type === 'wire_penalty') {
@@ -764,6 +797,14 @@
             }
 
             function startGameSession() {
+                if (State.pendingSeedTimeout) {
+                    clearTimeout(State.pendingSeedTimeout);
+                    State.pendingSeedTimeout = null;
+                }
+                if (State.sessionStarted) return;
+                State.sessionStarted = true;
+                State.activePuzzle = null;
+                State.operativePuzzleId = null;
                 generateFullRunLayout(State.seed);
                 document.getElementById('view-room').classList.add('hidden');
                 document.getElementById('view-lobby').classList.add('hidden');
@@ -997,6 +1038,8 @@
 
             function openPuzzleModal(puzzle) {
                 State.activePuzzle = puzzle;
+                State.operativePuzzleId = puzzle.id;
+                sendNetData({ type: 'active_puzzle', puzzleId: puzzle.id });
                 const modal = document.getElementById('puzzle-modal');
                 const titleElem = document.getElementById('puzzle-modal-title');
                 const tagElem = document.getElementById('puzzle-modal-tag');
@@ -1019,6 +1062,8 @@
             function closePuzzleModal() {
                 document.getElementById('puzzle-modal').classList.add('hidden');
                 State.activePuzzle = null;
+                State.operativePuzzleId = null;
+                sendNetData({ type: 'active_puzzle', puzzleId: null });
                 window.recheckFrequencyPuzzle = null;
                 window.recheckPressurePuzzle = null;
             }
@@ -1435,41 +1480,57 @@
                 inputElem.value = '';
                 sendNetData({ type: 'terminal_cmd', cmd: cmdText });
 
-                // Find active room & active puzzle target
+                // Active room (room-scoped commands such as cos(phi) still resolve by room)
                 const activeRoomNum = State.operativePos.room;
-                const activeRoom = rooms.find(r => r.id === activeRoomNum) || rooms[0];
 
-                // Simplified pump control: p1 [flow] or p2 [flow], or p[globalIdx] [flow]
+                // Pump control: p1 [flow] / p2 [flow] always apply to the puzzle the operative has open
                 const pumpMatch = cmdText.match(/^(p\d+)\s+(\d+)$/i);
                 if (pumpMatch) {
                     const rawPumpId = pumpMatch[1].toLowerCase();
                     const flowVal = Math.min(100, Math.max(0, parseInt(pumpMatch[2])));
 
-                    // Find pressure puzzle in current operative room
-                    const pressurePuzzle = activeRoom.puzzles.find(p => p.type === 'pressure_cycle');
-
-                    if (pressurePuzzle) {
-                        let targetPumpKey = null;
-                        if (rawPumpId === 'p1' || pressurePuzzle.pressureData.p1.id === rawPumpId) {
-                            targetPumpKey = 'p1';
-                            pressurePuzzle.pressureData.p1.flow = flowVal;
-                        } else if (rawPumpId === 'p2' || pressurePuzzle.pressureData.p2.id === rawPumpId) {
-                            targetPumpKey = 'p2';
-                            pressurePuzzle.pressureData.p2.flow = flowVal;
+                    // Resolve the node the operative currently has open (same page in solo, synced in co-op)
+                    const openPuzzleId = State.activePuzzle ? State.activePuzzle.id : State.operativePuzzleId;
+                    let pressurePuzzle = null;
+                    rooms.some(r => {
+                        const found = r.puzzles.find(p => p.id === openPuzzleId);
+                        if (found && found.type === 'pressure_cycle') {
+                            pressurePuzzle = found;
+                            return true;
                         }
+                        return false;
+                    });
 
-                        if (targetPumpKey) {
-                            const actualPumpId = pressurePuzzle.pressureData[targetPumpKey].id;
-                            sendNetData({ type: 'pump_sync', pumpId: actualPumpId, flow: flowVal });
-                            appendTerminalOutput(`SUCCESS: Room ${activeRoomNum} Pump ${targetPumpKey.toUpperCase()} set to ${flowVal}%.`, '#00ff66');
-                            audio.success();
-                            if (typeof window.recheckPressurePuzzle === 'function') window.recheckPressurePuzzle();
-                        } else {
-                            appendTerminalOutput(`ERROR: Pump ID '${rawPumpId}' does not belong to active Room ${activeRoomNum}.`, '#ff2a2a');
-                        }
-                    } else {
-                        appendTerminalOutput(`ERROR: Active Room ${activeRoomNum} does not contain an active Pressure Cycle node.`, '#ff2a2a');
+                    if (!pressurePuzzle) {
+                        appendTerminalOutput(`NOTE: '${rawPumpId.toUpperCase()} ${flowVal}' accepted but disregarded - no Pressure Cycle node is open on the operative side.`);
+                        return;
                     }
+
+                    let targetPumpKey = null;
+                    if (rawPumpId === 'p1' || pressurePuzzle.pressureData.p1.id === rawPumpId) {
+                        targetPumpKey = 'p1';
+                    } else if (rawPumpId === 'p2' || pressurePuzzle.pressureData.p2.id === rawPumpId) {
+                        targetPumpKey = 'p2';
+                    }
+
+                    if (!targetPumpKey) {
+                        appendTerminalOutput(`ERROR: Pump ID '${rawPumpId}' is not part of the open pressure node (use p1 or p2).`, '#ff2a2a');
+                        return;
+                    }
+
+                    pressurePuzzle.pressureData[targetPumpKey].flow = flowVal;
+                    sendNetData({
+                        type: 'pump_sync',
+                        puzzleId: pressurePuzzle.id,
+                        pumpKey: targetPumpKey,
+                        pumpId: pressurePuzzle.pressureData[targetPumpKey].id,
+                        flow: flowVal
+                    });
+
+                    const puzzleRoom = rooms.find(r => r.puzzles.some(p => p.id === pressurePuzzle.id));
+                    appendTerminalOutput(`SUCCESS: Room ${puzzleRoom ? puzzleRoom.id : '?'} Pump ${targetPumpKey.toUpperCase()} set to ${flowVal}%.`, '#00ff66');
+                    audio.success();
+                    if (typeof window.recheckPressurePuzzle === 'function') window.recheckPressurePuzzle();
                     return;
                 }
 
@@ -1521,8 +1582,8 @@
 
                 if (cmd === 'help') {
                     appendTerminalOutput('AVAILABLE COMMANDS:', '#00f0ff');
-                    appendTerminalOutput('  - p1 [0-100]           : Set Pump 1 flow rate for active room (e.g., "p1 75")', '#00f0ff');
-                    appendTerminalOutput('  - p2 [0-100]           : Set Pump 2 flow rate for active room (e.g., "p2 40")', '#00f0ff');
+                    appendTerminalOutput('  - p1 [0-100]           : Set Pump 1 flow rate of the pressure node open on the operative side (e.g., "p1 75")', '#00f0ff');
+                    appendTerminalOutput('  - p2 [0-100]           : Set Pump 2 flow rate of the pressure node open on the operative side (e.g., "p2 40")', '#00f0ff');
                     appendTerminalOutput('  - cos(phi)=[deg]       : Override phase angle for active room Frequency puzzle', '#00f0ff');
                     appendTerminalOutput('  - statusReport          : Display security status across all rooms', '#00f0ff');
                     appendTerminalOutput('  - clear                 : Clear terminal screen', '#00f0ff');
