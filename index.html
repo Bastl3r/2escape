@@ -207,10 +207,14 @@
                         <div class="text-[#00f0ff]" data-i18n="term.title">SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED</div>
                         <div class="text-gray-500" data-i18n="term.hint">Type 'help' to list available system commands, or enter overrides (e.g., 'p1 65' or 'cos(phi)=45').</div>
                     </div>
-                    <div class="flex gap-2 shrink-0">
-                        <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
-                        <input type="text" id="terminal-input" placeholder="Enter command..." data-i18n-placeholder="term.placeholder" class="flex-1 bg-[#12161f] border border-gray-700 rounded px-3 py-2 text-xs text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
-                        <button id="btn-exec-cmd" class="px-4 bg-[#00f0ff22] border border-[#00f0ff] text-[#00f0ff] font-orbitron text-xs rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer" data-i18n="term.exec">EXEC</button>
+                    <div class="relative shrink-0">
+                        <div class="flex gap-2">
+                            <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
+                            <button id="btn-cmd-history" class="px-2.5 bg-[#12161f] border border-gray-700 text-[#00f0ff] font-orbitron text-[10px] rounded hover:border-[#00f0ff] transition cursor-pointer shrink-0" data-i18n="term.historyBtn">HIST</button>
+                            <input type="text" id="terminal-input" placeholder="Enter command..." data-i18n-placeholder="term.placeholder" class="flex-1 min-w-0 bg-[#12161f] border border-gray-700 rounded px-3 py-2 text-xs text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
+                            <button id="btn-exec-cmd" class="px-4 bg-[#00f0ff22] border border-[#00f0ff] text-[#00f0ff] font-orbitron text-xs rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer shrink-0">ENTER</button>
+                        </div>
+                        <div id="cmd-history-list" class="hidden absolute bottom-full left-0 right-0 mb-2 bg-[#0d0f12] border border-[#00f0ff44] rounded shadow-2xl p-1 z-30 max-h-48 overflow-y-auto"></div>
                     </div>
                 </div>
 
@@ -382,7 +386,8 @@
                     'term.title': 'SYSTEMTERMINAL v3.0 // 20 RÄUME VERSCHLÜSSELT',
                     'term.hint': "Tippe 'help' für alle Systembefehle oder gib Overrides ein (z. B. 'p1 65' oder 'cos(phi)=45').",
                     'term.placeholder': 'Befehl eingeben...',
-                    'term.exec': 'AUSF.',
+                    'term.historyBtn': 'VERLAUF',
+                    'term.historyEmpty': 'Kein Verlauf',
                     'term.available': 'VERFÜGBARE BEFEHLE:',
                     'term.helpP1': '  - p1 [0-100]           : Förderrate von Pumpe 1 des geöffneten Druckknotens setzen (z. B. "p1 75")',
                     'term.helpP2': '  - p2 [0-100]           : Förderrate von Pumpe 2 des geöffneten Druckknotens setzen (z. B. "p2 40")',
@@ -504,7 +509,8 @@
                     'term.title': 'SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED',
                     'term.hint': "Type 'help' to list available system commands, or enter overrides (e.g., 'p1 65' or 'cos(phi)=45').",
                     'term.placeholder': 'Enter command...',
-                    'term.exec': 'EXEC',
+                    'term.historyBtn': 'HIST',
+                    'term.historyEmpty': 'No history',
                     'term.available': 'AVAILABLE COMMANDS:',
                     'term.helpP1': '  - p1 [0-100]           : Set Pump 1 flow rate of the pressure node open on the operative side (e.g., "p1 75")',
                     'term.helpP2': '  - p2 [0-100]           : Set Pump 2 flow rate of the pressure node open on the operative side (e.g., "p2 40")',
@@ -846,7 +852,9 @@
                 operativePos: { x: 200, y: 150, vx: 0, vy: 0, speed: 3.5, room: 1 },
                 missionTime: 0,
                 timerInterval: null,
-                gameOver: false
+                gameOver: false,
+                commandHistory: [],
+                historyIndex: -1
             };
 
             function getSecondsPerRoom(roomNum) {
@@ -1022,6 +1030,9 @@
                 State.sessionStarted = false;
                 State.activePuzzle = null;
                 State.operativePuzzleId = null;
+                State.commandHistory = [];
+                State.historyIndex = -1;
+                closeTerminalHistory();
                 document.getElementById('view-game').classList.add('hidden');
                 document.getElementById('role-view-operative').classList.add('hidden');
                 document.getElementById('role-view-hacker').classList.add('hidden');
@@ -1710,10 +1721,6 @@
                 radarCanvas = document.getElementById('hacker-radar-canvas');
                 radarCtx = radarCanvas.getContext('2d');
                 requestAnimationFrame(updateHackerRadarLoop);
-
-                document.getElementById('terminal-input').addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') executeTerminalCommand();
-                });
             }
 
             function updateHackerRadarLoop() {
@@ -1800,6 +1807,82 @@
                 }).join('');
             }
 
+            function recordTerminalHistory(cmd) {
+                const trimmed = cmd.trim();
+                if (!trimmed) return;
+                const existingIdx = State.commandHistory.indexOf(trimmed);
+                if (existingIdx !== -1) State.commandHistory.splice(existingIdx, 1);
+                State.commandHistory.unshift(trimmed);
+                State.historyIndex = -1;
+            }
+
+            function recallTerminalHistory(direction) {
+                const input = document.getElementById('terminal-input');
+                if (!input || State.commandHistory.length === 0) return false;
+
+                let idx = State.historyIndex;
+                if (direction < 0) {
+                    // LIFO: index 0 is the most recently issued command
+                    if (idx < State.commandHistory.length - 1) idx++;
+                } else if (idx >= 0) {
+                    idx--;
+                } else {
+                    return false;
+                }
+
+                State.historyIndex = idx;
+                input.value = idx >= 0 ? State.commandHistory[idx] : '';
+                try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
+                return true;
+            }
+
+            function renderTerminalHistory() {
+                const list = document.getElementById('cmd-history-list');
+                if (!list) return;
+                list.innerHTML = '';
+
+                if (State.commandHistory.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = "px-2 py-1.5 text-[10px] text-gray-500 font-mono";
+                    empty.innerText = t('term.historyEmpty');
+                    list.appendChild(empty);
+                    return;
+                }
+
+                State.commandHistory.forEach(cmd => {
+                    const item = document.createElement('button');
+                    item.className = "block w-full text-left px-2 py-1.5 font-mono text-xs text-[#00ff66] hover:bg-[#00f0ff22] rounded truncate cursor-pointer";
+                    item.innerText = cmd;
+                    item.title = cmd;
+                    item.onclick = () => {
+                        const input = document.getElementById('terminal-input');
+                        if (!input) return;
+                        input.value = cmd;
+                        State.historyIndex = -1;
+                        closeTerminalHistory();
+                        input.focus();
+                        try { input.setSelectionRange(cmd.length, cmd.length); } catch (e) {}
+                    };
+                    list.appendChild(item);
+                });
+            }
+
+            function toggleTerminalHistory() {
+                const list = document.getElementById('cmd-history-list');
+                if (!list) return;
+                if (list.classList.contains('hidden')) {
+                    renderTerminalHistory();
+                    list.classList.remove('hidden');
+                } else {
+                    list.classList.add('hidden');
+                }
+            }
+
+            function closeTerminalHistory() {
+                const list = document.getElementById('cmd-history-list');
+                if (list) list.classList.add('hidden');
+            }
+
             function executeTerminalCommand() {
                 const inputElem = document.getElementById('terminal-input');
                 const cmdText = inputElem.value.trim();
@@ -1808,6 +1891,8 @@
                 audio.beep(700, 'sine', 0.05, 0.05);
                 appendTerminalOutput(`> ${cmdText}`, '#00ff66');
                 inputElem.value = '';
+                recordTerminalHistory(cmdText);
+                closeTerminalHistory();
                 sendNetData({ type: 'terminal_cmd', cmd: cmdText });
 
                 // Active room (room-scoped commands such as cos(phi) still resolve by room)
@@ -1950,6 +2035,29 @@
             document.getElementById('btn-quit').addEventListener('click', quitGame);
             document.getElementById('btn-return-lobby').addEventListener('click', quitGame);
             document.getElementById('btn-exec-cmd').addEventListener('click', executeTerminalCommand);
+            document.getElementById('btn-cmd-history').addEventListener('click', toggleTerminalHistory);
+            document.getElementById('terminal-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    executeTerminalCommand();
+                    return;
+                }
+                if (e.key === 'ArrowUp' && recallTerminalHistory(-1)) {
+                    closeTerminalHistory();
+                    e.preventDefault();
+                } else if (e.key === 'ArrowDown' && recallTerminalHistory(1)) {
+                    closeTerminalHistory();
+                    e.preventDefault();
+                }
+            });
+            document.getElementById('terminal-input').addEventListener('input', () => { State.historyIndex = -1; });
+            document.addEventListener('click', (e) => {
+                const list = document.getElementById('cmd-history-list');
+                const historyBtn = document.getElementById('btn-cmd-history');
+                if (!list || list.classList.contains('hidden')) return;
+                if (historyBtn && historyBtn.contains(e.target)) return;
+                if (list.contains(e.target)) return;
+                closeTerminalHistory();
+            });
             document.getElementById('btn-close-modal').addEventListener('click', closePuzzleModal);
             document.getElementById('btn-disengage').addEventListener('click', closePuzzleModal);
 
