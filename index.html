@@ -767,23 +767,50 @@
                 return 6;
             }
 
-            const deviceBrands = [
+            const deviceBrands = [...new Set([
                 'Aegis', 'CipherGrid', 'VoltTech', 'Nano', 'Micro', 'OmniKey', 'Cobalt' , 'Vex',
                 'Nexus', 'Krypton', 'ZeroSec', 'Titan', 'Spectra', 'Helix', 'Vortex', 'Synapse', 
                 'Axiom', 'Meridian', 'Obsidian', 'Bastion', 'Sentinel', 'NullPoint', 'Ghostline', 
                 'Hexlock', 'Echelon', 'Voltcore', 'ArcFlash', 'Dynamo', 'Argus', 'Atlas', 'Orion', 
                 'Rift', 'Quanta', 'Vector', 'Cobalt'
-            ];
-            const deviceSeries = [
+            ])];
+            const deviceSeries = [...new Set([
                 'Alpha', 'Pro', 'MK-IV', 'v3', '3000', 'X-Series', 'Quantum', 'Q5', 'EX', 'Ultra', 
                 'Core', 'Prime', 'Nova', 'Omega', 'Delta', '4K', 'Hyper', '4000', 'MK-V', 'R2', 'XC-9',
                 '015', '07/16', 'v2', 'Tiny', 'Z7', '45.02.31', 'MK-III', 'RC-1', 'V2.1', 'MK-II', 'X-200', 
                 'MK-I', 'S3', 'T-1000', 'V5', 'R3', 'Zeta', 'MK-VI'
-                ];
+            ])];
 
-            function generateDeviceName(prng, type) {
-                const brand = deviceBrands[prng.range(0, deviceBrands.length - 1)];
-                const series = deviceSeries[prng.range(0, deviceSeries.length - 1)];
+            // Deterministic, run-wide shuffled pool of brand/series combinations.
+            // Each puzzle draws the next combination, so a make/model can never repeat within a run.
+            function createDeviceNamePicker(seedStr) {
+                const pairCount = deviceBrands.length * deviceSeries.length;
+                const pool = [];
+                for (let i = 0; i < pairCount; i++) pool.push(i);
+
+                const prng = new SeededPRNG(`${seedStr}-DEVICE-NAMES`);
+                for (let i = pool.length - 1; i > 0; i--) {
+                    const j = prng.range(0, i);
+                    const tmp = pool[i];
+                    pool[i] = pool[j];
+                    pool[j] = tmp;
+                }
+
+                let cursor = 0;
+                return () => {
+                    const pairIdx = pool[cursor % pairCount];
+                    const round = Math.floor(cursor / pairCount);
+                    cursor++;
+                    // Only reached if a run has more puzzles than brand/series combinations
+                    return { pairIdx: pairIdx, suffix: round > 0 ? ` ${round + 1}` : '' };
+                };
+            }
+
+            function generateDeviceName(prng, type, takeName) {
+                // Keep the two legacy draws so puzzle parameters stay identical for a given seed
+                prng.range(0, deviceBrands.length - 1);
+                prng.range(0, deviceSeries.length - 1);
+
                 let typeLabel = 'Terminal';
                 if (type === 'keypad') typeLabel = 'Numpad';
                 else if (type === 'frequency') typeLabel = 'Beep Synth';
@@ -791,7 +818,10 @@
                 else if (type === 'power_grid') typeLabel = 'Matrix Grid';
                 else if (type === 'pressure_cycle') typeLabel = 'Hydro Station';
 
-                return `${brand} ${typeLabel} ${series}`;
+                const pick = takeName();
+                const brand = deviceBrands[Math.floor(pick.pairIdx / deviceSeries.length)];
+                const series = deviceSeries[pick.pairIdx % deviceSeries.length];
+                return `${brand} ${typeLabel} ${series}${pick.suffix}`;
             }
 
             const rooms = [];
@@ -802,6 +832,7 @@
             function generateFullRunLayout(seedStr) {
                 rooms.length = 0;
                 globalPumpCounter = 1;
+                const takeDeviceName = createDeviceNamePicker(seedStr);
 
                 for (let r = 1; r <= totalRooms; r++) {
                     const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${r}`);
@@ -843,7 +874,7 @@
                             freqInRoomIndex = freqPuzzleCount;
                         }
 
-                        const deviceMakeModel = generateDeviceName(roomPrng, typeKey);
+                        const deviceMakeModel = generateDeviceName(roomPrng, typeKey, takeDeviceName);
                         const correctWireIdx = roomPrng.range(0, 3);
 
                         const gridRequiredCount = roomPrng.range(3, 9);
