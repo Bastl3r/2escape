@@ -212,8 +212,8 @@
             <!-- Role Viewport: Field Operative (Top Down) -->
             <div id="role-view-operative" class="flex-1 flex flex-col relative overflow-hidden hidden">
                 <div class="flex-1 relative bg-[#0a0c10] overflow-hidden flex items-center justify-center p-2">
-                    <canvas id="operative-canvas"
-                        class="w-full max-w-2xl h-[420px] bg-[#12161f] border border-[#00f0ff44] rounded shadow-2xl block"></canvas>
+                    <canvas id="operative-canvas" width="672" height="420"
+                        class="w-full max-w-2xl h-auto bg-[#12161f] border border-[#00f0ff44] rounded shadow-2xl block"></canvas>
 
                     <div
                         class="absolute top-3 left-3 bg-[#12161f]/90 backdrop-blur border border-[#00f0ff44] p-2.5 rounded text-xs pointer-events-none shadow-lg">
@@ -759,6 +759,61 @@
 
             const totalRooms = 20;
 
+            // Room layout is authored in the operative canvas' design space (max 672 x 420)
+            const ROOM_VIEW_WIDTH = 672;
+            const ROOM_VIEW_HEIGHT = 420;
+            const PUZZLE_SPRITE_RADIUS = 14;
+            const PUZZLE_MIN_SEPARATION = PUZZLE_SPRITE_RADIUS * 2; // one puzzle sprite diameter
+            const DOOR_KEYPAD_POSITION = { x: 600, y: 210 }; // right-hand exit, vertically centred
+            const ROOM_PUZZLE_SLOTS = [
+                { x: 120, y: 100 },
+                { x: 340, y: 100 },
+                { x: 120, y: 320 },
+                { x: 340, y: 320 },
+                { x: 230, y: 210 },
+                { x: 450, y: 210 }
+            ];
+
+            function puzzlePlacementClearance(candidate, placedPositions) {
+                if (placedPositions.length === 0) return Infinity;
+                return Math.min(...placedPositions.map(placed =>
+                    Math.hypot(candidate.x - placed.x, candidate.y - placed.y)));
+            }
+
+            // Every puzzle keeps at least one sprite diameter from the others. Among the
+            // candidates that satisfy that, `prefer` decides the ranking (higher wins) and
+            // the roomiest one breaks ties, so nothing ends up merely touching.
+            // If no candidate can keep the distance, the highest ranked one is used.
+            function selectPuzzlePlacement(candidates, placedPositions, prefer) {
+                const scored = candidates.map(candidate => ({
+                    candidate: candidate,
+                    clearance: puzzlePlacementClearance(candidate, placedPositions),
+                    priority: prefer ? prefer(candidate) : 0
+                }));
+                const free = scored.filter(entry => entry.clearance >= PUZZLE_MIN_SEPARATION);
+                const pool = free.length > 0 ? free : scored;
+                return pool.reduce((best, entry) => {
+                    if (entry.priority > best.priority) return entry;
+                    if (entry.priority === best.priority && entry.clearance > best.clearance) return entry;
+                    return best;
+                }).candidate;
+            }
+
+            function distanceToDoor(pos) {
+                return Math.hypot(pos.x - DOOR_KEYPAD_POSITION.x, pos.y - DOOR_KEYPAD_POSITION.y);
+            }
+
+            // Puzzle labels stay centred under their sprite, but never run off the canvas edge
+            // (the 10 px margin also keeps them clear of the 8 px door strips at the walls)
+            function drawPuzzleLabel(ctx, text, centerX, baselineY, font) {
+                ctx.font = font;
+                const width = ctx.measureText(text).width;
+                const padding = 10;
+                const maxX = ctx.canvas.width - padding - width;
+                const x = Math.max(padding, Math.min(maxX, centerX - width / 2));
+                ctx.fillText(text, x, baselineY);
+            }
+
             function getPuzzleCountForRoom(roomNum) {
                 if (roomNum > 20) throw new Error("Maximum allowed room number is 20.");
                 if (roomNum < 5) return 3;
@@ -845,28 +900,46 @@
                     }
 
                     const pList = [];
+                    const placedPositions = [];
+                    let keypadCount = 0;
                     let otherPuzzleIndex = 0;
                     let freqPuzzleCount = 0;
 
                     selectedTypes.forEach((typeKey, pIdx) => {
                         let posX, posY;
                         if (typeKey === 'keypad') {
-                            posX = 600;
-                            posY = 210;
+                            const isDoorKeypad = keypadCount === 0;
+                            // The first keypad guards the exit; any further keypad sits as far from the door as possible
+                            const candidates = isDoorKeypad
+                                ? [DOOR_KEYPAD_POSITION, ...ROOM_PUZZLE_SLOTS]
+                                : ROOM_PUZZLE_SLOTS;
+                            const free = selectPuzzlePlacement(
+                                candidates,
+                                placedPositions,
+                                isDoorKeypad
+                                    ? candidate => (candidate === DOOR_KEYPAD_POSITION ? 1 : 0)
+                                    : distanceToDoor
+                            );
+                            posX = free.x;
+                            posY = free.y;
+                            keypadCount++;
                         } else {
-                            const gridPositions = [
-                                { x: 120, y: 100 },
-                                { x: 340, y: 100 },
-                                { x: 120, y: 320 },
-                                { x: 340, y: 320 },
-                                { x: 230, y: 210 },
-                                { x: 450, y: 210 }
-                            ];
-                            const pos = gridPositions[otherPuzzleIndex % gridPositions.length];
-                            posX = pos.x + roomPrng.range(-15, 15);
-                            posY = pos.y + roomPrng.range(-15, 15);
+                            // Keep the legacy jitter draws so unrelated puzzle parameters stay seed-stable
+                            const jitterX = roomPrng.range(-15, 15);
+                            const jitterY = roomPrng.range(-15, 15);
+                            const startSlot = otherPuzzleIndex % ROOM_PUZZLE_SLOTS.length;
                             otherPuzzleIndex++;
+
+                            const candidates = [];
+                            for (let i = 0; i < ROOM_PUZZLE_SLOTS.length; i++) {
+                                const slot = ROOM_PUZZLE_SLOTS[(startSlot + i) % ROOM_PUZZLE_SLOTS.length];
+                                candidates.push({ x: slot.x + jitterX, y: slot.y + jitterY });
+                            }
+                            const free = selectPuzzlePlacement(candidates, placedPositions);
+                            posX = free.x;
+                            posY = free.y;
                         }
+                        placedPositions.push({ x: posX, y: posY });
 
                         let freqInRoomIndex = null;
                         if (typeKey === 'frequency') {
@@ -1433,6 +1506,10 @@
 
             function initOperativeEngine() {
                 opCanvas = document.getElementById('operative-canvas');
+                // The room is always drawn in its 672 x 420 design space; CSS scales the
+                // element down on narrow screens, so no puzzle can end up off-canvas
+                opCanvas.width = ROOM_VIEW_WIDTH;
+                opCanvas.height = ROOM_VIEW_HEIGHT;
                 opCtx = opCanvas.getContext('2d');
                 initTouchControls();
                 requestAnimationFrame(updateOperativeLoop);
@@ -1441,11 +1518,6 @@
             function updateOperativeLoop(timestamp) {
                 if (State.role !== 'operative' || State.gameOver) return;
 
-                if (opCanvas.width !== opCanvas.clientWidth || opCanvas.height !== opCanvas.clientHeight) {
-                    opCanvas.width = opCanvas.clientWidth;
-                    opCanvas.height = opCanvas.clientHeight;
-                }
-
                 State.operativePos.x += Input.x * State.operativePos.speed;
                 State.operativePos.y += Input.y * State.operativePos.speed;
 
@@ -1453,19 +1525,19 @@
                 const isRoomSolved = currentRoom.puzzles.every(p => p.solved);
 
                 const doorHeight = 70;
-                const doorYStart = (opCanvas.height - doorHeight) / 2;
+                const doorYStart = (ROOM_VIEW_HEIGHT - doorHeight) / 2;
                 const margin = 18;
 
-                State.operativePos.y = Math.max(margin, Math.min(opCanvas.height - margin, State.operativePos.y));
+                State.operativePos.y = Math.max(margin, Math.min(ROOM_VIEW_HEIGHT - margin, State.operativePos.y));
 
-                if (State.operativePos.x >= opCanvas.width - margin) {
+                if (State.operativePos.x >= ROOM_VIEW_WIDTH - margin) {
                     if (currentRoom.id < totalRooms && isRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYStart + doorHeight) {
                         State.operativePos.room += 1;
                         State.operativePos.x = margin + 10;
                         resetRoomTimer(State.operativePos.room);
                         audio.beep(880, 'sine', 0.15, 0.15);
                     } else {
-                        State.operativePos.x = opCanvas.width - margin;
+                        State.operativePos.x = ROOM_VIEW_WIDTH - margin;
                     }
                 }
 
@@ -1475,7 +1547,7 @@
 
                     if (currentRoom.id > 1 && isPrevRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYStart + doorHeight) {
                         State.operativePos.room -= 1;
-                        State.operativePos.x = opCanvas.width - margin - 10;
+                        State.operativePos.x = ROOM_VIEW_WIDTH - margin - 10;
                         resetRoomTimer(State.operativePos.room);
                         audio.beep(660, 'sine', 0.15, 0.15);
                     } else {
@@ -1511,15 +1583,14 @@
                 currentRoom.puzzles.forEach(p => {
                     opCtx.fillStyle = p.solved ? '#00ff66' : '#ff2a2a';
                     opCtx.beginPath();
-                    opCtx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+                    opCtx.arc(p.x, p.y, PUZZLE_SPRITE_RADIUS, 0, Math.PI * 2);
                     opCtx.fill();
                     opCtx.strokeStyle = '#ffffff';
                     opCtx.lineWidth = 2;
                     opCtx.stroke();
 
                     opCtx.fillStyle = '#ffffff';
-                    opCtx.font = '9px Share Tech Mono';
-                    opCtx.fillText(p.makeModel, p.x - 35, p.y + 26);
+                    drawPuzzleLabel(opCtx, p.makeModel, p.x, p.y + 26, '9px Share Tech Mono');
                 });
 
                 if (currentRoom.id < totalRooms) {
@@ -1919,8 +1990,8 @@
                 radarCtx.font = '12px Orbitron';
                 radarCtx.fillText(t('radar.live', { room: currentRoom.id, total: totalRooms }), 16, 24);
 
-                const scaleX = radarCanvas.width / 672;
-                const scaleY = radarCanvas.height / 420;
+                const scaleX = radarCanvas.width / ROOM_VIEW_WIDTH;
+                const scaleY = radarCanvas.height / ROOM_VIEW_HEIGHT;
 
                 currentRoom.puzzles.forEach(p => {
                     const nx = p.x * scaleX;
@@ -1935,8 +2006,7 @@
                     radarCtx.stroke();
 
                     radarCtx.fillStyle = '#ffffff';
-                    radarCtx.font = '10px Share Tech Mono';
-                    radarCtx.fillText(p.makeModel, nx - 35, ny + 22);
+                    drawPuzzleLabel(radarCtx, p.makeModel, nx, ny + 22, '10px Share Tech Mono');
                 });
 
                 const opX = State.operativePos.x * scaleX;
