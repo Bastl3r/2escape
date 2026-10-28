@@ -767,8 +767,19 @@
                 return 6;
             }
 
-            const deviceBrands = ['Aegis', 'CipherGrid', 'VoltTech', 'OmniKey', 'Nexus', 'Krypton', 'ZeroSec', 'Titan', 'Spectra', 'Helix', 'Vortex', 'Synapse'];
-            const deviceSeries = ['Alpha', 'Pro', 'MK-IV', 'v3', '3000', 'X-Series', 'Quantum', 'Q5', 'EX', 'Ultra', 'Core', 'Prime'];
+            const deviceBrands = [
+                'Aegis', 'CipherGrid', 'VoltTech', 'Nano', 'Micro', 'OmniKey', 'Cobalt' , 'Vex',
+                'Nexus', 'Krypton', 'ZeroSec', 'Titan', 'Spectra', 'Helix', 'Vortex', 'Synapse', 
+                'Axiom', 'Meridian', 'Obsidian', 'Bastion', 'Sentinel', 'NullPoint', 'Ghostline', 
+                'Hexlock', 'Echelon', 'Voltcore', 'ArcFlash', 'Dynamo', 'Argus', 'Atlas', 'Orion', 
+                'Rift', 'Quanta', 'Vector', 'Cobalt'
+            ];
+            const deviceSeries = [
+                'Alpha', 'Pro', 'MK-IV', 'v3', '3000', 'X-Series', 'Quantum', 'Q5', 'EX', 'Ultra', 
+                'Core', 'Prime', 'Nova', 'Omega', 'Delta', '4K', 'Hyper', '4000', 'MK-V', 'R2', 'XC-9',
+                '015', '07/16', 'v2', 'Tiny', 'Z7', '45.02.31', 'MK-III', 'RC-1', 'V2.1', 'MK-II', 'X-200', 
+                'MK-I', 'S3', 'T-1000', 'V5', 'R3', 'Zeta', 'MK-VI'
+                ];
 
             function generateDeviceName(prng, type) {
                 const brand = deviceBrands[prng.range(0, deviceBrands.length - 1)];
