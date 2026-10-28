@@ -8,13 +8,14 @@
  * Bump CACHE_VERSION whenever index.html or the icons change, so clients do not
  * keep serving a stale shell.
  */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const SHELL_CACHE = `2escape-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `2escape-runtime-${CACHE_VERSION}`;
 
 const SHELL_ASSETS = [
     './',
     './index.html',
+    './puzzles.js',
     './offline.html',
     './manifest.json',
     './icons/icon-192.png',
