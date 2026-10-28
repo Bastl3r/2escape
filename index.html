@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-[#0d0f12]">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>2Escape // Cyber-Noir Co-op PWA</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -10,10 +12,13 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- QR Code Generator CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
-    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%222Escape%20Codebreak%22%2C%22short_name%22%3A%222Escape%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0f12%22%2C%22theme_color%22%3A%22%2300f0ff%22%2C%22icons%22%3A%5B%5D%7D">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <link rel="manifest"
+        href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%222Escape%20Codebreak%22%2C%22short_name%22%3A%222Escape%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0f12%22%2C%22theme_color%22%3A%22%2300f0ff%22%2C%22icons%22%3A%5B%5D%7D">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
+
         body {
             font-family: 'Share Tech Mono', monospace;
             background-color: #0d0f12;
@@ -21,21 +26,49 @@
             overflow: hidden;
             touch-action: none;
         }
-        .font-orbitron { font-family: 'Orbitron', sans-serif; }
-        .glow-cyan { text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.4); }
-        .glow-green { text-shadow: 0 0 10px rgba(0, 255, 102, 0.6), 0 0 20px rgba(0, 255, 102, 0.4); }
-        .glow-red { text-shadow: 0 0 10px rgba(255, 42, 42, 0.6), 0 0 20px rgba(255, 42, 42, 0.4); }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.4);
+        }
+
+        .glow-green {
+            text-shadow: 0 0 10px rgba(0, 255, 102, 0.6), 0 0 20px rgba(0, 255, 102, 0.4);
+        }
+
+        .glow-red {
+            text-shadow: 0 0 10px rgba(255, 42, 42, 0.6), 0 0 20px rgba(255, 42, 42, 0.4);
+        }
+
         .scanlines {
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
             background-size: 100% 4px, 6px 100%;
             pointer-events: none;
         }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: #0d0f12; }
-        ::-webkit-scrollbar-thumb { background: #00f0ff55; border-radius: 2px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0d0f12;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00f0ff55;
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f0ff;
+        }
     </style>
 </head>
+
 <body class="h-full flex flex-col relative select-none">
     <div class="absolute inset-0 z-50 scanlines pointer-events-none"></div>
 
@@ -44,55 +77,75 @@
         <!-- VIEW: LOBBY SYSTEM -->
         <div id="view-lobby" class="flex-1 flex flex-col items-center justify-center p-4 relative z-10">
             <div class="max-w-md w-full bg-[#12161f] border border-[#00f0ff44] rounded-lg p-6 shadow-2xl relative">
-                <div class="absolute -top-3 left-6 px-3 bg-[#0d0f12] border border-[#00f0ff88] text-xs font-orbitron tracking-widest text-[#00f0ff] glow-cyan">
+                <div
+                    class="absolute -top-3 left-6 px-3 bg-[#0d0f12] border border-[#00f0ff88] text-xs font-orbitron tracking-widest text-[#00f0ff] glow-cyan">
                     2ESCAPE // TERMINAL
                 </div>
 
                 <div class="text-center mb-4 mt-2">
                     <h1 class="text-3xl font-orbitron font-black tracking-wider text-[#00f0ff] glow-cyan">CODEBREAK</h1>
-                    <p class="text-xs text-gray-400 mt-1" data-i18n="lobby.tagline">ASYMMETRICAL CO-OP INFILTRATION PWA</p>
+                    <p class="text-xs text-gray-400 mt-1" data-i18n="lobby.tagline">ASYMMETRICAL CO-OP INFILTRATION PWA
+                    </p>
                 </div>
 
                 <!-- Language Toggle -->
                 <div class="flex items-center justify-center gap-2 mb-5">
-                    <span class="text-[10px] tracking-widest text-gray-500 font-orbitron" data-i18n="lobby.language">LANGUAGE</span>
-                    <button id="btn-lang-de" class="px-2.5 py-1 text-[10px] font-orbitron rounded border border-gray-700 bg-[#0d0f12] text-gray-400 hover:text-gray-200 cursor-pointer">DE</button>
-                    <button id="btn-lang-en" class="px-2.5 py-1 text-[10px] font-orbitron rounded border border-gray-700 bg-[#0d0f12] text-gray-400 hover:text-gray-200 cursor-pointer">EN</button>
+                    <span class="text-[10px] tracking-widest text-gray-500 font-orbitron"
+                        data-i18n="lobby.language">LANGUAGE</span>
+                    <button id="btn-lang-de"
+                        class="px-2.5 py-1 text-[10px] font-orbitron rounded border border-gray-700 bg-[#0d0f12] text-gray-400 hover:text-gray-200 cursor-pointer">DE</button>
+                    <button id="btn-lang-en"
+                        class="px-2.5 py-1 text-[10px] font-orbitron rounded border border-gray-700 bg-[#0d0f12] text-gray-400 hover:text-gray-200 cursor-pointer">EN</button>
                 </div>
 
                 <!-- Role Selection -->
                 <div class="grid grid-cols-2 gap-3 mb-6">
-                    <button id="btn-role-operative" class="p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
-                        <span class="text-xl mb-1">🏃</span> <span data-i18n="lobby.role.operative">FIELD OPERATIVE</span>
+                    <button id="btn-role-operative"
+                        class="p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
+                        <span class="text-xl mb-1">🏃</span> <span data-i18n="lobby.role.operative">FIELD
+                            OPERATIVE</span>
                     </button>
-                    <button id="btn-role-hacker" class="p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
+                    <button id="btn-role-hacker"
+                        class="p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer">
                         <span class="text-xl mb-1">💻</span> <span data-i18n="lobby.role.hacker">HACKER OPS</span>
                     </button>
                 </div>
 
                 <!-- Seed Control -->
                 <div class="mb-4">
-                    <label class="block text-xs uppercase tracking-wider text-gray-400 mb-1" data-i18n="lobby.seedLabel">Mission Seed (PRNG)</label>
+                    <label class="block text-xs uppercase tracking-wider text-gray-400 mb-1"
+                        data-i18n="lobby.seedLabel">Mission Seed (PRNG)</label>
                     <div class="flex gap-2">
-                        <input type="text" id="input-seed" value="CB-9901" class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-3 py-2 text-sm text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
-                        <button id="btn-gen-seed" class="px-3 py-2 border border-gray-700 hover:border-[#00f0ff] text-xs font-orbitron rounded bg-gray-900 transition cursor-pointer" data-i18n="lobby.gen">GEN</button>
+                        <input type="text" id="input-seed" value="CB-9901"
+                            class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-3 py-2 text-sm text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
+                        <button id="btn-gen-seed"
+                            class="px-3 py-2 border border-gray-700 hover:border-[#00f0ff] text-xs font-orbitron rounded bg-gray-900 transition cursor-pointer"
+                            data-i18n="lobby.gen">GEN</button>
                     </div>
                 </div>
 
                 <!-- Connection Options -->
                 <div class="space-y-3 pt-2 border-t border-gray-800">
                     <div class="flex gap-2">
-                        <button id="btn-host" class="flex-1 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded tracking-wider hover:bg-[#00ff66] transition cursor-pointer shadow-lg shadow-[#00f0ff22]" data-i18n="lobby.host">
+                        <button id="btn-host"
+                            class="flex-1 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded tracking-wider hover:bg-[#00ff66] transition cursor-pointer shadow-lg shadow-[#00f0ff22]"
+                            data-i18n="lobby.host">
                             HOST SESSION
                         </button>
-                        <button id="btn-solo" class="px-4 py-3 border border-[#00ff66] text-[#00ff66] font-orbitron text-xs rounded hover:bg-[#00ff6611] transition cursor-pointer" data-i18n="lobby.solo">
+                        <button id="btn-solo"
+                            class="px-4 py-3 border border-[#00ff66] text-[#00ff66] font-orbitron text-xs rounded hover:bg-[#00ff6611] transition cursor-pointer"
+                            data-i18n="lobby.solo">
                             SOLO TEST
                         </button>
                     </div>
 
                     <div class="flex gap-2">
-                        <input type="text" id="input-room" placeholder="Enter Room Code (CB-XXXX)" data-i18n-placeholder="lobby.roomPlaceholder" class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-3 py-2 text-sm text-[#00f0ff] font-mono uppercase focus:border-[#00f0ff] outline-none">
-                        <button id="btn-join" class="px-5 py-2 bg-gray-800 border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-xs font-bold rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer" data-i18n="lobby.join">
+                        <input type="text" id="input-room" placeholder="Enter Room Code (CB-XXXX)"
+                            data-i18n-placeholder="lobby.roomPlaceholder"
+                            class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-3 py-2 text-sm text-[#00f0ff] font-mono uppercase focus:border-[#00f0ff] outline-none">
+                        <button id="btn-join"
+                            class="px-5 py-2 bg-gray-800 border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-xs font-bold rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer"
+                            data-i18n="lobby.join">
                             JOIN
                         </button>
                     </div>
@@ -105,29 +158,40 @@
         <!-- VIEW: WAITING / HOST ROOM -->
         <div id="view-room" class="flex-1 hidden flex-col items-center justify-center p-4 relative z-10">
             <div class="max-w-md w-full bg-[#12161f] border border-[#00f0ff44] rounded-lg p-6 shadow-2xl text-center">
-                <h2 class="text-xl font-orbitron text-[#00f0ff] mb-2 glow-cyan" data-i18n="room.title">SECURE LOBBY ESTABLISHED</h2>
-                <p class="text-xs text-gray-400 mb-4" data-i18n="room.share">Share code or QR with your partner counterpart.</p>
-                
-                <div class="text-3xl font-mono font-bold text-[#00ff66] bg-[#0d0f12] p-3 rounded border border-[#00ff6644] mb-4 glow-green" id="display-room-code">
+                <h2 class="text-xl font-orbitron text-[#00f0ff] mb-2 glow-cyan" data-i18n="room.title">SECURE LOBBY
+                    ESTABLISHED</h2>
+                <p class="text-xs text-gray-400 mb-4" data-i18n="room.share">Share code or QR with your partner
+                    counterpart.</p>
+
+                <div class="text-3xl font-mono font-bold text-[#00ff66] bg-[#0d0f12] p-3 rounded border border-[#00ff6644] mb-4 glow-green"
+                    id="display-room-code">
                     CB-XXXX
                 </div>
 
                 <div class="flex justify-center mb-4">
-                    <div id="qrcode-container" class="bg-white p-2 rounded border border-gray-700 min-h-[140px] min-w-[140px] flex items-center justify-center"></div>
+                    <div id="qrcode-container"
+                        class="bg-white p-2 rounded border border-gray-700 min-h-[140px] min-w-[140px] flex items-center justify-center">
+                    </div>
                 </div>
 
-                <div id="connection-state" class="text-xs text-yellow-400 mb-4 animate-pulse" data-i18n="room.waiting">Waiting for peer connection...</div>
-                <button id="btn-abort" class="px-4 py-2 border border-red-500 text-red-500 text-xs font-orbitron rounded hover:bg-red-500 hover:text-white transition cursor-pointer" data-i18n="room.abort">ABORT SESSION</button>
+                <div id="connection-state" class="text-xs text-yellow-400 mb-4 animate-pulse" data-i18n="room.waiting">
+                    Waiting for peer connection...</div>
+                <button id="btn-abort"
+                    class="px-4 py-2 border border-red-500 text-red-500 text-xs font-orbitron rounded hover:bg-red-500 hover:text-white transition cursor-pointer"
+                    data-i18n="room.abort">ABORT SESSION</button>
             </div>
         </div>
 
         <!-- VIEW: GAME CONTAINER -->
         <div id="view-game" class="flex-1 hidden flex flex-col h-full w-full relative z-10">
-            <header class="h-12 bg-[#12161f] border-b border-[#00f0ff33] flex items-center justify-between px-4 shrink-0">
+            <header
+                class="h-12 bg-[#12161f] border-b border-[#00f0ff33] flex items-center justify-between px-4 shrink-0">
                 <div class="flex items-center space-x-3">
-                    <span class="font-orbitron text-xs font-bold text-[#00f0ff]" id="hud-role-badge">ROLE: OPERATIVE</span>
+                    <span class="font-orbitron text-xs font-bold text-[#00f0ff]" id="hud-role-badge">ROLE:
+                        OPERATIVE</span>
                     <span class="text-xs text-gray-500">|</span>
-                    <span class="text-xs font-mono text-gray-400"><span data-i18n="hud.seed">SEED:</span> <span id="hud-seed" class="text-[#00ff66]">CB-9901</span></span>
+                    <span class="text-xs font-mono text-gray-400"><span data-i18n="hud.seed">SEED:</span> <span
+                            id="hud-seed" class="text-[#00ff66]">CB-9901</span></span>
                 </div>
                 <div class="flex items-center space-x-6">
                     <div class="flex items-center space-x-2 font-mono text-xs">
@@ -135,33 +199,46 @@
                         <span id="hud-timer" class="text-[#ff2a2a] glow-red font-bold text-sm">[03:00]</span>
                     </div>
                     <div class="flex items-center space-x-2 text-xs font-mono">
-                        <span class="inline-block w-2 h-2 rounded-full bg-[#00ff66] animate-ping" id="net-indicator"></span>
+                        <span class="inline-block w-2 h-2 rounded-full bg-[#00ff66] animate-ping"
+                            id="net-indicator"></span>
                         <span id="net-status-text" class="text-gray-400" data-i18n="hud.secure">P2P SECURE</span>
                     </div>
-                    <button id="btn-quit" class="text-xs font-orbitron text-red-400 border border-red-500/40 px-2.5 py-1 rounded hover:bg-red-500/20 transition cursor-pointer" data-i18n="hud.quit">QUIT</button>
+                    <button id="btn-quit"
+                        class="text-xs font-orbitron text-red-400 border border-red-500/40 px-2.5 py-1 rounded hover:bg-red-500/20 transition cursor-pointer"
+                        data-i18n="hud.quit">QUIT</button>
                 </div>
             </header>
 
             <!-- Role Viewport: Field Operative (Top Down) -->
             <div id="role-view-operative" class="flex-1 flex flex-col relative overflow-hidden hidden">
                 <div class="flex-1 relative bg-[#0a0c10] overflow-hidden flex items-center justify-center p-2">
-                    <canvas id="operative-canvas" class="w-full max-w-2xl h-[420px] bg-[#12161f] border border-[#00f0ff44] rounded shadow-2xl block"></canvas>
-                    
-                    <div class="absolute top-3 left-3 bg-[#12161f]/90 backdrop-blur border border-[#00f0ff44] p-2.5 rounded text-xs pointer-events-none shadow-lg">
-                        <div class="font-orbitron font-bold text-[#00f0ff] mb-1" data-i18n="op.objectives">SECTOR OBJECTIVES (20 ROOMS)</div>
-                        <div id="operative-objectives" class="space-y-0.5 text-gray-300 text-[11px] max-h-36 overflow-y-auto">
+                    <canvas id="operative-canvas"
+                        class="w-full max-w-2xl h-[420px] bg-[#12161f] border border-[#00f0ff44] rounded shadow-2xl block"></canvas>
+
+                    <div
+                        class="absolute top-3 left-3 bg-[#12161f]/90 backdrop-blur border border-[#00f0ff44] p-2.5 rounded text-xs pointer-events-none shadow-lg">
+                        <div class="font-orbitron font-bold text-[#00f0ff] mb-1" data-i18n="op.objectives">SECTOR
+                            OBJECTIVES (20 ROOMS)</div>
+                        <div id="operative-objectives"
+                            class="space-y-0.5 text-gray-300 text-[11px] max-h-36 overflow-y-auto">
                             <!-- Populated dynamically -->
                         </div>
                     </div>
                 </div>
 
                 <!-- Controls Panel -->
-                <div class="h-32 bg-[#12161f] border-t border-[#00f0ff33] flex items-center justify-between px-8 py-2 shrink-0 relative select-none pb-6">
-                    <div id="joystick-zone" class="w-24 h-24 rounded-full border-2 border-[#00f0ff44] bg-[#00f0ff08] relative flex items-center justify-center touch-none">
-                        <div id="joystick-knob" class="w-10 h-10 rounded-full bg-[#00f0ff] absolute shadow-lg shadow-[#00f0ff88] transition-transform duration-75 pointer-events-none"></div>
+                <div
+                    class="h-32 bg-[#12161f] border-t border-[#00f0ff33] flex items-center justify-between px-8 py-2 shrink-0 relative select-none pb-6">
+                    <div id="joystick-zone"
+                        class="w-24 h-24 rounded-full border-2 border-[#00f0ff44] bg-[#00f0ff08] relative flex items-center justify-center touch-none">
+                        <div id="joystick-knob"
+                            class="w-10 h-10 rounded-full bg-[#00f0ff] absolute shadow-lg shadow-[#00f0ff88] transition-transform duration-75 pointer-events-none">
+                        </div>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <button id="btn-interact" class="w-16 h-16 rounded-full border-2 border-[#00ff66] bg-[#00ff6622] text-[#00ff66] font-orbitron font-bold text-xs flex items-center justify-center shadow-lg shadow-[#00ff6633] active:scale-95 transition cursor-pointer" data-i18n="op.interact">
+                        <button id="btn-interact"
+                            class="w-16 h-16 rounded-full border-2 border-[#00ff66] bg-[#00ff6622] text-[#00ff66] font-orbitron font-bold text-xs flex items-center justify-center shadow-lg shadow-[#00ff6633] active:scale-95 transition cursor-pointer"
+                            data-i18n="op.interact">
                             INTERACT
                         </button>
                     </div>
@@ -170,19 +247,32 @@
 
             <!-- Role Viewport: Hacker Dashboard -->
             <div id="role-view-hacker" class="flex-1 flex flex-col bg-[#0d0f12] overflow-hidden hidden">
-                <div class="flex bg-[#12161f] border-b border-[#00f0ff33] text-xs font-orbitron shrink-0 overflow-x-auto">
-                    <button id="htab-btn-1" class="px-5 py-3 border-b-2 border-[#00f0ff] text-[#00f0ff] bg-[#00f0ff11] cursor-pointer whitespace-nowrap" data-i18n="tab.radar">1. BLUEPRINT RADAR</button>
-                    <button id="htab-btn-2" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap" data-i18n="tab.manual">2. MANUAL DIRECTORY</button>
-                    <button id="htab-btn-3" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap" data-i18n="tab.terminal">3. OPS TERMINAL</button>
-                    <button id="htab-btn-4" class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap" data-i18n="tab.telemetry">4. TELEMETRY</button>
+                <div
+                    class="flex bg-[#12161f] border-b border-[#00f0ff33] text-xs font-orbitron shrink-0 overflow-x-auto">
+                    <button id="htab-btn-1"
+                        class="px-5 py-3 border-b-2 border-[#00f0ff] text-[#00f0ff] bg-[#00f0ff11] cursor-pointer whitespace-nowrap"
+                        data-i18n="tab.radar">1. BLUEPRINT RADAR</button>
+                    <button id="htab-btn-2"
+                        class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap"
+                        data-i18n="tab.manual">2. MANUAL DIRECTORY</button>
+                    <button id="htab-btn-3"
+                        class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap"
+                        data-i18n="tab.terminal">3. OPS TERMINAL</button>
+                    <button id="htab-btn-4"
+                        class="px-5 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer whitespace-nowrap"
+                        data-i18n="tab.telemetry">4. TELEMETRY</button>
                 </div>
 
                 <div id="htab-content-1" class="flex-1 flex flex-col p-4 overflow-hidden">
-                    <div class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded relative overflow-hidden flex flex-col items-center justify-center">
+                    <div
+                        class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded relative overflow-hidden flex flex-col items-center justify-center">
                         <canvas id="hacker-radar-canvas" class="absolute inset-0 w-full h-full block"></canvas>
-                        <div class="absolute top-3 left-3 bg-[#0d0f12]/90 border border-[#00f0ff44] p-2 rounded text-xs pointer-events-none">
-                            <span class="text-[#00f0ff] font-orbitron font-bold" data-i18n="radar.title">OPERATIVE BLUEPRINT RADAR</span>
-                            <div class="text-[10px] text-gray-400 mt-0.5" data-i18n="radar.desc">Tracking current room security barriers and agent vector.</div>
+                        <div
+                            class="absolute top-3 left-3 bg-[#0d0f12]/90 border border-[#00f0ff44] p-2 rounded text-xs pointer-events-none">
+                            <span class="text-[#00f0ff] font-orbitron font-bold" data-i18n="radar.title">OPERATIVE
+                                BLUEPRINT RADAR</span>
+                            <div class="text-[10px] text-gray-400 mt-0.5" data-i18n="radar.desc">Tracking current room
+                                security barriers and agent vector.</div>
                         </div>
                     </div>
                 </div>
@@ -190,9 +280,12 @@
                 <!-- Tab 2: Full Hacker's Manual Directory (Full Run Sorted) -->
                 <div id="htab-content-2" class="flex-1 hidden flex flex-col p-4 overflow-y-auto space-y-4">
                     <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
-                        <h3 class="font-orbitron text-sm text-[#00f0ff] mb-1 font-bold"><span data-i18n="manual.title">FULL SECTOR MANUAL DIRECTORY // SEED:</span> <span id="manual-seed-lbl" class="text-[#00ff66]">CB-9901</span></h3>
+                        <h3 class="font-orbitron text-sm text-[#00f0ff] mb-1 font-bold"><span
+                                data-i18n="manual.title">FULL SECTOR MANUAL DIRECTORY // SEED:</span> <span
+                                id="manual-seed-lbl" class="text-[#00ff66]">CB-9901</span></h3>
                         <p class="text-xs text-gray-300 leading-relaxed" data-i18n="manual.desc">
-                            Complete encryption database for all 20 sector rooms. Puzzles are organized by device type and sorted alphabetically by Make & Model.
+                            Complete encryption database for all 20 sector rooms. Puzzles are organized by device type
+                            and sorted alphabetically by Make & Model.
                         </p>
                     </div>
 
@@ -202,34 +295,51 @@
                 </div>
 
                 <!-- Tab 3: Hacker Terminal -->
-                <div id="htab-content-3" class="max-h-[50vh] flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
-                    <div id="terminal-output" class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300 min-h-[120px]">
-                        <div class="text-[#00f0ff]" data-i18n="term.title">SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED</div>
-                        <div class="text-gray-500" data-i18n="term.hint">Type 'help' to list available system commands, or enter overrides (e.g., 'p1 65' or 'cos(phi)=45').</div>
+                <div id="htab-content-3"
+                    class="max-h-[50vh] flex-1 hidden flex flex-col p-4 bg-[#0a0c10] overflow-hidden">
+                    <div id="terminal-output"
+                        class="flex-1 bg-[#12161f] border border-[#00f0ff33] rounded p-3 font-mono text-xs overflow-y-auto space-y-1 mb-3 text-gray-300 min-h-[120px]">
+                        <div class="text-[#00f0ff]" data-i18n="term.title">SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED
+                        </div>
+                        <div class="text-gray-500" data-i18n="term.hint">Type 'help' to list available system commands,
+                            or enter overrides (e.g., 'p1 65' or 'cos(phi)=45').</div>
                     </div>
                     <div class="relative shrink-0">
                         <div class="flex gap-2">
                             <span class="flex items-center text-[#00ff66] font-mono text-sm font-bold">></span>
-                            <button id="btn-cmd-history" class="px-2.5 bg-[#12161f] border border-gray-700 text-[#00f0ff] font-orbitron text-[10px] rounded hover:border-[#00f0ff] transition cursor-pointer shrink-0" data-i18n="term.historyBtn">HIST</button>
-                            <input type="text" id="terminal-input" placeholder="Enter command..." data-i18n-placeholder="term.placeholder" class="flex-1 min-w-0 bg-[#12161f] border border-gray-700 rounded px-3 py-2 text-xs text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
-                            <button id="btn-exec-cmd" class="px-4 bg-[#00f0ff22] border border-[#00f0ff] text-[#00f0ff] font-orbitron text-xs rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer shrink-0">ENTER</button>
+                            <button id="btn-cmd-history"
+                                class="px-2.5 bg-[#12161f] border border-gray-700 text-[#00f0ff] font-orbitron text-[10px] rounded hover:border-[#00f0ff] transition cursor-pointer shrink-0"
+                                data-i18n="term.historyBtn">HIST</button>
+                            <input type="text" id="terminal-input" placeholder="Enter command..."
+                                data-i18n-placeholder="term.placeholder"
+                                class="flex-1 min-w-0 bg-[#12161f] border border-gray-700 rounded px-3 py-2 text-xs text-[#00ff66] font-mono focus:border-[#00f0ff] outline-none">
+                            <button id="btn-exec-cmd"
+                                class="px-4 bg-[#00f0ff22] border border-[#00f0ff] text-[#00f0ff] font-orbitron text-xs rounded hover:bg-[#00f0ff] hover:text-[#0d0f12] transition cursor-pointer shrink-0">ENTER</button>
                         </div>
-                        <div id="cmd-history-list" class="hidden absolute bottom-full left-0 right-0 mb-2 bg-[#0d0f12] border border-[#00f0ff44] rounded shadow-2xl p-1 z-30 max-h-48 overflow-y-auto"></div>
+                        <div id="cmd-history-list"
+                            class="hidden absolute bottom-full left-0 right-0 mb-2 bg-[#0d0f12] border border-[#00f0ff44] rounded shadow-2xl p-1 z-30 max-h-48 overflow-y-auto">
+                        </div>
                     </div>
                 </div>
 
-                <div id="htab-content-4" class="flex-1 hidden flex flex-col p-4 overflow-y-auto space-y-4 font-mono text-xs">
+                <div id="htab-content-4"
+                    class="flex-1 hidden flex flex-col p-4 overflow-y-auto space-y-4 font-mono text-xs">
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
-                            <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2" data-i18n="telemetry.title">OPERATIVE POSITION</h4>
+                            <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2" data-i18n="telemetry.title">
+                                OPERATIVE POSITION</h4>
                             <div class="space-y-1 text-gray-300">
-                                <div><span data-i18n="telemetry.x">X_POS</span>: <span id="telemetry-x" class="text-[#00ff66]">0.00</span></div>
-                                <div><span data-i18n="telemetry.y">Y_POS</span>: <span id="telemetry-y" class="text-[#00ff66]">0.00</span></div>
-                                <div><span data-i18n="telemetry.room">CURRENT ROOM</span>: <span id="telemetry-room" class="text-[#00ff66]">ROOM 1</span></div>
+                                <div><span data-i18n="telemetry.x">X_POS</span>: <span id="telemetry-x"
+                                        class="text-[#00ff66]">0.00</span></div>
+                                <div><span data-i18n="telemetry.y">Y_POS</span>: <span id="telemetry-y"
+                                        class="text-[#00ff66]">0.00</span></div>
+                                <div><span data-i18n="telemetry.room">CURRENT ROOM</span>: <span id="telemetry-room"
+                                        class="text-[#00ff66]">ROOM 1</span></div>
                             </div>
                         </div>
                         <div class="bg-[#12161f] border border-[#00f0ff33] rounded p-4">
-                            <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2" data-i18n="telemetry.barriers">SECURITY BARRIERS</h4>
+                            <h4 class="font-orbitron text-[#00f0ff] font-bold mb-2" data-i18n="telemetry.barriers">
+                                SECURITY BARRIERS</h4>
                             <div class="space-y-1 text-gray-300 max-h-40 overflow-y-auto" id="telemetry-nodes">
                                 <!-- Populated dynamically -->
                             </div>
@@ -240,29 +350,43 @@
         </div>
 
         <!-- MODAL OVERLAY: PUZZLE SHELL -->
-        <div id="puzzle-modal" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
-            <div class="max-w-lg w-full bg-[#12161f] border border-[#00f0ff] rounded-lg shadow-2xl overflow-hidden flex flex-col">
+        <div id="puzzle-modal"
+            class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+            <div
+                class="max-w-lg w-full bg-[#12161f] border border-[#00f0ff] rounded-lg shadow-2xl overflow-hidden flex flex-col">
                 <div class="bg-[#0d0f12] border-b border-[#00f0ff44] px-4 py-3 flex items-center justify-between">
                     <div class="flex items-center space-x-2">
-                        <span id="puzzle-modal-tag" class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">[PUZZLE TYPE]</span>
-                        <h3 id="puzzle-modal-title" class="font-orbitron font-bold text-sm text-[#00f0ff] glow-cyan">OVERRIDE</h3>
+                        <span id="puzzle-modal-tag"
+                            class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">[PUZZLE
+                            TYPE]</span>
+                        <h3 id="puzzle-modal-title" class="font-orbitron font-bold text-sm text-[#00f0ff] glow-cyan">
+                            OVERRIDE</h3>
                     </div>
-                    <button id="btn-close-modal" class="text-gray-400 hover:text-red-400 font-bold text-sm cursor-pointer px-2">✕</button>
+                    <button id="btn-close-modal"
+                        class="text-gray-400 hover:text-red-400 font-bold text-sm cursor-pointer px-2">✕</button>
                 </div>
                 <div id="puzzle-modal-body" class="p-6 flex flex-col items-center justify-center"></div>
-                <div class="bg-[#0d0f12] border-t border-gray-800 px-4 py-3 flex items-center justify-between text-xs text-gray-400">
+                <div
+                    class="bg-[#0d0f12] border-t border-gray-800 px-4 py-3 flex items-center justify-between text-xs text-gray-400">
                     <span id="puzzle-modal-status" data-i18n="modal.statusIdle">Status: Awaiting Input...</span>
-                    <button id="btn-disengage" class="px-3 py-1 border border-gray-700 hover:border-[#00f0ff] rounded font-orbitron text-xs transition cursor-pointer" data-i18n="modal.disengage">DISENGAGE</button>
+                    <button id="btn-disengage"
+                        class="px-3 py-1 border border-gray-700 hover:border-[#00f0ff] rounded font-orbitron text-xs transition cursor-pointer"
+                        data-i18n="modal.disengage">DISENGAGE</button>
                 </div>
             </div>
         </div>
 
         <!-- END STATE MODAL -->
-        <div id="end-modal" class="absolute inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div id="end-modal"
+            class="absolute inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
             <div class="max-w-md w-full bg-[#12161f] border-2 rounded-lg p-6 text-center shadow-2xl" id="end-modal-box">
-                <h2 id="end-title" class="text-2xl font-orbitron font-black mb-3 glow-cyan" data-i18n="end.successTitle">MISSION SUCCESS</h2>
-                <p id="end-desc" class="text-xs text-gray-300 mb-6 leading-relaxed" data-i18n="end.successDesc">All 20 rooms successfully infiltrated. Security nodes bypassed.</p>
-                <button id="btn-return-lobby" class="px-6 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded hover:bg-[#00ff66] transition cursor-pointer" data-i18n="end.return">RETURN TO LOBBY</button>
+                <h2 id="end-title" class="text-2xl font-orbitron font-black mb-3 glow-cyan"
+                    data-i18n="end.successTitle">MISSION SUCCESS</h2>
+                <p id="end-desc" class="text-xs text-gray-300 mb-6 leading-relaxed" data-i18n="end.successDesc">All 20
+                    rooms successfully infiltrated. Security nodes bypassed.</p>
+                <button id="btn-return-lobby"
+                    class="px-6 py-3 bg-[#00f0ff] text-[#0d0f12] font-orbitron font-bold text-xs rounded hover:bg-[#00ff66] transition cursor-pointer"
+                    data-i18n="end.return">RETURN TO LOBBY</button>
             </div>
         </div>
 
@@ -274,7 +398,7 @@
             if ('serviceWorker' in navigator) {
                 const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));`;
                 const blob = new Blob([swCode], { type: 'text/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => { });
             }
 
             class SoundEngine {
@@ -299,7 +423,7 @@
                         gain.connect(this.ctx.destination);
                         osc.start();
                         osc.stop(this.ctx.currentTime + duration);
-                    } catch(e) {}
+                    } catch (e) { }
                 }
                 success() {
                     this.beep(523.25, 'sine', 0.15, 0.15);
@@ -320,9 +444,9 @@
                 de: {
                     'lobby.tagline': 'ASYMMETRISCHES CO-OP-INFILTRATIONS-PWA',
                     'lobby.language': 'SPRACHE',
-                    'lobby.role.operative': 'FELDOPERATIV',
-                    'lobby.role.hacker': 'HACKER-OPS',
-                    'lobby.seedLabel': 'Missions-Seed (PRNG)',
+                    'lobby.role.operative': 'AGENT',
+                    'lobby.role.hacker': 'HACKER',
+                    'lobby.seedLabel': 'Missions-Zufalls-Code (PRNG)',
                     'lobby.gen': 'NEU',
                     'lobby.host': 'SESSION HOSTEN',
                     'lobby.solo': 'SOLO-TEST',
@@ -355,13 +479,13 @@
                     'state.secured': 'GESICHERT',
                     'state.locked': 'GESPERRT',
                     'state.unlocked': 'OFFEN',
-                    'tab.radar': '1. BLAUPAUSEN-RADAR',
+                    'tab.radar': '1. RADAR',
                     'tab.manual': '2. HANDBUCH',
-                    'tab.terminal': '3. OPS-TERMINAL',
+                    'tab.terminal': '3. TERMINAL',
                     'tab.telemetry': '4. TELEMETRIE',
-                    'radar.title': 'BLAUPAUSEN-RADAR DES OPERATIVEN',
+                    'radar.title': 'RADAR DES AGENTEN',
                     'radar.desc': 'Zeigt Sicherheitsbarrieren des aktuellen Raums und den Vektor des Agenten.',
-                    'radar.live': 'LIVE-BLAUPAUSE: RAUM {room} / {total}',
+                    'radar.live': 'LIVE: RAUM {room} / {total}',
                     'manual.title': 'KOMPLETTES SEKTOR-HANDBUCH // SEED:',
                     'manual.desc': 'Vollständige Verschlüsselungsdatenbank für alle 20 Sektorräume. Rätsel sind nach Gerätetyp gruppiert und alphabetisch nach Hersteller & Modell sortiert.',
                     'manual.category': 'KATEGORIE: [{name}]',
@@ -378,11 +502,11 @@
                     'manual.tankTarget': 'Tank {tank} @ {level}%',
                     'manual.terminalCommands': 'Terminal-Befehle:',
                     'common.and': ' und ',
-                    'ptype.keypad': 'KEYPAD-UMGEHUNG',
-                    'ptype.frequency': 'FREQUENZ-TUNER',
-                    'ptype.wires': 'DRAHTSCHNEIDER',
-                    'ptype.power_grid': 'ENERGIE-MATRIX',
-                    'ptype.pressure_cycle': 'DRUCKZYKLUS',
+                    'ptype.keypad': 'KEYPAD BYPASS',
+                    'ptype.frequency': 'FREQUENCY TUNER',
+                    'ptype.wires': 'WIRE CUTTER',
+                    'ptype.power_grid': 'POWER MATRIX',
+                    'ptype.pressure_cycle': 'PRESSURE CYCLE',
                     'term.title': 'SYSTEMTERMINAL v3.0 // 20 RÄUME VERSCHLÜSSELT',
                     'term.hint': "Tippe 'help' für alle Systembefehle oder gib Overrides ein (z. B. 'p1 65' oder 'cos(phi)=45').",
                     'term.placeholder': 'Befehl eingeben...',
@@ -478,13 +602,13 @@
                     'state.secured': 'SECURED',
                     'state.locked': 'LOCKED',
                     'state.unlocked': 'UNLOCKED',
-                    'tab.radar': '1. BLUEPRINT RADAR',
+                    'tab.radar': '1. RADAR',
                     'tab.manual': '2. MANUAL DIRECTORY',
                     'tab.terminal': '3. OPS TERMINAL',
                     'tab.telemetry': '4. TELEMETRY',
-                    'radar.title': 'OPERATIVE BLUEPRINT RADAR',
+                    'radar.title': 'OPERATIVE RADAR',
                     'radar.desc': 'Tracking current room security barriers and agent vector.',
-                    'radar.live': 'LIVE BLUEPRINT: ROOM {room} / {total}',
+                    'radar.live': 'LIVE: ROOM {room} / {total}',
                     'manual.title': 'FULL SECTOR MANUAL DIRECTORY // SEED:',
                     'manual.desc': 'Complete encryption database for all 20 sector rooms. Puzzles are organized by device type and sorted alphabetically by Make & Model.',
                     'manual.category': 'CATEGORY: [{name}]',
@@ -730,7 +854,7 @@
                         const p2Flow = roomPrng.range(15, 100);
 
                         pList.push({
-                            id: `r${r}_p${pIdx+1}_${typeKey}`,
+                            id: `r${r}_p${pIdx + 1}_${typeKey}`,
                             room: r,
                             freqInRoomIndex: freqInRoomIndex,
                             makeModel: deviceMakeModel,
@@ -866,7 +990,7 @@
             function resetRoomTimer(roomNum) {
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 State.missionTime = getSecondsPerRoom(roomNum);
-                
+
                 updateTimerDisplay();
 
                 State.timerInterval = setInterval(() => {
@@ -915,7 +1039,7 @@
             function randomizeSeed() {
                 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
                 let s = 'CB-';
-                for(let i=0; i<4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+                for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
                 document.getElementById('input-seed').value = s;
             }
 
@@ -927,7 +1051,7 @@
                     } else {
                         containerElem.innerText = t('qr.ready');
                     }
-                } catch(e) {
+                } catch (e) {
                     containerElem.innerText = text;
                 }
             }
@@ -939,7 +1063,7 @@
                 State.soloMode = false;
                 State.roomCode = 'CB-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-                if (State.peer) { try { State.peer.destroy(); } catch(e) {} }
+                if (State.peer) { try { State.peer.destroy(); } catch (e) { } }
 
                 document.getElementById('view-lobby').classList.add('hidden');
                 document.getElementById('view-room').classList.remove('hidden');
@@ -977,7 +1101,7 @@
                 document.getElementById('display-room-code').innerText = State.roomCode;
                 document.getElementById('connection-state').innerText = attempt > 1 ? t('room.retrying', { n: attempt }) : t('room.connecting');
 
-                if (State.peer && attempt === 1) { try { State.peer.destroy(); } catch(e) {} }
+                if (State.peer && attempt === 1) { try { State.peer.destroy(); } catch (e) { } }
                 State.peer = new Peer();
 
                 State.peer.on('open', () => {
@@ -1011,7 +1135,7 @@
             }
 
             function cancelHosting() {
-                if (State.peer) { try { State.peer.destroy(); } catch(e) {} }
+                if (State.peer) { try { State.peer.destroy(); } catch (e) { } }
                 document.getElementById('view-room').classList.add('hidden');
                 document.getElementById('view-lobby').classList.remove('hidden');
             }
@@ -1024,7 +1148,7 @@
             }
 
             function quitGame() {
-                if (State.peer) { try { State.peer.destroy(); } catch(e) {} }
+                if (State.peer) { try { State.peer.destroy(); } catch (e) { } }
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 if (State.pendingSeedTimeout) { clearTimeout(State.pendingSeedTimeout); State.pendingSeedTimeout = null; }
                 State.sessionStarted = false;
@@ -1389,7 +1513,7 @@
 
                 modal.classList.remove('hidden');
                 bodyElem.innerHTML = '';
-                
+
                 tagElem.innerText = `[${getPuzzleTypeLabel(puzzle.type)}]`;
                 titleElem.innerText = puzzle.makeModel;
 
@@ -1429,7 +1553,7 @@
                     </div>
                 `;
                 const gridElem = document.getElementById('keypad-grid');
-                [1,2,3,4,5,6,7,8,9,'C',0,'OK'].forEach(n => {
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, 'OK'].forEach(n => {
                     const btn = document.createElement('button');
                     btn.className = "p-2 bg-[#0d0f12] border border-gray-700 hover:border-[#00f0ff] text-[#00f0ff] font-orbitron font-bold rounded cursor-pointer";
                     btn.innerText = n;
@@ -1564,24 +1688,24 @@
             }
 
             function buildPowerGridPuzzle(container, status, puzzle) {
-                let grid = [0,0,0, 0,0,0, 0,0,0];
+                let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
                 container.innerHTML = `<div class="w-full flex flex-col items-center"><div class="grid grid-cols-3 gap-2 w-56 h-56" id="power-grid-container"></div></div>`;
                 const gContainer = document.getElementById('power-grid-container');
-                
+
                 function isSolved() {
-                    return puzzle.powerGridTargets.every(idx => grid[idx] === 1) && 
-                           grid.every((val, idx) => val === 0 || puzzle.powerGridTargets.includes(idx));
+                    return puzzle.powerGridTargets.every(idx => grid[idx] === 1) &&
+                        grid.every((val, idx) => val === 0 || puzzle.powerGridTargets.includes(idx));
                 }
 
                 grid.forEach((val, idx) => {
                     const btn = document.createElement('button');
                     btn.className = `border ${val ? 'bg-[#00ff6633] border-[#00ff66] text-[#00ff66]' : 'bg-[#0d0f12] border-gray-700 text-gray-600'} font-orbitron font-bold rounded flex items-center justify-center cursor-pointer text-xs`;
-                    btn.innerText = `N-${idx+1}`;
+                    btn.innerText = `N-${idx + 1}`;
                     btn.onclick = () => {
                         audio.beep(650, 'sine', 0.05, 0.05);
                         grid[idx] = grid[idx] ? 0 : 1;
                         btn.className = `border ${grid[idx] ? 'bg-[#00ff6633] border-[#00ff66] text-[#00ff66]' : 'bg-[#0d0f12] border-gray-700 text-gray-600'} font-orbitron font-bold rounded flex items-center justify-center cursor-pointer text-xs`;
-                        
+
                         if (isSolved()) {
                             status.innerText = t('grid.solved');
                             solvePuzzle(puzzle);
@@ -1619,7 +1743,7 @@
 
             function buildPressureCyclePuzzle(container, status, puzzle) {
                 const pd = puzzle.pressureData;
-                
+
                 container.innerHTML = `
                     <div class="w-full flex flex-col items-center space-y-4 font-mono text-xs">
                         <div class="w-full grid grid-cols-2 gap-4 bg-[#0d0f12] border border-[#00f0ff44] rounded p-4">
@@ -1712,7 +1836,7 @@
                     if (p2Rate) p2Rate.innerText = pd.p2.flow;
                 }, 3000);
 
-                window.recheckPressurePuzzle = () => {};
+                window.recheckPressurePuzzle = () => { };
             }
 
             let radarCanvas, radarCtx;
@@ -1832,7 +1956,7 @@
 
                 State.historyIndex = idx;
                 input.value = idx >= 0 ? State.commandHistory[idx] : '';
-                try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
+                try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { }
                 return true;
             }
 
@@ -1861,7 +1985,7 @@
                         State.historyIndex = -1;
                         closeTerminalHistory();
                         input.focus();
-                        try { input.setSelectionRange(cmd.length, cmd.length); } catch (e) {}
+                        try { input.setSelectionRange(cmd.length, cmd.length); } catch (e) { }
                     };
                     list.appendChild(item);
                 });
@@ -1970,7 +2094,7 @@
                         if (freqPuzzle) {
                             freqPuzzle.currentPhaseInput = phaseVal;
                             sendNetData({ type: 'phase_sync', roomId: targetRoomNum, freqIndex: freqPuzzle.freqInRoomIndex, phaseValue: phaseVal });
-                            
+
                             if (phaseVal === freqPuzzle.targetPhase) {
                                 appendTerminalOutput(t('term.successPhase', { phase: phaseVal, room: targetRoomNum }), '#00ff66');
                                 audio.success();
@@ -2080,4 +2204,5 @@
         });
     </script>
 </body>
+
 </html>
