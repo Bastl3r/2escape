@@ -884,18 +884,29 @@
                 }
             }
 
-            function selectRole(role) {
-                State.role = role;
-                audio.beep(600, 'sine', 0.05, 0.05);
+            // Applies a role everywhere the lobby shows it. Silent on purpose: the join
+            // handshake reuses it when the host's choice overrides the local pick.
+            function applyRoleSelection(role) {
+                State.role = role === 'hacker' ? 'hacker' : 'operative';
                 const opBtn = document.getElementById('btn-role-operative');
                 const hkBtn = document.getElementById('btn-role-hacker');
-                if (role === 'operative') {
+                if (!opBtn || !hkBtn) return;
+                if (State.role === 'operative') {
                     opBtn.className = "p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
                     hkBtn.className = "p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
                 } else {
                     hkBtn.className = "p-3 border border-[#00f0ff] bg-[#00f0ff22] text-[#00f0ff] font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
                     opBtn.className = "p-3 border border-gray-700 bg-gray-900 text-gray-400 font-orbitron text-xs font-bold rounded flex flex-col items-center transition cursor-pointer";
                 }
+            }
+
+            function selectRole(role) {
+                audio.beep(600, 'sine', 0.05, 0.05);
+                applyRoleSelection(role);
+            }
+
+            function oppositeRole(role) {
+                return role === 'hacker' ? 'operative' : 'hacker';
             }
 
             function randomizeSeed() {
@@ -925,8 +936,8 @@
                     State.conn = connection;
                     setupConnectionHandlers();
                     document.getElementById('connection-state').innerText = t('room.connected');
-                    // Host seed and language are authoritative: hand them over before either side builds the run layout
-                    const sendSeed = () => sendNetData({ type: 'seed', seed: State.seed, lang: State.lang });
+                    // Host seed, language and role are authoritative: hand them over before either side builds the run layout
+                    const sendSeed = () => sendNetData(hostSeedPayload());
                     if (connection.open) sendSeed();
                     connection.on('open', sendSeed);
                     setTimeout(startGameSession, 1000);
@@ -981,6 +992,12 @@
                 if (State.conn && State.conn.open) State.conn.send(data);
             }
 
+            // The host decides the run: seed, language and its own role travel together so the
+            // joiner can pick the opposite role before its run layout is generated.
+            function hostSeedPayload() {
+                return { type: 'seed', seed: State.seed, lang: State.lang, role: State.role };
+            }
+
             function cancelHosting() {
                 if (State.peer) { try { State.peer.destroy(); } catch (e) { } }
                 document.getElementById('view-room').classList.add('hidden');
@@ -1020,13 +1037,18 @@
                             State.lang = data.lang;
                             applyLanguage();
                         }
+                        // The host keeps the role it picked; the joining client takes the other one,
+                        // ignoring its own lobby selection. Hosts that send no role keep the old behaviour.
+                        if (data.role === 'operative' || data.role === 'hacker') {
+                            applyRoleSelection(oppositeRole(data.role));
+                        }
                         startGameSession();
                     }
                     return;
                 }
 
                 if (data.type === 'seed_request') {
-                    sendNetData({ type: 'seed', seed: State.seed, lang: State.lang });
+                    sendNetData(hostSeedPayload());
                     return;
                 }
 
