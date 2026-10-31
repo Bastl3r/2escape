@@ -36,11 +36,14 @@
  *   { kind: 'phase', puzzle, phase, roomId, matched }
  *   { kind: 'phase-no-room', room }
  *   { kind: 'phase-no-puzzle', room }
+ *   { kind: 'fan', puzzle, delta, force, roomId }     levitating ball: fan+ / fan++ / fan- / fan--
+ *   { kind: 'fan-no-puzzle', cmd }                    no levitation field open on the operative side
  *
  * ADDING A PUZZLE TYPE
  *   1. add an entry to PUZZLE_TYPES (labelKey, render, manualEntry)
  *   2. append its draws to drawPuzzleParameters() (see the note there)
- *   3. extend the handbook/terminal code only if it needs a new mechanic
+ *   3. add the key to PUZZLE_TYPE_KEYS (this reshuffles every existing seed once)
+ *   4. extend the handbook/terminal code only if it needs a new mechanic
  *
  * SEED STABILITY
  *   Every puzzle consumes the same draw schedule whatever its type, so a seed
@@ -142,7 +145,8 @@
         frequency: 'Beep Synth',
         wires: 'Breaker Box',
         power_grid: 'Matrix Grid',
-        pressure_cycle: 'Hydro Station'
+        pressure_cycle: 'Hydro Station',
+        levitation: 'Levitation Column'
     };
 
     // Deterministic, run-wide shuffled pool of brand/series combinations.
@@ -212,6 +216,14 @@
         const targetFreq = prng.range(200, 700);
         const targetPhase = prng.range(30, 150);
 
+        // Levitating ball: the target height and the fan setting the run starts at.
+        // The start force is derived (not drawn) so the difficulty stays a function of
+        // the target alone and no extra draws sneak into the schedule.
+        const levitationTarget = prng.range(20, 90);
+        const levitationStartForce = levitationTarget < 50
+            ? Math.min(90, levitationTarget + 25)
+            : Math.max(10, levitationTarget - 25);
+
         return {
             pin: pin,
             targetFreq: targetFreq,
@@ -219,6 +231,8 @@
             currentPhaseInput: null,
             correctWireIdx: correctWireIdx,
             powerGridTargets: powerGridTargets,
+            levitationTarget: levitationTarget,
+            fanForce: levitationStartForce,
             pressureData: {
                 targetTank: targetTank,
                 targetLevel: targetLevel,
@@ -231,7 +245,7 @@
         };
     }
 
-    const PUZZLE_TYPE_KEYS = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle'];
+    const PUZZLE_TYPE_KEYS = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle', 'levitation'];
 
     function generateRoom(seedStr, roomNum, takeDeviceName, nextPumpId) {
         const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${roomNum}`);
@@ -308,6 +322,8 @@
                 currentPhaseInput: params.currentPhaseInput,
                 correctWireIdx: params.correctWireIdx,
                 powerGridTargets: params.powerGridTargets,
+                levitationTarget: params.levitationTarget,
+                fanForce: params.fanForce,
                 pressureData: params.pressureData
             });
         });
@@ -652,6 +668,191 @@
                     dispose: () => clearInterval(simInterval)
                 };
             }
+        },
+
+        levitation: {
+            labelKey: 'ptype.levitation',
+            manualEntry: (puzzle, host) =>
+                `${host.t('manual.targetHeight')} <span class="text-[#00f0ff] font-bold font-mono">${puzzle.levitationTarget}%</span> | ${host.t('manual.terminalCommands')} ` +
+                `<code class="text-[#00f0ff] font-mono">fan+</code> <code class="text-[#00f0ff] font-mono">fan++</code> ` +
+                `<code class="text-[#00f0ff] font-mono">fan-</code> <code class="text-[#00f0ff] font-mono">fan--</code>`,
+            render: (body, status, puzzle, host) => {
+                // ---- geometry: one 0..100 % height scale from the fan up to the ceiling.
+                const SHAFT_W = 208;
+                const SHAFT_H = 300;
+                const FAN_ZONE = 56;
+                const TOP_MARGIN = 24;
+
+                // ---- simulation
+                const TOLERANCE = 3;      // #14: solved within ±3 of the target
+                const SETTLE_SPEED = 5;   // %/s - the ball must hover, not fly through the band
+                const DWELL = 0.5;        // seconds at rest inside the band before it counts
+                const OMEGA = 2.6;        // cushion stiffness (rad/s)
+                const ZETA = 0.3;         // damping ratio
+
+                const targetValue = puzzle.levitationTarget;
+                const yFor = (value) => FAN_ZONE + (value / 100) * (SHAFT_H - FAN_ZONE - TOP_MARGIN);
+
+                body.innerHTML = `
+                    <div class="w-full flex flex-col items-center gap-3">
+                        <div id="lev-shaft" class="relative overflow-hidden rounded-lg"
+                            style="width:${SHAFT_W}px;height:${SHAFT_H}px;border:1px solid rgba(0,240,255,.28);
+                                   background-color:#070a0f;
+                                   background-image:linear-gradient(rgba(0,240,255,.055) 1px, transparent 1px),linear-gradient(90deg, rgba(0,240,255,.055) 1px, transparent 1px),radial-gradient(circle at 50% 100%, rgba(0,240,255,.10), transparent 62%);
+                                   background-size:22px 22px,22px 22px,100% 100%;">
+                            <div id="lev-air" class="absolute left-0 right-0 top-0 overflow-hidden" style="bottom:${FAN_ZONE}px"></div>
+
+                            <div id="lev-target" class="absolute left-0 right-0 z-10" style="bottom:0">
+                                <div id="lev-target-line" class="border-t-2 border-dashed border-[#ff2a2a]"
+                                    style="box-shadow:0 0 8px rgba(255,42,42,.45)"></div>
+                                <span id="lev-target-flag"
+                                    class="absolute right-1 -top-2 px-1 border border-[#ff2a2a] rounded-sm bg-[#0d0f12] font-orbitron text-[8px] tracking-widest text-[#ff6b6b]">${host.t('lev.target')}</span>
+                            </div>
+
+                            <div id="lev-ball" class="absolute left-1/2 z-20"
+                                style="width:26px;height:26px;margin-left:-13px;margin-bottom:-13px;bottom:0">
+                                <div id="lev-ball-core" class="w-full h-full rounded-full"
+                                    style="background:radial-gradient(circle at 34% 30%, #d9feff 0%, #57f2ff 28%, #00c2d4 62%, #00707d 100%);
+                                           box-shadow:0 0 10px rgba(0,240,255,.85), 0 0 24px rgba(0,240,255,.45), inset -3px -3px 7px rgba(0,0,0,.45)"></div>
+                            </div>
+
+                            <div class="absolute left-0 right-0 bottom-0 z-30 flex items-end justify-center"
+                                style="height:${FAN_ZONE}px;background:linear-gradient(to top, rgba(0,240,255,.07), transparent)">
+                                <div id="lev-fan" class="absolute rounded-full"
+                                    style="width:62px;height:62px;bottom:16px;border:1px solid rgba(0,240,255,.55);
+                                           background:repeating-conic-gradient(from 0deg, rgba(0,240,255,.42) 0deg 16deg, rgba(0,240,255,.04) 16deg 45deg),radial-gradient(circle, rgba(0,240,255,.10), transparent 68%);
+                                           box-shadow:0 0 18px rgba(0,240,255,.30), inset 0 0 16px rgba(0,240,255,.22);"></div>
+                                <div class="absolute rounded-full"
+                                    style="width:14px;height:14px;bottom:41px;background:radial-gradient(circle, #c8fbff, #0097a8 70%, #00434c);box-shadow:0 0 12px rgba(0,240,255,.8)"></div>
+                                <div class="relative w-full h-[14px] flex items-center justify-center border-t border-[#00f0ff44] bg-[#0d1116] font-orbitron text-[7px] tracking-[0.28em] text-[#00f0ff8c]">${host.t('lev.fan')}</div>
+                            </div>
+                        </div>
+
+                        <div class="w-full px-3 py-2 bg-[#0d0f12] border border-gray-700 rounded text-center text-[11px] leading-relaxed">
+                            <div><span class="text-gray-500">${host.t('lev.hintLabel')}</span>
+                                <code class="text-[#00ff66] font-mono">fan+</code>
+                                <code class="text-[#00ff66] font-mono">fan++</code>
+                                <code class="text-[#00ff66] font-mono">fan-</code>
+                                <code class="text-[#00ff66] font-mono">fan--</code>
+                            </div>
+                            <div class="text-[10px] text-gray-500 mt-0.5">${host.t('lev.hintNote')}</div>
+                        </div>
+                    </div>
+                `;
+
+                const ballEl = document.getElementById('lev-ball');
+                const targetEl = document.getElementById('lev-target');
+                const fanEl = document.getElementById('lev-fan');
+                const airEl = document.getElementById('lev-air');
+
+                targetEl.style.bottom = yFor(targetValue) + 'px';
+
+                // Air streaks rise from the fan. Kept in JS (no keyframes) so the whole
+                // animation lives in this file and can follow the fan force.
+                const streaks = [];
+                const airHeight = SHAFT_H - FAN_ZONE;
+                for (let i = 0; i < 9; i++) {
+                    const el = document.createElement('div');
+                    el.className = 'absolute rounded-sm';
+                    el.style.left = (8 + Math.random() * 84) + '%';
+                    el.style.width = '2px';
+                    el.style.height = (24 + Math.random() * 34) + 'px';
+                    el.style.bottom = '-46px';
+                    el.style.background = 'linear-gradient(to top, rgba(0,240,255,0), rgba(0,240,255,.85))';
+                    airEl.appendChild(el);
+                    streaks.push({
+                        el: el,
+                        y: Math.random() * (airHeight + 46),
+                        k: 0.8 + Math.random() * 0.5
+                    });
+                }
+
+                let h = puzzle.fanForce;   // current ball height, 0..100
+                let v = 0;                 // vertical speed, %/s
+                let dwell = 0;             // seconds spent inside the target band
+                let solvedNow = false;
+                let fanAngle = 0;
+                let lastFrame = 0;
+                let raf = 0;
+                let lastForce = -1;
+
+                function place(dt, now) {
+                    const visH = h + Math.sin(now / 420) * 0.4;   // cosmetic wobble only
+                    ballEl.style.bottom = yFor(visH) + 'px';
+                }
+
+                function animateFan(dt, force) {
+                    if (force !== lastForce) {
+                        lastForce = force;
+                        const opacity = (0.15 + (force / 100) * 0.55).toFixed(2);
+                        streaks.forEach(s => { s.el.style.opacity = opacity; });
+                    }
+                    fanAngle = (fanAngle + dt * (40 + force * 5)) % 360;
+                    fanEl.style.transform = `rotate(${fanAngle}deg)`;
+
+                    const speed = 25 + force * 1.1;   // px/s
+                    streaks.forEach(s => {
+                        s.y += speed * s.k * dt;
+                        if (s.y > airHeight + 46) s.y = 0;
+                        s.el.style.transform = `translateY(${-s.y}px)`;
+                    });
+                }
+
+                function markSolved() {
+                    solvedNow = true;
+                    status.innerText = host.t('lev.solved');
+                    document.getElementById('lev-target-line').style.borderTopColor = '#00ff66';
+                    document.getElementById('lev-target-line').style.boxShadow = '0 0 10px rgba(0,255,102,.55)';
+                    document.getElementById('lev-target-flag').style.borderColor = 'rgba(0,255,102,.7)';
+                    document.getElementById('lev-target-flag').style.color = '#00ff66';
+                    document.getElementById('lev-ball-core').style.background =
+                        'radial-gradient(circle at 34% 30%, #e4ffea 0%, #7dffb0 28%, #00e05c 62%, #00752f 100%)';
+                    document.getElementById('lev-ball-core').style.boxShadow =
+                        '0 0 12px rgba(0,255,102,.95), 0 0 30px rgba(0,255,102,.55), inset -3px -3px 7px rgba(0,0,0,.45)';
+                    host.solve(puzzle);
+                }
+
+                // Damped cushion: lift falls off linearly with height around the height
+                // the fan is rated for, so the ball settles at exactly fanForce with a
+                // little overshoot on the way.
+                function frame(now) {
+                    const dt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 0.016;
+                    lastFrame = now;
+
+                    if (!host.isOpen(puzzle)) {
+                        cancelAnimationFrame(raf);
+                        return;
+                    }
+
+                    if (!puzzle.solved && !solvedNow) {
+                        const a = OMEGA * OMEGA * (puzzle.fanForce - h) - 2 * ZETA * OMEGA * v;
+                        v += a * dt;
+                        h += v * dt;
+
+                        if (h < 0) { h = 0; if (v < 0) v = 0; }
+                        if (h > 100) { h = 100; if (v > 0) v = 0; }
+
+                        if (Math.abs(h - targetValue) <= TOLERANCE && Math.abs(v) <= SETTLE_SPEED) {
+                            dwell += dt;
+                            if (dwell >= DWELL) markSolved();
+                        } else {
+                            dwell = 0;
+                        }
+                    }
+
+                    place(dt, now);
+                    animateFan(dt, puzzle.fanForce);
+                    raf = requestAnimationFrame(frame);
+                }
+
+                status.innerText = host.t('lev.ready');
+                place(0, 0);
+                raf = requestAnimationFrame(frame);
+
+                return {
+                    dispose: () => cancelAnimationFrame(raf)
+                };
+            }
         }
     };
 
@@ -788,6 +989,37 @@
                 phase: phase,
                 roomId: roomNumber,
                 matched: phase === puzzle.targetPhase
+            };
+        }
+
+        // Levitating ball: fan+ / fan++ / fan- / fan-- always apply to the puzzle the
+        // operative has open, exactly like the pump commands do for the pressure cycle.
+        const fanMatch = text.match(/^fan(\+\+|--|\+|-)$/i);
+        if (fanMatch) {
+            const token = fanMatch[1];
+            const delta = token === '++' ? 5 : token === '--' ? -5 : token === '+' ? 1 : -1;
+
+            let levitationPuzzle = null;
+            rooms.some(room => {
+                const found = room.puzzles.find(p => p.id === ctx.activePuzzleId);
+                if (found && found.type === 'levitation') {
+                    levitationPuzzle = found;
+                    return true;
+                }
+                return false;
+            });
+
+            if (!levitationPuzzle) {
+                return { kind: 'fan-no-puzzle', cmd: text.toLowerCase() };
+            }
+
+            const force = Math.min(100, Math.max(0, levitationPuzzle.fanForce + delta));
+            return {
+                kind: 'fan',
+                puzzle: levitationPuzzle,
+                delta: force - levitationPuzzle.fanForce,
+                force: force,
+                roomId: levitationPuzzle.room
             };
         }
 
