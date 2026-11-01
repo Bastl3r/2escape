@@ -1847,7 +1847,9 @@
                     return;
                 }
 
-                State.commandHistory.forEach(cmd => {
+                // Storage stays newest-first (the arrow-key recall depends on index 0),
+                // the dropdown shows it chronologically: oldest on top, latest at the bottom.
+                State.commandHistory.slice().reverse().forEach(cmd => {
                     const item = document.createElement('button');
                     item.className = "block w-full text-left px-2 py-1.5 font-mono text-xs text-[#00ff66] hover:bg-[#00f0ff22] rounded truncate cursor-pointer";
                     item.innerText = cmd;
@@ -1871,6 +1873,8 @@
                 if (list.classList.contains('hidden')) {
                     renderTerminalHistory();
                     list.classList.remove('hidden');
+                    // Latest command sits at the bottom, so start the scroll there.
+                    list.scrollTop = list.scrollHeight;
                 } else {
                     list.classList.add('hidden');
                 }
