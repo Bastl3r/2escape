@@ -978,7 +978,7 @@
         frequency: {
             labelKey: 'ptype.frequency',
             manualEntry: (puzzle, host) =>
-                `${host.t('manual.targetFreq')} <span class="text-[#00f0ff] font-bold font-mono">${puzzle.targetFreq} Hz</span> | ${host.t('manual.terminalOverride')} <code class="text-[#00ff66] font-mono">cos(phi)=${puzzle.targetPhase}</code>`,
+                `${host.t('manual.targetFreq')} <span class="text-[#00f0ff] font-bold font-mono">${puzzle.targetFreq} Hz</span>`,
             render: (body, status, puzzle, host) => {
                 let freq = 200;
                 const formulaStr = `cos(phi)=[phaseValue]`;
@@ -1135,8 +1135,6 @@
 
         pressure_cycle: {
             labelKey: 'ptype.pressure_cycle',
-            manualEntry: (puzzle, host) =>
-                `${host.t('manual.target')} <span class="text-red-400 font-bold">${host.t('manual.tankTarget', { tank: puzzle.pressureData.targetTank, level: puzzle.pressureData.targetLevel })}</span> | ${host.t('manual.terminalCommands')} <code class="text-[#00f0ff] font-mono">p1 [0-100]</code>, <code class="text-[#00f0ff] font-mono">p2 [0-100]</code>`,
             render: (body, status, puzzle, host) => {
                 const pd = puzzle.pressureData;
 
@@ -1234,10 +1232,6 @@
 
         levitation: {
             labelKey: 'ptype.levitation',
-            manualEntry: (puzzle, host) =>
-                `${host.t('manual.targetHeight')} <span class="text-[#00f0ff] font-bold font-mono">${puzzle.levitationTarget}%</span> | ${host.t('manual.terminalCommands')} ` +
-                `<code class="text-[#00f0ff] font-mono">fan+</code> <code class="text-[#00f0ff] font-mono">fan++</code> ` +
-                `<code class="text-[#00f0ff] font-mono">fan-</code> <code class="text-[#00f0ff] font-mono">fan--</code>`,
             render: (body, status, puzzle, host) => {
                 // ---- geometry: one 0..100 % height scale from the fan up to the ceiling.
                 const SHAFT_W = 208;
@@ -1640,13 +1634,18 @@
                             class="mt-2 w-full px-3 py-1.5 border border-[#00f0ff55] text-[#00f0ff] font-orbitron text-[10px] tracking-widest rounded hover:bg-[#00f0ff11] cursor-pointer">${host.t('manual.roomPreview')}</button>`
                     : '';
 
+                // Not every type exposes handbook info (issue #24): the entry is optional.
+                const entry = typeof definition.manualEntry === 'function'
+                    ? definition.manualEntry(puzzle, host)
+                    : '';
+
                 item.innerHTML = `
                     <div>
                         <div class="flex justify-between items-center mb-1">
                             <span class="font-orbitron font-bold text-[#00f0ff]">${puzzle.makeModel}</span>
                             <span class="text-[10px] text-gray-500 font-mono">${host.t('manual.room', { n: puzzle.room })}</span>
                         </div>
-                        <div class="text-gray-300 mt-1">${definition.manualEntry(puzzle, host)}</div>
+                        ${entry ? `<div class="text-gray-300 mt-1">${entry}</div>` : ''}
                         ${previewButton}
                     </div>
                 `;
