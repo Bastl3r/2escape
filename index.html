@@ -101,6 +101,126 @@
             pointer-events: none;
         }
 
+        /* Optical relay (#17): six mirror knobs plus the two room canvases */
+        #laser-room-canvas,
+        #preview-laser-canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .laser-knobs {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .laser-knob {
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 0 2px;
+            background: none;
+            border: 0;
+            cursor: pointer;
+            font-family: inherit;
+            color: #8a94a6;
+        }
+
+        .laser-knob-dial {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 2px solid #2a3340;
+            background: radial-gradient(circle at 35% 30%, #1c2531 0%, #10151c 62%, #0a0e13 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: border-color .15s, box-shadow .15s, background .15s;
+        }
+
+        .laser-knob:hover .laser-knob-dial {
+            border-color: #4b5a6d;
+        }
+
+        .laser-knob.selected .laser-knob-dial {
+            border-color: #00f0ff;
+            background: radial-gradient(circle at 35% 30%, #1f3340 0%, #101c24 62%, #0a1218 100%);
+            box-shadow: 0 0 14px rgba(0, 240, 255, .40), inset 0 0 12px rgba(0, 240, 255, .20);
+        }
+
+        .laser-knob-pane {
+            position: absolute;
+            left: 4px;
+            right: 4px;
+            top: 50%;
+            height: 2px;
+            margin-top: -1px;
+            border-radius: 2px;
+            background: #9fe6f0;
+            box-shadow: 0 0 7px rgba(0, 240, 255, .55);
+            transform-origin: 50% 50%;
+            transform: rotate(0deg);
+            pointer-events: none;
+        }
+
+        .laser-knob.selected .laser-knob-pane {
+            background: #e8feff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, .85);
+        }
+
+        .laser-knob-hub {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00cfe0;
+            box-shadow: 0 0 8px rgba(0, 240, 255, .65);
+            pointer-events: none;
+        }
+
+        .laser-knob.selected .laser-knob-hub {
+            background: #00f0ff;
+        }
+
+        .laser-knob-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            line-height: 1;
+        }
+
+        .laser-knob.selected .laser-knob-label {
+            color: #00f0ff;
+        }
+
+        .laser-knob-deg {
+            font-size: 9px;
+            color: #5c6879;
+            line-height: 1;
+        }
+
+        /* very narrow phones: keep all six knobs inside the card */
+        @media (max-width: 400px) {
+            .laser-knob-dial {
+                width: 44px;
+                height: 44px;
+            }
+
+            .laser-knob-label {
+                font-size: 9px;
+            }
+
+            .laser-knobs {
+                gap: 3px;
+            }
+        }
+
         ::-webkit-scrollbar {
             width: 4px;
             height: 4px;
@@ -421,6 +541,33 @@
             </div>
         </div>
 
+        <!-- MODAL OVERLAY: HACKER ROOM PREVIEW (optical relay and future room views) -->
+        <div id="room-preview-modal"
+            class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+            <div
+                class="max-w-lg w-full bg-[#12161f] border border-[#00f0ff] rounded-lg shadow-2xl overflow-hidden flex flex-col">
+                <div class="bg-[#0d0f12] border-b border-[#00f0ff44] px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span id="room-preview-tag"
+                            class="px-2 py-0.5 bg-[#00f0ff22] border border-[#00f0ff88] text-[#00f0ff] font-orbitron text-[10px] rounded">[ROOM
+                            PREVIEW]</span>
+                        <h3 id="room-preview-title"
+                            class="font-orbitron font-bold text-sm text-[#00f0ff] glow-cyan">PREVIEW</h3>
+                    </div>
+                    <button id="btn-close-room-preview"
+                        class="text-gray-400 hover:text-red-400 font-bold text-sm cursor-pointer px-2">✕</button>
+                </div>
+                <div id="room-preview-body" class="p-6 flex flex-col items-center justify-center gap-3"></div>
+                <div
+                    class="bg-[#0d0f12] border-t border-gray-800 px-4 py-3 flex items-center justify-between text-xs text-gray-400">
+                    <span id="room-preview-status">Status: ...</span>
+                    <button id="btn-disengage-room-preview"
+                        class="px-3 py-1 border border-gray-700 hover:border-[#00f0ff] rounded font-orbitron text-xs transition cursor-pointer"
+                        data-i18n="modal.disengage">DISENGAGE</button>
+                </div>
+            </div>
+        </div>
+
         <!-- END STATE MODAL -->
         <div id="end-modal"
             class="absolute inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
@@ -558,6 +705,23 @@
                     'ptype.power_grid': 'POWER MATRIX',
                     'ptype.pressure_cycle': 'PRESSURE CYCLE',
                     'ptype.levitation': 'LEVITATION FIELD',
+                    'ptype.laser': 'OPTIK-RELAIS',
+                    'manual.roomPreview': 'RAUMVORSCHAU ÖFFNEN',
+                    'preview.tag': 'RAUMVORSCHAU',
+                    'laser.manualEntry': 'Raumvorschau: Spiegelbank M1–M6, Laser-Quelle, Wandblockaden.',
+                    'laser.manualNote': 'Hinweis: Der erste Spiegel muss im Startstrahl des Lasers liegen.',
+                    'laser.knobHeading': 'SPIEGELBANK',
+                    'laser.angleLabel': 'WINKEL',
+                    'laser.hint': 'Spiegel wählen, dann Winkel einstellen',
+                    'laser.sourceLabel': 'LASER',
+                    'laser.targetLabel': 'ZIEL',
+                    'laser.legendLaser': 'Laser',
+                    'laser.legendMirror': 'Spiegel',
+                    'laser.legendWall': 'Wand',
+                    'laser.legendTarget': 'Ziel',
+                    'laser.statusBlocked': 'Status: Strahl blockiert – kein Zielkontakt.',
+                    'laser.statusRouted': 'Status: Strahl umgeleitet – Ziel verfehlt.',
+                    'laser.statusSolved': 'Status: Ziel getroffen – Relais synchronisiert!',
                     'term.title': 'SYSTEMTERMINAL v3.0 // 20 RÄUME VERSCHLÜSSELT',
                     'term.hint': "Tippe 'help' für alle Systembefehle oder gib Overrides ein (z. B. 'p1 65' oder 'cos(phi)=45').",
                     'term.placeholder': 'Befehl eingeben...',
@@ -691,6 +855,23 @@
                     'ptype.power_grid': 'POWER MATRIX',
                     'ptype.pressure_cycle': 'PRESSURE CYCLE',
                     'ptype.levitation': 'LEVITATION FIELD',
+                    'ptype.laser': 'OPTICAL RELAY',
+                    'manual.roomPreview': 'OPEN ROOM PREVIEW',
+                    'preview.tag': 'ROOM PREVIEW',
+                    'laser.manualEntry': 'Room preview: mirror bank M1–M6, laser source, wall blocks.',
+                    'laser.manualNote': 'Note: the first mirror must sit in the laser’s initial beam.',
+                    'laser.knobHeading': 'MIRROR BANK',
+                    'laser.angleLabel': 'ANGLE',
+                    'laser.hint': 'select a mirror, then set the angle',
+                    'laser.sourceLabel': 'LASER',
+                    'laser.targetLabel': 'TARGET',
+                    'laser.legendLaser': 'Laser',
+                    'laser.legendMirror': 'Mirror',
+                    'laser.legendWall': 'Wall',
+                    'laser.legendTarget': 'Target',
+                    'laser.statusBlocked': 'Status: Beam blocked – no contact with target.',
+                    'laser.statusRouted': 'Status: Beam redirected – target missed.',
+                    'laser.statusSolved': 'Status: Target hit – relay synchronised!',
                     'term.title': 'SYSTEM TERMINAL v3.0 // 20 ROOMS ENCRYPTED',
                     'term.hint': "Type 'help' to list available system commands, or enter overrides (e.g., 'p1 65' or 'cos(phi)=45').",
                     'term.placeholder': 'Enter command...',
@@ -798,6 +979,9 @@
                     updateObjectivesDisplay();
                     updateTelemetryNodesDisplay();
                     populateHackerManualDirectory();
+                    if (roomPreviewView && roomPreviewView.puzzleId) {
+                        openRoomPreview(roomPreviewView.puzzleId);
+                    }
                 }
             }
 
@@ -1043,6 +1227,7 @@
                 State.commandHistory = [];
                 State.historyIndex = -1;
                 closeTerminalHistory();
+                closeRoomPreview();
                 document.getElementById('view-game').classList.add('hidden');
                 document.getElementById('role-view-operative').classList.add('hidden');
                 document.getElementById('role-view-hacker').classList.add('hidden');
@@ -1095,6 +1280,9 @@
                     }
                     updateTelemetryNodesDisplay();
                     checkMissionWinCondition();
+                    if (roomPreviewView && roomPreviewView.puzzleId === data.puzzleId) {
+                        refreshRoomPreview();
+                    }
                 } else if (data.type === 'phase_sync') {
                     const rObj = rooms.find(r => r.id === data.roomId);
                     if (rObj) {
@@ -1133,6 +1321,24 @@
                     });
                     if (State.activePuzzle && State.activePuzzle.type === 'levitation') {
                         refreshActivePuzzle();
+                    }
+                } else if (data.type === 'laser_sync') {
+                    rooms.forEach(r => {
+                        r.puzzles.forEach(p => {
+                            if (p.type !== 'laser' || p.id !== data.puzzleId) return;
+                            if (!p.laserData || !p.laserData.mirrors) return;
+                            const index = Math.round(data.index);
+                            const mirror = p.laserData.mirrors[index];
+                            if (!mirror) return;
+                            const angle = Math.round(data.angle);
+                            mirror.angle = Math.min(360, Math.max(0, Number.isFinite(angle) ? angle : 0));
+                        });
+                    });
+                    if (State.activePuzzle && State.activePuzzle.id === data.puzzleId) {
+                        refreshActivePuzzle();
+                    }
+                    if (roomPreviewView && roomPreviewView.puzzleId === data.puzzleId) {
+                        refreshRoomPreview();
                     }
                 } else if (data.type === 'active_puzzle') {
                     State.operativePuzzleId = data.puzzleId || null;
@@ -1409,7 +1615,9 @@
                     success: () => audio.success(),
                     solve: (puzzle) => solvePuzzle(puzzle),
                     penalty: (seconds) => applyTimePenalty(seconds),
-                    isOpen: (puzzle) => !!State.activePuzzle && State.activePuzzle.id === puzzle.id
+                    isOpen: (puzzle) => !!State.activePuzzle && State.activePuzzle.id === puzzle.id,
+                    laserSync: (puzzle, index, angle) =>
+                        sendNetData({ type: 'laser_sync', puzzleId: puzzle.id, index: index, angle: angle })
                 };
             }
 
@@ -1443,6 +1651,57 @@
                 State.activePuzzle = null;
                 State.operativePuzzleId = null;
                 sendNetData({ type: 'active_puzzle', puzzleId: null });
+            }
+
+            // Hacker-side room preview (handbook -> make & model). It lives in its own modal
+            // because the operative may have a different puzzle open at the same time.
+            let roomPreviewView = null;
+
+            function openRoomPreview(puzzleId) {
+                let previewPuzzle = null;
+                rooms.some(room => {
+                    const found = room.puzzles.find(p => p.id === puzzleId);
+                    if (found) {
+                        previewPuzzle = found;
+                        return true;
+                    }
+                    return false;
+                });
+                if (!previewPuzzle) return;
+
+                // Re-render in place (e.g. after a language switch) without leaking the old view.
+                if (roomPreviewView && typeof roomPreviewView.dispose === 'function') {
+                    roomPreviewView.dispose();
+                }
+                roomPreviewView = null;
+
+                document.getElementById('room-preview-modal').classList.remove('hidden');
+                try {
+                    roomPreviewView = PuzzleEngine.openPreview(previewPuzzle, {
+                        title: document.getElementById('room-preview-title'),
+                        tag: document.getElementById('room-preview-tag'),
+                        body: document.getElementById('room-preview-body'),
+                        status: document.getElementById('room-preview-status')
+                    }, puzzleHostApi());
+                } catch (err) {
+                    // A type without a room preview simply does not open one.
+                    roomPreviewView = null;
+                    document.getElementById('room-preview-modal').classList.add('hidden');
+                }
+            }
+
+            function closeRoomPreview() {
+                if (roomPreviewView && typeof roomPreviewView.dispose === 'function') {
+                    roomPreviewView.dispose();
+                }
+                roomPreviewView = null;
+                document.getElementById('room-preview-modal').classList.add('hidden');
+            }
+
+            function refreshRoomPreview() {
+                if (roomPreviewView && typeof roomPreviewView.refresh === 'function') {
+                    roomPreviewView.refresh();
+                }
             }
 
             function solvePuzzle(puzzle) {
@@ -1776,6 +2035,16 @@
             });
             document.getElementById('btn-close-modal').addEventListener('click', closePuzzleModal);
             document.getElementById('btn-disengage').addEventListener('click', closePuzzleModal);
+
+            // Handbook -> room preview (currently only the optical relay offers one)
+            document.getElementById('manual-puzzle-list').addEventListener('click', (event) => {
+                const trigger = event.target.closest('[data-room-preview]');
+                if (!trigger) return;
+                audio.beep(600, 'sine', 0.05, 0.05);
+                openRoomPreview(trigger.getAttribute('data-room-preview'));
+            });
+            document.getElementById('btn-close-room-preview').addEventListener('click', closeRoomPreview);
+            document.getElementById('btn-disengage-room-preview').addEventListener('click', closeRoomPreview);
 
             document.getElementById('htab-btn-1').addEventListener('click', () => switchHackerTab(1));
             document.getElementById('htab-btn-2').addEventListener('click', () => switchHackerTab(2));

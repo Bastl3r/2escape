@@ -15,6 +15,7 @@
  *   PuzzleEngine.PUZZLE_SPRITE_RADIUS         sprite radius in that space
  *   PuzzleEngine.generateRun(seed)            -> [{ id, puzzles: [...] }]  (pure)
  *   PuzzleEngine.open(puzzle, ui, host)       -> { refresh(), dispose() }
+ *   PuzzleEngine.openPreview(puzzle, ui, host)-> { refresh(), dispose() }
  *   PuzzleEngine.renderManual(container, rooms, host)
  *   PuzzleEngine.parseTerminalCommand(cmdText, ctx)
  *
@@ -26,6 +27,7 @@
  *   solve(puzzle)         mark solved, sync peers, update HUD
  *   penalty(seconds)      apply a time penalty
  *   isOpen(puzzle)        true while the operative still has this puzzle open
+ *   laserSync(puzzle, index, angle)  push an optical-relay mirror to the peer
  *
  * Terminal context: { activeRoom, activePuzzleId, rooms }.
  * parseTerminalCommand() returns null when the command is not a puzzle
@@ -146,7 +148,8 @@
         wires: 'Breaker Box',
         power_grid: 'Matrix Grid',
         pressure_cycle: 'Hydro Station',
-        levitation: 'Levitation Column'
+        levitation: 'Levitation Column',
+        laser: 'Optical Relay'
     };
 
     // Deterministic, run-wide shuffled pool of brand/series combinations.
@@ -245,7 +248,37 @@
         };
     }
 
-    const PUZZLE_TYPE_KEYS = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle', 'levitation'];
+    // Type selection bounds are part of every existing seed: this list is frozen at the
+    // types of the initial release. New types are injected after generation instead
+    // (see injectLaserPuzzle), so adding them never shifts the legacy draws.
+    const LEGACY_TYPE_KEYS = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle', 'levitation'];
+    const PUZZLE_TYPE_KEYS = LEGACY_TYPE_KEYS.concat('laser');
+
+    // Turns one non-keypad puzzle of an already generated room into an optical relay.
+    // Everything is drawn from the caller's own PRNG and the make/model is built from
+    // local draws, so the run-wide device-name cursor and parameter streams stay put.
+    function injectLaserPuzzle(pList, roomNum, prng) {
+        const candidates = pList.filter(p => p.type !== 'keypad');
+        if (candidates.length === 0) return false;
+
+        const victim = candidates[prng.range(0, candidates.length - 1)];
+        victim.id = `r${roomNum}_p${pList.indexOf(victim) + 1}_laser`;
+        victim.type = 'laser';
+        victim.makeModel = `${deviceBrands[prng.range(0, deviceBrands.length - 1)]} ` +
+            `${DEVICE_TYPE_LABELS.laser} ${deviceSeries[prng.range(0, deviceSeries.length - 1)]}`;
+        victim.freqInRoomIndex = null;
+        victim.laserData = createLaserRoom(prng.range(0, 2147483647));
+
+        syncFrequencyTotals(pList);
+        return true;
+    }
+
+    function syncFrequencyTotals(pList) {
+        const freqTotal = pList.filter(p => p.type === 'frequency').length;
+        pList.forEach(p => {
+            if (p.type === 'frequency') p.totalFreqPuzzlesInRoom = freqTotal;
+        });
+    }
 
     function generateRoom(seedStr, roomNum, takeDeviceName, nextPumpId) {
         const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${roomNum}`);
@@ -253,7 +286,7 @@
         const selectedTypes = [];
 
         for (let p = 0; p < puzzleCount; p++) {
-            selectedTypes.push(PUZZLE_TYPE_KEYS[roomPrng.range(0, PUZZLE_TYPE_KEYS.length - 1)]);
+            selectedTypes.push(LEGACY_TYPE_KEYS[roomPrng.range(0, LEGACY_TYPE_KEYS.length - 1)]);
         }
 
         const pList = [];
@@ -328,11 +361,13 @@
             });
         });
 
-        pList.forEach(p => {
-            if (p.type === 'frequency') {
-                p.totalFreqPuzzlesInRoom = freqPuzzleCount;
-            }
-        });
+        // Optical relay (issue #17): injected after the room is complete, from its own
+        // PRNG, so every legacy type/parameter/name draw above stays untouched.
+        const laserPrng = new SeededPRNG(`${seedStr}-LASER-ROOM-${roomNum}`);
+        if (laserPrng.range(0, 99) < 40) {
+            injectLaserPuzzle(pList, roomNum, laserPrng);
+        }
+        syncFrequencyTotals(pList);
 
         return { id: roomNum, puzzles: pList };
     }
@@ -347,6 +382,18 @@
         for (let r = 1; r <= TOTAL_ROOMS; r++) {
             run.push(generateRoom(seed, r, takeDeviceName, nextPumpId));
         }
+
+        // Every run must actually contain the optical relay; otherwise a seed could leave
+        // issue #17's puzzle type unseen for a whole mission.
+        if (!run.some(room => room.puzzles.some(p => p.type === 'laser'))) {
+            const fallbackPrng = new SeededPRNG(`${seed}-LASER-FALLBACK`);
+            const roomsWithCandidates = run.filter(room => room.puzzles.some(p => p.type !== 'keypad'));
+            if (roomsWithCandidates.length > 0) {
+                const room = roomsWithCandidates[fallbackPrng.range(0, roomsWithCandidates.length - 1)];
+                injectLaserPuzzle(room.puzzles, room.id, fallbackPrng);
+            }
+        }
+
         return run;
     }
 
@@ -371,6 +418,521 @@
     function isPowerGridSolved(targets, grid) {
         return targets.every(idx => grid[idx] === 1) &&
             grid.every((val, idx) => val === 0 || targets.includes(idx));
+    }
+
+    // --------------------------------------------------------- optical relay (#17)
+    // The laser room is authored in its own 720 x 400 design space. Six mirrors
+    // form a serpentine: laser -> M1 -> M2 -> M3 -> M4 -> M5 -> M6 -> target.
+    // The operative only sees laser/beam/target; mirrors and walls are hidden
+    // there but drawn in the hacker's room preview from the same data.
+    const LASER_VIEW = Object.freeze({ width: 720, height: 400 });
+    const LASER_MIRROR_RADIUS = 13;
+    const LASER_TARGET_RADIUS = 17;
+
+    function laserNormalize(x, y) {
+        const len = Math.hypot(x, y) || 1;
+        return { x: x / len, y: y / len };
+    }
+
+    // Mirrors are pane lines across a circle, so their normal is the pane line
+    // turned by 90 degrees. The angle is the pane-line angle (0..360).
+    function laserReflect(dir, angleDeg) {
+        const a = angleDeg * Math.PI / 180;
+        const nx = -Math.sin(a);
+        const ny = Math.cos(a);
+        const dot = dir.x * nx + dir.y * ny;
+        return { x: dir.x - 2 * dot * nx, y: dir.y - 2 * dot * ny };
+    }
+
+    function laserCircleHitsRect(cx, cy, radius, rect, pad) {
+        const nx = Math.max(rect.x - pad, Math.min(cx, rect.x + rect.w + pad));
+        const ny = Math.max(rect.y - pad, Math.min(cy, rect.y + rect.h + pad));
+        return Math.hypot(cx - nx, cy - ny) < radius;
+    }
+
+    // Liang-Barsky segment/rect clip, used to keep walls off the intended beam.
+    function laserSegmentHitsRect(seg, rect, pad) {
+        const minX = rect.x - pad;
+        const maxX = rect.x + rect.w + pad;
+        const minY = rect.y - pad;
+        const maxY = rect.y + rect.h + pad;
+        const dx = seg.b.x - seg.a.x;
+        const dy = seg.b.y - seg.a.y;
+        let t0 = 0;
+        let t1 = 1;
+
+        const clip = (p, q) => {
+            if (p === 0) return q >= 0;
+            const r = q / p;
+            if (p < 0) {
+                if (r > t1) return false;
+                if (r > t0) t0 = r;
+            } else {
+                if (r < t0) return false;
+                if (r < t1) t1 = r;
+            }
+            return true;
+        };
+
+        return clip(-dx, seg.a.x - minX) &&
+            clip(dx, maxX - seg.a.x) &&
+            clip(-dy, seg.a.y - minY) &&
+            clip(dy, maxY - seg.a.y);
+    }
+
+    function castLaserRay(data, origin, dir, ignoredMirror) {
+        const STEP = 1.2;
+        const MAX = 2600;
+        let x = origin.x;
+        let y = origin.y;
+        let dist = 0;
+
+        while (dist < MAX) {
+            x += dir.x * STEP;
+            y += dir.y * STEP;
+            dist += STEP;
+
+            if (x < 3 || x > LASER_VIEW.width - 3 || y < 3 || y > LASER_VIEW.height - 3) {
+                return { type: 'bounds', x: x, y: y };
+            }
+            for (let i = 0; i < data.walls.length; i++) {
+                const wall = data.walls[i];
+                if (x >= wall.x && x <= wall.x + wall.w && y >= wall.y && y <= wall.y + wall.h) {
+                    return { type: 'wall', x: x, y: y };
+                }
+            }
+            if (Math.hypot(x - data.target.x, y - data.target.y) <= data.target.r) {
+                return { type: 'target', x: x, y: y };
+            }
+            for (let i = 0; i < data.mirrors.length; i++) {
+                const mirror = data.mirrors[i];
+                if (mirror === ignoredMirror) continue;
+                if (Math.hypot(x - mirror.x, y - mirror.y) <= LASER_MIRROR_RADIUS) {
+                    // The pane line runs across the diameter, so the beam pivots at the
+                    // mirror centre. Reflecting at the disc edge would offset the outgoing
+                    // ray by one radius and it would never line up with the next mirror.
+                    return { type: 'mirror', mirror: mirror, x: mirror.x, y: mirror.y };
+                }
+            }
+        }
+
+        return { type: 'max', x: x, y: y };
+    }
+
+    function traceLaserBeam(data) {
+        let pos = { x: data.laser.x, y: data.laser.y };
+        let dir = { x: data.laser.dx, y: data.laser.dy };
+        let ignored = null;
+        const segments = [];
+        let bounces = 0;
+        let hitTarget = false;
+
+        for (let bounce = 0; bounce < 12; bounce++) {
+            const hit = castLaserRay(data, pos, dir, ignored);
+            segments.push({ a: pos, b: { x: hit.x, y: hit.y } });
+
+            if (hit.type === 'target') {
+                hitTarget = true;
+                break;
+            }
+            if (hit.type !== 'mirror') break;
+
+            dir = laserReflect(dir, hit.mirror.angle);
+            pos = { x: hit.x, y: hit.y };
+            ignored = hit.mirror;
+            bounces++;
+        }
+
+        return { segments: segments, bounces: bounces, hitTarget: hitTarget };
+    }
+
+    function laserStartAngle(prng, solution) {
+        for (let attempt = 0; attempt < 16; attempt++) {
+            const angle = prng.range(0, 71) * 5;
+            const line = angle % 180;
+            const delta = Math.abs(line - solution);
+            if (Math.min(delta, 180 - delta) > 12) return angle;
+        }
+        return (solution + 35) % 360;
+    }
+
+    function laserWallFits(rect, data, walls, segments) {
+        const W = LASER_VIEW.width;
+        const H = LASER_VIEW.height;
+        if (rect.x < 26 || rect.y < 26 || rect.x + rect.w > W - 26 || rect.y + rect.h > H - 26) return false;
+
+        if (laserCircleHitsRect(data.laser.x, data.laser.y, 30, rect, 0)) return false;
+        if (laserCircleHitsRect(data.target.x, data.target.y, LASER_TARGET_RADIUS + 10, rect, 0)) return false;
+        for (let i = 0; i < data.mirrors.length; i++) {
+            const mirror = data.mirrors[i];
+            if (laserCircleHitsRect(mirror.x, mirror.y, LASER_MIRROR_RADIUS + 12, rect, 0)) return false;
+        }
+
+        for (let i = 0; i < segments.length; i++) {
+            if (laserSegmentHitsRect(segments[i], rect, 6)) return false;
+        }
+
+        for (let i = 0; i < walls.length; i++) {
+            const other = walls[i];
+            if (rect.x < other.x + other.w + 10 && rect.x + rect.w + 10 > other.x &&
+                rect.y < other.y + other.h + 10 && rect.y + rect.h + 10 > other.y) return false;
+        }
+
+        return true;
+    }
+
+    function buildLaserWalls(prng, data, segments) {
+        const walls = [];
+        const fits = (rect) => laserWallFits(rect, data, walls, segments);
+        const W = LASER_VIEW.width;
+        const H = LASER_VIEW.height;
+
+        // Issue #17: at least one wall must break the direct line M1 -> target.
+        // The rectangle is centred on that line and shrunk after every failed try.
+        for (let attempt = 0; attempt < 90; attempt++) {
+            const t = 0.22 + prng.range(0, 56) / 100;
+            const cx = data.mirrors[0].x + (data.target.x - data.mirrors[0].x) * t;
+            const cy = data.mirrors[0].y + (data.target.y - data.mirrors[0].y) * t;
+            const shrink = Math.max(0.4, 1 - attempt / 120);
+            const w = Math.max(26, Math.round(prng.range(48, 96) * shrink));
+            const h = Math.max(18, Math.round(prng.range(26, 64) * shrink));
+            const rect = { x: Math.round(cx - w / 2), y: Math.round(cy - h / 2), w: w, h: h };
+            if (fits(rect)) {
+                walls.push(rect);
+                break;
+            }
+        }
+
+        // A couple of decorative blocks so the room reads as a room, never on the path.
+        const extras = prng.range(0, 2);
+        for (let n = 0; n < extras; n++) {
+            for (let attempt = 0; attempt < 20; attempt++) {
+                const w = prng.range(34, 96);
+                const h = prng.range(20, 56);
+                const rect = {
+                    x: prng.range(40, W - w - 40),
+                    y: prng.range(40, H - h - 40),
+                    w: w,
+                    h: h
+                };
+                if (fits(rect)) {
+                    walls.push(rect);
+                    break;
+                }
+            }
+        }
+
+        return walls;
+    }
+
+    function createLaserRoom(seed) {
+        const prng = new SeededPRNG('LASER-' + seed);
+        const W = LASER_VIEW.width;
+        const H = LASER_VIEW.height;
+
+        // Four horizontal lanes, shuffled: the beam turns up/down unpredictably.
+        const lanes = [70, 155, 245, 335].map(center => center + prng.range(-10, 10));
+        for (let i = lanes.length - 1; i > 0; i--) {
+            const j = prng.range(0, i);
+            const tmp = lanes[i];
+            lanes[i] = lanes[j];
+            lanes[j] = tmp;
+        }
+        const y0 = lanes[0];
+        const y1 = lanes[1];
+        const y2 = lanes[2];
+        const y3 = lanes[3];
+
+        const x1 = prng.range(120, 175);
+        const x2 = prng.range(285, 340);
+        const x3 = prng.range(450, 505);
+        const xTarget = prng.range(620, 668);
+
+        // Muzzle, mirrors M1..M6, then the target - all connected in series.
+        let points = [
+            { x: 54, y: y0 },
+            { x: x1, y: y0 },
+            { x: x1, y: y1 },
+            { x: x2, y: y1 },
+            { x: x2, y: y2 },
+            { x: x3, y: y2 },
+            { x: x3, y: y3 },
+            { x: xTarget, y: y3 }
+        ];
+
+        const flipX = prng.range(0, 1) === 1;
+        const flipY = prng.range(0, 1) === 1;
+        if (flipX) points = points.map(p => ({ x: W - p.x, y: p.y }));
+        if (flipY) points = points.map(p => ({ x: p.x, y: H - p.y }));
+
+        const laserDir = laserNormalize(points[1].x - points[0].x, points[1].y - points[0].y);
+
+        const solutionAngles = [];
+        for (let i = 1; i <= 6; i++) {
+            const inDir = laserNormalize(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+            const outDir = laserNormalize(points[i + 1].x - points[i].x, points[i + 1].y - points[i].y);
+            const half = (Math.atan2(outDir.y, outDir.x) + Math.atan2(inDir.y, inDir.x)) / 2;
+            let deg = Math.round(half * 180 / Math.PI) % 180;
+            if (deg < 0) deg += 180;
+            solutionAngles.push(deg);
+        }
+
+        const data = {
+            laser: { x: points[0].x, y: points[0].y, dx: laserDir.x, dy: laserDir.y },
+            target: { x: points[7].x, y: points[7].y, r: LASER_TARGET_RADIUS },
+            mirrors: points.slice(1, 7).map((p, idx) => ({
+                x: p.x,
+                y: p.y,
+                angle: laserStartAngle(prng, solutionAngles[idx])
+            })),
+            walls: [],
+            solution: solutionAngles
+        };
+
+        const solutionSegments = [];
+        for (let i = 0; i < points.length - 1; i++) {
+            solutionSegments.push({ a: points[i], b: points[i + 1] });
+        }
+        data.walls = buildLaserWalls(prng, data, solutionSegments);
+
+        // Safety net: never hand out an already solved beam.
+        for (let guard = 0; guard < 12 && traceLaserBeam(data).hitTarget; guard++) {
+            data.mirrors[0].angle = (data.mirrors[0].angle + 17) % 360;
+        }
+
+        return data;
+    }
+
+    // --------------------------------------------------- optical relay drawing
+    function drawLaserWall(ctx, wall) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(wall.x, wall.y, wall.w, wall.h);
+        ctx.clip();
+
+        ctx.fillStyle = '#1b222c';
+        ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+
+        ctx.strokeStyle = 'rgba(0, 240, 255, .09)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let d = -wall.h; d < wall.w + wall.h; d += 9) {
+            ctx.moveTo(wall.x + d, wall.y + wall.h);
+            ctx.lineTo(wall.x + d + wall.h, wall.y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.strokeStyle = '#39424f';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(wall.x + .5, wall.y + .5, wall.w - 1, wall.h - 1);
+    }
+
+    function drawLaserSource(ctx, data, host) {
+        const x = data.laser.x;
+        const y = data.laser.y;
+        const dir = data.laser.dx >= 0 ? 1 : -1;
+        const housingX = dir > 0 ? x - 32 : x + 4;
+
+        ctx.fillStyle = '#171d25';
+        ctx.strokeStyle = 'rgba(255, 77, 77, .55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.rect(housingX, y - 14, 28, 28);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#2a1a1c';
+        ctx.beginPath();
+        ctx.rect(dir > 0 ? x - 4 : x - 1, y - 6, 5, 12);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 77, 77, .55)';
+        ctx.stroke();
+
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, 16);
+        glow.addColorStop(0, 'rgba(255, 220, 220, .95)');
+        glow.addColorStop(0.35, 'rgba(255, 80, 80, .65)');
+        glow.addColorStop(1, 'rgba(255, 42, 42, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(x, y, 16, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = '13px "Share Tech Mono", monospace';
+        ctx.fillStyle = 'rgba(255, 120, 120, .8)';
+        ctx.textAlign = dir > 0 ? 'left' : 'right';
+        ctx.fillText(host.t('laser.sourceLabel'), dir > 0 ? housingX : housingX + 28, y - 22);
+        ctx.textAlign = 'left';
+    }
+
+    function drawLaserTarget(ctx, data, solved, host) {
+        const target = data.target;
+        const color = solved ? '#00ff66' : '#ff2a2a';
+        const rgb = solved ? '0,255,102' : '255,42,42';
+
+        const glow = ctx.createRadialGradient(target.x, target.y, 0, target.x, target.y, 34);
+        glow.addColorStop(0, `rgba(${rgb}, ${solved ? 0.35 : 0.16})`);
+        glow.addColorStop(1, `rgba(${rgb}, 0)`);
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, 34, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(${rgb}, .55)`;
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, 8, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(${rgb}, .35)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(target.x - 24, target.y);
+        ctx.lineTo(target.x - target.r - 3, target.y);
+        ctx.moveTo(target.x + target.r + 3, target.y);
+        ctx.lineTo(target.x + 24, target.y);
+        ctx.moveTo(target.x, target.y - 24);
+        ctx.lineTo(target.x, target.y - target.r - 3);
+        ctx.moveTo(target.x, target.y + target.r + 3);
+        ctx.lineTo(target.x, target.y + 24);
+        ctx.stroke();
+
+        ctx.font = '12px "Share Tech Mono", monospace';
+        ctx.fillStyle = `rgba(${rgb}, .8)`;
+        ctx.textAlign = 'center';
+        ctx.fillText(host.t('laser.targetLabel'), target.x, target.y + 40);
+        ctx.textAlign = 'left';
+    }
+
+    function drawLaserBeam(ctx, beam, solved) {
+        const segments = beam.segments;
+        if (!segments.length) return;
+
+        const rgb = solved ? '0,255,102' : '255,42,42';
+        const color = solved ? '#00ff66' : '#ff2a2a';
+
+        const path = () => {
+            ctx.beginPath();
+            segments.forEach((seg, i) => {
+                if (i === 0) ctx.moveTo(seg.a.x, seg.a.y);
+                ctx.lineTo(seg.b.x, seg.b.y);
+            });
+        };
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        path();
+        ctx.strokeStyle = `rgba(${rgb}, .10)`;
+        ctx.lineWidth = 14;
+        ctx.stroke();
+
+        path();
+        ctx.strokeStyle = `rgba(${rgb}, .30)`;
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        path();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        const last = segments[segments.length - 1];
+        if (!solved) {
+            const spark = ctx.createRadialGradient(last.b.x, last.b.y, 0, last.b.x, last.b.y, 12);
+            spark.addColorStop(0, 'rgba(255, 220, 180, .9)');
+            spark.addColorStop(0.35, `rgba(${rgb}, .55)`);
+            spark.addColorStop(1, `rgba(${rgb}, 0)`);
+            ctx.fillStyle = spark;
+            ctx.beginPath();
+            ctx.arc(last.b.x, last.b.y, 12, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function drawLaserMirror(ctx, mirror, index) {
+        const a = mirror.angle * Math.PI / 180;
+
+        ctx.beginPath();
+        ctx.arc(mirror.x, mirror.y, LASER_MIRROR_RADIUS, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 240, 255, .07)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 240, 255, .55)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 240, 255, .85)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(mirror.x - Math.cos(a) * LASER_MIRROR_RADIUS, mirror.y - Math.sin(a) * LASER_MIRROR_RADIUS);
+        ctx.lineTo(mirror.x + Math.cos(a) * LASER_MIRROR_RADIUS, mirror.y + Math.sin(a) * LASER_MIRROR_RADIUS);
+        ctx.strokeStyle = '#d9feff';
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.textAlign = 'right';
+        ctx.font = '700 13px "Orbitron", sans-serif';
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillText('M' + (index + 1), mirror.x - 18, mirror.y - 19);
+
+        ctx.font = '12px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#6b7788';
+        ctx.fillText(mirror.angle + '°', mirror.x - 18, mirror.y - 5);
+        ctx.textAlign = 'left';
+    }
+
+    function drawLaserRoom(canvas, data, host, showHidden, beam) {
+        const ctx = canvas.getContext('2d');
+        const W = LASER_VIEW.width;
+        const H = LASER_VIEW.height;
+        const trace = beam || traceLaserBeam(data);
+        const solved = trace.hitTarget;
+
+        ctx.clearRect(0, 0, W, H);
+
+        const bg = ctx.createRadialGradient(360, 200, 40, 360, 200, 470);
+        bg.addColorStop(0, '#0a1219');
+        bg.addColorStop(1, '#05080c');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0, 240, 255, .06)';
+        ctx.beginPath();
+        for (let x = 20; x < W; x += 20) {
+            ctx.moveTo(x + .5, 0);
+            ctx.lineTo(x + .5, H);
+        }
+        for (let y = 20; y < H; y += 20) {
+            ctx.moveTo(0, y + .5);
+            ctx.lineTo(W, y + .5);
+        }
+        ctx.stroke();
+
+        if (showHidden) {
+            data.walls.forEach(wall => drawLaserWall(ctx, wall));
+        }
+
+        drawLaserSource(ctx, data, host);
+        drawLaserBeam(ctx, trace, solved);
+        drawLaserTarget(ctx, data, solved, host);
+
+        if (showHidden) {
+            data.mirrors.forEach((mirror, index) => drawLaserMirror(ctx, mirror, index));
+        }
+
+        if (solved) {
+            ctx.strokeStyle = 'rgba(0, 255, 102, .25)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, W - 2, H - 2);
+        }
     }
 
     // ------------------------------------------------------------- puzzle types
@@ -853,6 +1415,154 @@
                     dispose: () => cancelAnimationFrame(raf)
                 };
             }
+        },
+
+        laser: {
+            labelKey: 'ptype.laser',
+            hasRoomPreview: true,
+            manualEntry: (puzzle, host) =>
+                `${host.t('laser.manualEntry')}` +
+                `<div class="text-[10px] text-gray-500 mt-1">${host.t('laser.manualNote')}</div>`,
+            render: (body, status, puzzle, host) => {
+                const data = puzzle.laserData;
+
+                body.innerHTML = `
+                    <div class="w-full flex flex-col items-center gap-3">
+                        <canvas id="laser-room-canvas" width="720" height="400"
+                            class="w-full h-auto bg-[#0a0c10] border border-[#00f0ff44] rounded"></canvas>
+                        <div class="w-full flex items-center justify-between">
+                            <span class="font-orbitron text-[10px] tracking-widest text-gray-500">${host.t('laser.knobHeading')}</span>
+                        </div>
+                        <div id="laser-knobs" class="laser-knobs"></div>
+                        <div class="w-full bg-[#0d0f12] border border-gray-700 rounded px-3 py-2">
+                            <div class="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+                                <span class="tracking-widest">${host.t('laser.angleLabel')}
+                                    <b id="laser-selected-mirror" class="text-[#00f0ff] font-orbitron">M1</b></span>
+                                <span id="laser-selected-angle" class="font-mono text-[#00f0ff]">${data.mirrors[0].angle}°</span>
+                            </div>
+                            <input id="laser-angle" type="range" min="0" max="360" step="1"
+                                value="${data.mirrors[0].angle}"
+                                class="w-full accent-[#00f0ff] cursor-pointer">
+                            <div class="text-[9px] text-gray-500 mt-1">${host.t('laser.hint')}</div>
+                        </div>
+                    </div>
+                `;
+
+                const canvas = document.getElementById('laser-room-canvas');
+                const knobsContainer = document.getElementById('laser-knobs');
+                const slider = document.getElementById('laser-angle');
+                const knobElements = [];
+                let selected = 0;
+                let solvedNow = false;
+
+                data.mirrors.forEach((mirror, index) => {
+                    const knob = document.createElement('button');
+                    knob.type = 'button';
+                    knob.className = 'laser-knob';
+                    knob.innerHTML =
+                        `<span class="laser-knob-dial">` +
+                        `<span class="laser-knob-pane"></span>` +
+                        `<span class="laser-knob-hub"></span>` +
+                        `</span>` +
+                        `<span class="laser-knob-label">M${index + 1}</span>` +
+                        `<span class="laser-knob-deg">${mirror.angle}°</span>`;
+                    knob.addEventListener('click', () => {
+                        host.beep(600, 'sine', 0.05, 0.05);
+                        selected = index;
+                        syncKnobs();
+                    });
+                    knobsContainer.appendChild(knob);
+                    knobElements.push(knob);
+                });
+
+                function syncKnobs() {
+                    knobElements.forEach((knob, index) => {
+                        const mirror = data.mirrors[index];
+                        knob.classList.toggle('selected', index === selected);
+                        knob.querySelector('.laser-knob-pane').style.transform = 'rotate(' + mirror.angle + 'deg)';
+                        knob.querySelector('.laser-knob-deg').innerText = mirror.angle + '°';
+                    });
+                    document.getElementById('laser-selected-mirror').innerText = 'M' + (selected + 1);
+                    document.getElementById('laser-selected-angle').innerText = data.mirrors[selected].angle + '°';
+                    slider.value = data.mirrors[selected].angle;
+                }
+
+                function updateBeam() {
+                    const beam = traceLaserBeam(data);
+                    drawLaserRoom(canvas, data, host, false, beam);
+
+                    if (beam.hitTarget) {
+                        status.innerText = host.t('laser.statusSolved');
+                        if (!solvedNow && !puzzle.solved) {
+                            solvedNow = true;
+                            host.solve(puzzle);
+                        }
+                    } else if (beam.bounces > 0) {
+                        status.innerText = host.t('laser.statusRouted');
+                    } else {
+                        status.innerText = host.t('laser.statusBlocked');
+                    }
+                }
+
+                slider.addEventListener('input', (event) => {
+                    const angle = Math.min(360, Math.max(0, parseInt(event.target.value, 10) || 0));
+                    data.mirrors[selected].angle = angle;
+                    syncKnobs();
+                    updateBeam();
+                    host.laserSync(puzzle, selected, angle);
+                });
+
+                syncKnobs();
+                updateBeam();
+
+                // Peer updates (and later re-opens) re-render without rebuilding the DOM.
+                return {
+                    refresh: () => {
+                        syncKnobs();
+                        updateBeam();
+                    }
+                };
+            },
+            renderPreview: (body, status, puzzle, host) => {
+                const data = puzzle.laserData;
+                const swatch = {
+                    laser: 'background:#ff2a2a;border-radius:50%;box-shadow:0 0 6px rgba(255,42,42,.8);',
+                    mirror: 'border-radius:50%;border:1px solid #00f0ff;background:linear-gradient(135deg, transparent 44%, #d9feff 44%, #d9feff 56%, transparent 56%);',
+                    wall: 'background:#39424f;border:1px solid #485264;border-radius:2px;',
+                    target: 'border-radius:50%;border:1px solid #ff2a2a;'
+                };
+                const legendItem = (kind, label) =>
+                    `<span style="display:inline-flex;align-items:center;gap:5px;">` +
+                    `<i style="display:inline-block;width:10px;height:10px;${swatch[kind]}"></i>${label}</span>`;
+
+                body.innerHTML = `
+                    <canvas id="preview-laser-canvas" width="720" height="400"
+                        class="w-full h-auto bg-[#0a0c10] border border-[#00f0ff44] rounded"></canvas>
+                    <div class="flex flex-wrap text-[10px] text-gray-400 w-full" style="gap:6px 14px;">
+                        ${legendItem('laser', host.t('laser.legendLaser'))}
+                        ${legendItem('mirror', host.t('laser.legendMirror'))}
+                        ${legendItem('wall', host.t('laser.legendWall'))}
+                        ${legendItem('target', host.t('laser.legendTarget'))}
+                    </div>
+                `;
+
+                const canvas = document.getElementById('preview-laser-canvas');
+
+                function refresh() {
+                    const beam = traceLaserBeam(data);
+                    drawLaserRoom(canvas, data, host, true, beam);
+                    if (beam.hitTarget) status.innerText = host.t('laser.statusSolved');
+                    else if (beam.bounces > 0) status.innerText = host.t('laser.statusRouted');
+                    else status.innerText = host.t('laser.statusBlocked');
+                }
+
+                refresh();
+
+                return {
+                    refresh: refresh,
+                    puzzleId: puzzle.id
+                };
+            }
         }
     };
 
@@ -870,6 +1580,27 @@
         const controller = definition.render(ui.body, ui.status, puzzle, host) || {};
 
         return {
+            refresh: typeof controller.refresh === 'function' ? controller.refresh : () => { },
+            dispose: typeof controller.dispose === 'function' ? controller.dispose : () => { }
+        };
+    }
+
+    // Hacker-side room preview: the same room data, but with mirrors and walls drawn.
+    // Types without a renderPreview stay read-only in the handbook.
+    function openPreview(puzzle, ui, host) {
+        const definition = PUZZLE_TYPES[puzzle.type];
+        if (!definition || typeof definition.renderPreview !== 'function') {
+            throw new Error(`No room preview for puzzle type: ${puzzle.type}`);
+        }
+
+        ui.tag.innerText = `[${host.t('preview.tag')}]`;
+        ui.title.innerText = `${puzzle.makeModel} // ${host.t('manual.room', { n: puzzle.room })}`;
+        ui.body.innerHTML = '';
+
+        const controller = definition.renderPreview(ui.body, ui.status, puzzle, host) || {};
+
+        return {
+            puzzleId: puzzle.id,
             refresh: typeof controller.refresh === 'function' ? controller.refresh : () => { },
             dispose: typeof controller.dispose === 'function' ? controller.dispose : () => { }
         };
@@ -903,6 +1634,12 @@
             group.forEach(puzzle => {
                 const item = document.createElement('div');
                 item.className = "bg-[#0d0f12] border border-gray-800 rounded p-3 text-xs flex flex-col justify-between";
+
+                const previewButton = definition.hasRoomPreview
+                    ? `<button type="button" data-room-preview="${puzzle.id}"
+                            class="mt-2 w-full px-3 py-1.5 border border-[#00f0ff55] text-[#00f0ff] font-orbitron text-[10px] tracking-widest rounded hover:bg-[#00f0ff11] cursor-pointer">${host.t('manual.roomPreview')}</button>`
+                    : '';
+
                 item.innerHTML = `
                     <div>
                         <div class="flex justify-between items-center mb-1">
@@ -910,6 +1647,7 @@
                             <span class="text-[10px] text-gray-500 font-mono">${host.t('manual.room', { n: puzzle.room })}</span>
                         </div>
                         <div class="text-gray-300 mt-1">${definition.manualEntry(puzzle, host)}</div>
+                        ${previewButton}
                     </div>
                 `;
                 grid.appendChild(item);
@@ -1033,6 +1771,7 @@
         TYPES: PUZZLE_TYPE_KEYS.slice(),
         generateRun: generateRun,
         open: open,
+        openPreview: openPreview,
         renderManual: renderManual,
         parseTerminalCommand: parseTerminalCommand
     };
