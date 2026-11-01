@@ -283,10 +283,15 @@
     function generateRoom(seedStr, roomNum, takeDeviceName, nextPumpId) {
         const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${roomNum}`);
         const puzzleCount = getPuzzleCountForRoom(roomNum);
+        // Issue #22: no type repeats while unused types remain, so a room is filled
+        // from a shuffled pool instead of independent draws. Draw count stays equal to
+        // puzzleCount, as in the legacy schedule.
+        const typePool = LEGACY_TYPE_KEYS.slice();
         const selectedTypes = [];
-
         for (let p = 0; p < puzzleCount; p++) {
-            selectedTypes.push(LEGACY_TYPE_KEYS[roomPrng.range(0, LEGACY_TYPE_KEYS.length - 1)]);
+            const pickIdx = roomPrng.range(p, typePool.length - 1);
+            selectedTypes.push(typePool[pickIdx]);
+            typePool[pickIdx] = typePool[p];
         }
 
         const pList = [];
