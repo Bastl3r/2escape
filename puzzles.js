@@ -1619,7 +1619,7 @@
 
             const title = document.createElement('h4');
             title.className = "font-orbitron text-xs text-[#00ff66] font-bold border-b border-gray-800 pb-2 flex items-center justify-between";
-            title.innerHTML = `<span>${host.t('manual.category', { name: host.t(definition.labelKey) })}</span><span class="text-gray-500 font-normal">${host.t('manual.count', { n: group.length })}</span>`;
+            title.innerHTML = `<span>${host.t('manual.category', { name: host.t(definition.labelKey) })}</span>`;
             groupSection.appendChild(title);
 
             const grid = document.createElement('div');
@@ -1627,7 +1627,7 @@
 
             group.forEach(puzzle => {
                 const item = document.createElement('div');
-                item.className = "bg-[#0d0f12] border border-gray-800 rounded p-3 text-xs flex flex-col justify-between";
+                item.className = "bg-[#0d0f12] border border-gray-800 rounded p-3 text-xs flex flex-col justify-between self-start";
 
                 const previewButton = definition.hasRoomPreview
                     ? `<button type="button" data-room-preview="${puzzle.id}"
