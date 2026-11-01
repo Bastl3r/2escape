@@ -1614,6 +1614,11 @@
 
             if (group.length === 0) return;
 
+            // A category that would only repeat make/model and room number carries no
+            // handbook value, so it is left out entirely.
+            const hasInfo = typeof definition.manualEntry === 'function' || !!definition.hasRoomPreview;
+            if (!hasInfo) return;
+
             const groupSection = document.createElement('div');
             groupSection.className = "bg-[#12161f] border border-[#00f0ff33] rounded p-4 space-y-3";
 
