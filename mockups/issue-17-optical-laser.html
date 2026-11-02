@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2Escape // Mockup #17 – Optisches Laser-Rätsel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        /*
+         * DESIGN MOCKUP ONLY – not part of the app.
+         * Shows both sides of issue #17 (optical laser puzzle):
+         *
+         *   left  – the operative's puzzle modal:
+         *           laser room preview (laser, beam, target only – mirror positions and
+         *           obstacles stay hidden), six mirror knobs M1–M6 with an indicator line
+         *           across the diameter, and a 0–360° slider for the selected mirror.
+         *
+         *   right – the hacker's handbook entry (make & model) and the room preview it
+         *           links to: laser origin, beam, mirrors drawn as a circle with the pane
+         *           line across the diameter, mirror indexes M1–M6, and the walls that
+         *           block the direct line of sight from the first mirror to the target.
+         *
+         * Everything is plain HTML/CSS/JS so the file opens standalone. The beam is
+         * actually ray-traced against the mirrors/walls, so rotating a knob shows the
+         * real redirect (and the hacker's preview stays in sync). No game logic, no
+         * seeded generation – the room below is one hand-authored, solvable layout.
+         */
+        :root {
+            --cyan: #00f0ff;
+            --green: #00ff66;
+            --red: #ff2a2a;
+            --amber: #ffcc00;
+            --ink: #0d0f12;
+            --panel: #12161f;
+            --stage: #05070a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 50% 0%, #0d1a24 0%, var(--stage) 55%, #020304 100%);
+            color: #d7dde5;
+            font-family: 'Share Tech Mono', ui-monospace, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 26px 16px 46px;
+            gap: 18px;
+        }
+
+        /* ---------------------------------------------------------------- meta */
+        .meta {
+            width: 100%;
+            max-width: 1080px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            color: #6b7788;
+            text-transform: uppercase;
+        }
+
+        .meta strong {
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+        }
+
+        .meta-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lang-btn,
+        .ghost-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            padding: 4px 8px;
+            background: var(--ink);
+            color: #8a94a6;
+            border: 1px solid #2a3340;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .lang-btn:hover,
+        .ghost-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .lang-btn.active {
+            border-color: var(--cyan);
+            background: rgba(0, 240, 255, .12);
+            color: var(--cyan);
+            font-weight: 700;
+        }
+
+        /* ---------------------------------------------------------------- stage */
+        main {
+            width: 100%;
+            max-width: 1080px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 22px;
+            align-items: start;
+        }
+
+        .panel {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: .18em;
+            color: #6b7788;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-label::after {
+            content: '';
+            flex: 1;
+            border-top: 1px solid #232b36;
+        }
+
+        .panel-note {
+            margin: 0;
+            font-size: 10px;
+            line-height: 1.65;
+            color: #6b7788;
+            padding: 0 2px;
+        }
+
+        @media (max-width: 960px) {
+            main {
+                grid-template-columns: minmax(0, 1fr);
+                max-width: 560px;
+                gap: 26px;
+            }
+
+            .meta {
+                max-width: 560px;
+            }
+        }
+
+        /* --------------------------------------------------------- modal shell */
+        .modal {
+            width: 100%;
+            background: var(--panel);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .65), 0 0 40px rgba(0, 240, 255, .10);
+            overflow: hidden;
+            transition: border-color .3s, box-shadow .3s;
+        }
+
+        .modal.solved {
+            border-color: rgba(0, 255, 102, .75);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .65), 0 0 42px rgba(0, 255, 102, .14);
+        }
+
+        .modal-head {
+            background: var(--ink);
+            border-bottom: 1px solid rgba(0, 240, 255, .27);
+            padding: 11px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .modal-head-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .tag {
+            padding: 2px 8px;
+            background: rgba(0, 240, 255, .13);
+            border: 1px solid rgba(0, 240, 255, .53);
+            border-radius: 4px;
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            white-space: nowrap;
+        }
+
+        .modal-title {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--cyan);
+            text-shadow: 0 0 10px rgba(0, 240, 255, .55);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .close-x {
+            background: none;
+            border: 0;
+            color: #8a94a6;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0 6px;
+        }
+
+        .close-x:hover {
+            color: #ff5c5c;
+        }
+
+        .modal-body {
+            padding: 14px 14px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-foot {
+            background: var(--ink);
+            border-top: 1px solid #232b36;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 11px;
+            color: #9aa6b8;
+        }
+
+        .modal-foot b {
+            color: var(--cyan);
+            font-weight: 400;
+        }
+
+        #op-status {
+            line-height: 1.5;
+        }
+
+        #op-status.ok {
+            color: var(--green);
+            text-shadow: 0 0 8px rgba(0, 255, 102, .45);
+        }
+
+        #op-status.near {
+            color: var(--amber);
+        }
+
+        .disengage {
+            padding: 4px 12px;
+            background: none;
+            border: 1px solid #39424f;
+            border-radius: 4px;
+            color: #9aa6b8;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .disengage:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        /* ------------------------------------------------------------ room view */
+        .stage-wrap {
+            width: 100%;
+            position: relative;
+            border: 1px solid rgba(0, 240, 255, .26);
+            border-radius: 6px;
+            background: #05080c;
+            overflow: hidden;
+            transition: border-color .3s;
+        }
+
+        .modal.solved .stage-wrap {
+            border-color: rgba(0, 255, 102, .45);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        /* ---------------------------------------------------------------- knobs */
+        .knobs-head {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 3px 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px;
+            letter-spacing: .16em;
+            color: #6b7788;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .knobs {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .knob {
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 0 2px;
+            background: none;
+            border: 0;
+            cursor: pointer;
+            font-family: inherit;
+            color: #8a94a6;
+        }
+
+        .knob-dial {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 2px solid #2a3340;
+            background:
+                radial-gradient(circle at 35% 30%, #1c2531 0%, #10151c 62%, #0a0e13 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: border-color .15s, box-shadow .15s, background .15s;
+        }
+
+        .knob:hover .knob-dial {
+            border-color: #4b5a6d;
+        }
+
+        .knob.selected .knob-dial {
+            border-color: var(--cyan);
+            background:
+                radial-gradient(circle at 35% 30%, #1f3340 0%, #101c24 62%, #0a1218 100%);
+            box-shadow:
+                0 0 14px rgba(0, 240, 255, .40),
+                inset 0 0 12px rgba(0, 240, 255, .20);
+        }
+
+        .knob-pane {
+            position: absolute;
+            left: 4px;
+            right: 4px;
+            top: 50%;
+            height: 2px;
+            margin-top: -1px;
+            border-radius: 2px;
+            background: #9fe6f0;
+            box-shadow: 0 0 7px rgba(0, 240, 255, .55);
+            transform-origin: 50% 50%;
+            transform: rotate(0deg);
+            pointer-events: none;
+        }
+
+        .knob.selected .knob-pane {
+            background: #e8feff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, .85);
+        }
+
+        .knob-hub {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00cfe0;
+            box-shadow: 0 0 8px rgba(0, 240, 255, .65);
+            pointer-events: none;
+        }
+
+        .knob.selected .knob-hub {
+            background: var(--cyan);
+        }
+
+        .knob-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            line-height: 1;
+        }
+
+        .knob.selected .knob-label {
+            color: var(--cyan);
+        }
+
+        .knob-deg {
+            font-size: 9px;
+            color: #5c6879;
+            line-height: 1;
+        }
+
+        /* --------------------------------------------------------------- slider */
+        .slider-box {
+            width: 100%;
+            background: var(--ink);
+            border: 1px solid #232b36;
+            border-radius: 5px;
+            padding: 9px 12px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .slider-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 10px;
+            letter-spacing: .05em;
+            color: #6b7788;
+        }
+
+        .slider-head b {
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .slider-head .value {
+            color: #d7dde5;
+            font-size: 12px;
+            min-width: 42px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, rgba(0, 240, 255, .18), rgba(0, 240, 255, .55));
+            outline: none;
+            cursor: pointer;
+            margin: 4px 0;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #d9feff 0%, #57f2ff 38%, #00b8c9 100%);
+            border: 2px solid #0d0f12;
+            box-shadow: 0 0 10px rgba(0, 240, 255, .80);
+            cursor: grab;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #57f2ff;
+            border: 2px solid #0d0f12;
+            box-shadow: 0 0 10px rgba(0, 240, 255, .80);
+            cursor: grab;
+        }
+
+        .slider-hint {
+            font-size: 9px;
+            color: #4f5a6a;
+            line-height: 1.4;
+        }
+
+        /* --------------------------------------------------------------- manual */
+        .manual-card {
+            width: 100%;
+            background: var(--panel);
+            border: 1px solid rgba(0, 240, 255, .20);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .manual-group-head {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--green);
+            border-bottom: 1px solid #232b36;
+            padding-bottom: 7px;
+            margin-bottom: 9px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .manual-group-head .count {
+            color: #6b7788;
+            font-weight: 400;
+        }
+
+        .manual-item {
+            background: var(--ink);
+            border: 1px solid #232b36;
+            border-radius: 4px;
+            padding: 9px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .manual-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .manual-row .brand {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--cyan);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .manual-row .room {
+            font-size: 9px;
+            color: #6b7788;
+            white-space: nowrap;
+        }
+
+        .manual-entry {
+            font-size: 10px;
+            line-height: 1.6;
+            color: #9aa6b8;
+        }
+
+        .manual-note {
+            font-size: 9px;
+            line-height: 1.5;
+            color: #6b7788;
+            border-left: 2px solid rgba(0, 240, 255, .35);
+            padding-left: 7px;
+        }
+
+        .preview-btn {
+            align-self: flex-start;
+            margin-top: 1px;
+            padding: 4px 10px;
+            background: rgba(0, 240, 255, .10);
+            border: 1px solid rgba(0, 240, 255, .55);
+            border-radius: 4px;
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .preview-btn:hover {
+            background: rgba(0, 240, 255, .20);
+        }
+
+        #hacker-preview.hidden {
+            display: none;
+        }
+
+        .hacker-body {
+            padding: 12px 12px 10px;
+            gap: 9px;
+        }
+
+        .legend {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            font-size: 9px;
+            color: #7d8899;
+        }
+
+        .legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .key {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        .key-laser {
+            border-radius: 50%;
+            background: #ff2a2a;
+            box-shadow: 0 0 6px rgba(255, 42, 42, .8);
+        }
+
+        .key-mirror {
+            border-radius: 50%;
+            border: 1px solid var(--cyan);
+            background: rgba(0, 240, 255, .15);
+            position: relative;
+        }
+
+        .key-mirror::after {
+            content: '';
+            position: absolute;
+            left: 1px;
+            right: 1px;
+            top: 50%;
+            height: 1px;
+            background: #d9feff;
+            transform: rotate(-30deg);
+        }
+
+        .key-wall {
+            background: #2a3340;
+            border: 1px solid #485264;
+        }
+
+        .key-target {
+            border-radius: 50%;
+            border: 1px solid var(--red);
+        }
+
+        /* ---------------------------------------------------------- mockup only */
+        .demo {
+            width: 100%;
+            max-width: 1080px;
+            border: 1px dashed #2a3340;
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(13, 15, 18, .55);
+        }
+
+        .demo-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: .18em;
+            color: #6b7788;
+            text-transform: uppercase;
+        }
+
+        .demo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .demo button {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            padding: 6px 12px;
+            background: #0f141a;
+            color: var(--cyan);
+            border: 1px solid #39424f;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .demo button:hover {
+            border-color: var(--cyan);
+            background: rgba(0, 240, 255, .10);
+        }
+
+        .demo button.reset {
+            color: #9aa6b8;
+        }
+
+        .demo-readout {
+            font-size: 11px;
+            color: #7d8899;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .demo-readout b {
+            color: #cfd8e3;
+            font-weight: 400;
+        }
+
+        .demo-readout .ok {
+            color: var(--green);
+        }
+
+        .demo-readout .off {
+            color: #ff8a8a;
+        }
+
+        /* very narrow phones: keep knobs inside the card */
+        @media (max-width: 400px) {
+            .knob-dial {
+                width: 44px;
+                height: 44px;
+            }
+
+            .knob-label {
+                font-size: 9px;
+            }
+
+            .knobs {
+                gap: 3px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="meta">
+        <span><strong>2Escape</strong> // Issue #17 – Optical Laser</span>
+        <span class="meta-right">
+            <button class="lang-btn active" data-lang="de">DE</button>
+            <button class="lang-btn" data-lang="en">EN</button>
+        </span>
+    </div>
+
+    <main>
+        <!-- ========================= what the operative sees ========================= -->
+        <section class="panel">
+            <div class="panel-label" data-i18n="opSection">OPERATIV – RÄTSEL-MODAL</div>
+
+            <div class="modal" id="op-modal">
+                <div class="modal-head">
+                    <div class="modal-head-left">
+                        <span class="tag" data-i18n="tag">[OPTIK-RELAIS]</span>
+                        <h3 class="modal-title" data-i18n="title">Spectra MK-IV</h3>
+                    </div>
+                    <button class="close-x" title="close">✕</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="stage-wrap">
+                        <canvas id="op-room" aria-label="derived laser room preview"></canvas>
+                    </div>
+
+                    <div class="knobs-head">
+                        <span data-i18n="knobHeading">SPIEGELBANK</span>
+                        <span id="op-degrees">135° / 315° / 045° / 045° / 135° / 315°</span>
+                    </div>
+
+                    <div class="knobs" id="knobs" role="group" aria-label="mirror controls"></div>
+
+                    <div class="slider-box">
+                        <div class="slider-head">
+                            <span><span data-i18n="sliderLabel">WINKEL</span> <b id="sel-mirror">M1</b></span>
+                            <span class="value" id="sel-value">135°</span>
+                        </div>
+                        <input type="range" id="angle" min="0" max="360" step="1" value="135"
+                            aria-label="mirror angle">
+                        <div class="slider-hint" data-i18n="sliderHint">Spiegel wählen, dann Winkel einstellen
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-foot">
+                    <span id="op-status">Status: Strahl blockiert – kein Zielkontakt.</span>
+                    <button class="disengage" data-i18n="disengage">ABBRECHEN</button>
+                </div>
+            </div>
+
+            <p class="panel-note" data-i18n="opNote">
+                Positionen von Spiegeln und Hindernissen sind ausgeblendet. Sichtbar sind nur Laser, Strahl und Ziel
+                – der Strahl zeigt, was die Spiegel gerade tun.
+            </p>
+        </section>
+
+        <!-- ============================ what the hacker sees ============================ -->
+        <section class="panel">
+            <div class="panel-label" data-i18n="hkSection">HACKER – HANDBUCH → RAUMVORSCHAU</div>
+
+            <div class="manual-card">
+                <div class="manual-group-head">
+                    <span data-i18n="manualCategory">KATEGORIE: [OPTIK-RELAIS]</span>
+                    <span class="count" data-i18n="manualCount">ANZAHL: 1</span>
+                </div>
+                <div class="manual-item">
+                    <div class="manual-row">
+                        <span class="brand" data-i18n="title">Spectra MK-IV</span>
+                        <span class="room" data-i18n="manualRoom">RAUM 7</span>
+                    </div>
+                    <div class="manual-entry" data-i18n="manualEntry">
+                        Raumvorschau: Spiegelbank M1–M6, Laser-Quelle, Wandblockaden.
+                    </div>
+                    <div class="manual-note" data-i18n="manualNote">
+                        Hinweis: Der erste Spiegel muss im Startstrahl des Lasers liegen.
+                    </div>
+                    <button class="preview-btn" id="btn-preview">VORSCHAU SCHLIESSEN</button>
+                </div>
+            </div>
+
+            <div class="modal" id="hacker-preview">
+                <div class="modal-head">
+                    <div class="modal-head-left">
+                        <span class="tag" data-i18n="previewTag">[RAUMVORSCHAU]</span>
+                        <h3 class="modal-title" data-i18n="previewTitle">Spectra MK-IV // RAUM 7</h3>
+                    </div>
+                    <button class="close-x" id="btn-preview-close" title="close">✕</button>
+                </div>
+
+                <div class="modal-body hacker-body">
+                    <div class="stage-wrap">
+                        <canvas id="hk-room" aria-label="hacker room preview"></canvas>
+                    </div>
+                    <div class="legend">
+                        <span><i class="key key-laser"></i><span data-i18n="legendLaser">Laser</span></span>
+                        <span><i class="key key-mirror"></i><span data-i18n="legendMirror">Spiegel</span></span>
+                        <span><i class="key key-wall"></i><span data-i18n="legendWall">Wand</span></span>
+                        <span><i class="key key-target"></i><span data-i18n="legendTarget">Ziel</span></span>
+                    </div>
+                </div>
+
+                <div class="modal-foot">
+                    <span id="hk-state">Strahl: 0 Umlenkungen · Ziel verfehlt</span>
+                    <button class="disengage" id="btn-preview-close-2" data-i18n="disengage">ABBRECHEN</button>
+                </div>
+            </div>
+
+            <p class="panel-note" data-i18n="hkNote">
+                Die Raumvorschau hängt am Handbucheintrag (Hersteller &amp; Modell). Sie zeigt die Spiegel als
+                Kreis mit Spiegel-Linie über den Durchmesser, inklusive Index, sowie die Wände.
+            </p>
+        </section>
+    </main>
+
+    <!-- ================================ mockup only ================================ -->
+    <div class="demo">
+        <div class="demo-title" data-i18n="demoTitle">Mockup-Steuerung – nur zur Vorführung</div>
+        <div class="demo-row">
+            <button id="btn-solve">LÖSUNG EINSTELLEN</button>
+            <button class="reset" id="btn-reset">ZURÜCKSETZEN</button>
+        </div>
+        <div class="demo-readout" id="readout"></div>
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            /* ------------------------------------------------------------ strings */
+            const STRINGS = {
+                de: {
+                    opSection: 'OPERATIV – RÄTSEL-MODAL',
+                    hkSection: 'HACKER – HANDBUCH → RAUMVORSCHAU',
+                    opNote: 'Positionen von Spiegeln und Hindernissen sind ausgeblendet. Sichtbar sind nur Laser, Strahl und Ziel – der Strahl zeigt, was die Spiegel gerade tun.',
+                    hkNote: 'Die Raumvorschau hängt am Handbucheintrag (Hersteller & Modell). Sie zeigt die Spiegel als Kreis mit Spiegel-Linie über den Durchmesser, inklusive Index, sowie die Wände.',
+                    tag: '[OPTIK-RELAIS]',
+                    title: 'Spectra MK-IV',
+                    previewTag: '[RAUMVORSCHAU]',
+                    previewTitle: 'Spectra MK-IV // RAUM 7',
+                    knobHeading: 'SPIEGELBANK',
+                    sliderLabel: 'WINKEL',
+                    sliderHint: 'Spiegel wählen, dann Winkel einstellen',
+                    disengage: 'ABBRECHEN',
+                    manualCategory: 'KATEGORIE: [OPTIK-RELAIS]',
+                    manualCount: 'ANZAHL: 1',
+                    manualRoom: 'RAUM 7',
+                    manualEntry: 'Raumvorschau: Spiegelbank M1–M6, Laser-Quelle, Wandblockaden.',
+                    manualNote: 'Hinweis: Der erste Spiegel muss im Startstrahl des Lasers liegen.',
+                    openPreview: 'RAUMVORSCHAU ÖFFNEN',
+                    closePreview: 'VORSCHAU SCHLIESSEN',
+                    legendLaser: 'Laser',
+                    legendMirror: 'Spiegel',
+                    legendWall: 'Wand',
+                    legendTarget: 'Ziel',
+                    laser: 'LASER',
+                    target: 'ZIEL',
+                    statusBlocked: 'Status: Strahl blockiert – kein Zielkontakt.',
+                    statusRouted: 'Status: Strahl umgeleitet – Ziel verfehlt.',
+                    statusSolved: 'Status: Ziel getroffen – Relais synchronisiert!',
+                    demoTitle: 'Mockup-Steuerung – nur zur Vorführung',
+                    solveBtn: 'LÖSUNG EINSTELLEN',
+                    resetBtn: 'ZURÜCKSETZEN',
+                    readoutBounces: 'Umlenkungen',
+                    readoutTarget: 'Ziel',
+                    hit: 'getroffen',
+                    miss: 'verfehlt',
+                    hkState: 'Strahl: {n} Umlenkungen · Ziel {state}'
+                },
+                en: {
+                    opSection: 'OPERATIVE – PUZZLE MODAL',
+                    hkSection: 'HACKER – MANUAL → ROOM PREVIEW',
+                    opNote: 'Mirror positions and obstacles are hidden. Only laser, beam and target are visible – the beam shows what the mirrors are doing.',
+                    hkNote: 'The room preview opens from the manual entry (make & model). It shows the mirrors as a circle with the pane line across the diameter, including the index, plus the walls.',
+                    tag: '[OPTICAL RELAY]',
+                    title: 'Spectra MK-IV',
+                    previewTag: '[ROOM PREVIEW]',
+                    previewTitle: 'Spectra MK-IV // ROOM 7',
+                    knobHeading: 'MIRROR BANK',
+                    sliderLabel: 'ANGLE',
+                    sliderHint: 'select a mirror, then set the angle',
+                    disengage: 'DISENGAGE',
+                    manualCategory: 'CATEGORY: [OPTICAL RELAY]',
+                    manualCount: 'COUNT: 1',
+                    manualRoom: 'ROOM 7',
+                    manualEntry: 'Room preview: mirror bank M1–M6, laser source, wall blocks.',
+                    manualNote: 'Note: the first mirror must sit in the laser’s initial beam.',
+                    openPreview: 'OPEN ROOM PREVIEW',
+                    closePreview: 'CLOSE PREVIEW',
+                    legendLaser: 'Laser',
+                    legendMirror: 'Mirror',
+                    legendWall: 'Wall',
+                    legendTarget: 'Target',
+                    laser: 'LASER',
+                    target: 'TARGET',
+                    statusBlocked: 'Status: Beam blocked – no contact with target.',
+                    statusRouted: 'Status: Beam redirected – target missed.',
+                    statusSolved: 'Status: Target hit – relay synchronised!',
+                    demoTitle: 'Mockup controls – for demonstration only',
+                    solveBtn: 'SET SOLUTION',
+                    resetBtn: 'RESET',
+                    readoutBounces: 'Bounces',
+                    readoutTarget: 'Target',
+                    hit: 'hit',
+                    miss: 'missed',
+                    hkState: 'Beam: {n} bounces · target {state}'
+                }
+            };
+
+            /* ---------------------------------------------------------- room data */
+            const ROOM = Object.freeze({ w: 720, h: 400 });
+            const MIRROR_R = 13;
+            const LASER = Object.freeze({ x: 54, y: 200 });
+            const TARGET = Object.freeze({ x: 658, y: 60, r: 17 });
+
+            // Walls: the first one blocks the straight line from M1 to the target,
+            // the others frame the room. None of them sit on the solution path.
+            const WALLS = Object.freeze([
+                Object.freeze({ x: 400, y: 100, w: 70, h: 60 }),
+                Object.freeze({ x: 250, y: 300, w: 110, h: 24 }),
+                Object.freeze({ x: 610, y: 250, w: 24, h: 90 })
+            ]);
+
+            const MIRRORS = [
+                { x: 150, y: 200 },
+                { x: 150, y: 60 },
+                { x: 350, y: 60 },
+                { x: 350, y: 200 },
+                { x: 530, y: 200 },
+                { x: 530, y: 60 }
+            ];
+            const SOLUTION = [135, 315, 45, 45, 135, 315];
+            const START = [100, 20, 160, 75, 10, 200];
+
+            MIRRORS.forEach((m, i) => { m.angle = START[i]; });
+
+            /* ------------------------------------------------------------- helpers */
+            const el = (id) => document.getElementById(id);
+            const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+            const TAU = Math.PI * 2;
+
+            function reflect(dir, angleDeg) {
+                const a = angleDeg * Math.PI / 180;
+                // mirror normal = pane line rotated by 90°
+                const nx = -Math.sin(a);
+                const ny = Math.cos(a);
+                const dot = dir.x * nx + dir.y * ny;
+                return { x: dir.x - 2 * dot * nx, y: dir.y - 2 * dot * ny };
+            }
+
+            function inRect(x, y, r) {
+                return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+            }
+
+            // Marches the ray in small steps. Simple, robust and cheap enough for
+            // a hand-authored room – no need for exact segment intersections here.
+            function castRay(origin, dir, ignored) {
+                const STEP = 1;
+                const MAX = 2600;
+                let x = origin.x;
+                let y = origin.y;
+                let dist = 0;
+
+                while (dist < MAX) {
+                    x += dir.x * STEP;
+                    y += dir.y * STEP;
+                    dist += STEP;
+
+                    if (x < 3 || x > ROOM.w - 3 || y < 3 || y > ROOM.h - 3) {
+                        return { type: 'bounds', x: x, y: y };
+                    }
+                    for (let i = 0; i < WALLS.length; i++) {
+                        if (inRect(x, y, WALLS[i])) return { type: 'wall', x: x, y: y };
+                    }
+                    if (Math.hypot(x - TARGET.x, y - TARGET.y) <= TARGET.r) {
+                        return { type: 'target', x: x, y: y };
+                    }
+                    for (let i = 0; i < MIRRORS.length; i++) {
+                        const m = MIRRORS[i];
+                        if (m === ignored) continue;
+                        if (Math.hypot(x - m.x, y - m.y) <= MIRROR_R) {
+                            return { type: 'mirror', mirror: m, x: x, y: y };
+                        }
+                    }
+                }
+                return { type: 'max', x: x, y: y };
+            }
+
+            function traceBeam() {
+                let pos = { x: LASER.x, y: LASER.y };
+                let dir = { x: 1, y: 0 };
+                let ignored = null;
+                const segments = [];
+                let bounces = 0;
+                let hitTarget = false;
+
+                for (let i = 0; i < 12; i++) {
+                    const hit = castRay(pos, dir, ignored);
+                    segments.push({ a: pos, b: { x: hit.x, y: hit.y } });
+
+                    if (hit.type === 'target') {
+                        hitTarget = true;
+                        break;
+                    }
+                    if (hit.type !== 'mirror') break;
+
+                    dir = reflect(dir, hit.mirror.angle);
+                    pos = { x: hit.x, y: hit.y };
+                    ignored = hit.mirror;
+                    bounces++;
+                }
+
+                return { segments: segments, bounces: bounces, hitTarget: hitTarget };
+            }
+
+            /* --------------------------------------------------------------- state */
+            let lang = 'de';
+            let selected = 0;
+            let beam = traceBeam();
+            let previewOpen = true;
+            let knobEls = [];
+            let lastLayoutW = -1;
+
+            /* --------------------------------------------------------- canvas sizes */
+            function fitCanvas(canvas) {
+                const wrap = canvas.parentElement;
+                const cssW = wrap.clientWidth;
+                if (!cssW) return null;
+
+                const cssH = Math.round(cssW * ROOM.h / ROOM.w);
+                const dpr = Math.min(2, window.devicePixelRatio || 1);
+                const pxW = Math.round(cssW * dpr);
+                const pxH = Math.round(cssH * dpr);
+
+                if (canvas.width !== pxW || canvas.height !== pxH) {
+                    canvas.width = pxW;
+                    canvas.height = pxH;
+                    canvas.style.height = cssH + 'px';
+                }
+
+                const ctx = canvas.getContext('2d');
+                const scale = canvas.width / ROOM.w;
+                ctx.setTransform(scale, 0, 0, scale, 0, 0);
+                return ctx;
+            }
+
+            /* ---------------------------------------------------------- room paint */
+            function paintRoom(canvas, showHidden) {
+                const ctx = fitCanvas(canvas);
+                if (!ctx) return;
+
+                const solved = beam.hitTarget;
+                const beamColor = solved ? '#00ff66' : '#ff2a2a';
+                const beamRgb = solved ? '0,255,102' : '255,42,42';
+
+                ctx.clearRect(0, 0, ROOM.w, ROOM.h);
+
+                // floor
+                const bg = ctx.createRadialGradient(360, 200, 40, 360, 200, 470);
+                bg.addColorStop(0, '#0a1219');
+                bg.addColorStop(1, '#05080c');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, ROOM.w, ROOM.h);
+
+                // blueprint grid
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(0, 240, 255, .06)';
+                ctx.beginPath();
+                for (let x = 20; x < ROOM.w; x += 20) {
+                    ctx.moveTo(x + .5, 0);
+                    ctx.lineTo(x + .5, ROOM.h);
+                }
+                for (let y = 20; y < ROOM.h; y += 20) {
+                    ctx.moveTo(0, y + .5);
+                    ctx.lineTo(ROOM.w, y + .5);
+                }
+                ctx.stroke();
+
+                if (showHidden) {
+                    WALLS.forEach(w => paintWall(ctx, w));
+                }
+
+                paintLaser(ctx);
+                paintBeam(ctx, beamColor, beamRgb, solved);
+                paintTarget(ctx, solved);
+
+                if (showHidden) {
+                    MIRRORS.forEach((m, i) => paintMirror(ctx, m, i));
+                }
+
+                // frame highlight (the CSS border handles the outline)
+                if (solved) {
+                    ctx.strokeStyle = 'rgba(0, 255, 102, .25)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(1, 1, ROOM.w - 2, ROOM.h - 2);
+                }
+            }
+
+            function paintWall(ctx, w) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(w.x, w.y, w.w, w.h);
+                ctx.clip();
+
+                ctx.fillStyle = '#1b222c';
+                ctx.fillRect(w.x, w.y, w.w, w.h);
+
+                ctx.strokeStyle = 'rgba(0, 240, 255, .09)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let d = -w.h; d < w.w + w.h; d += 9) {
+                    ctx.moveTo(w.x + d, w.y + w.h);
+                    ctx.lineTo(w.x + d + w.h, w.y);
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.strokeStyle = '#39424f';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(w.x + .5, w.y + .5, w.w - 1, w.h - 1);
+            }
+
+            function paintLaser(ctx) {
+                // housing
+                ctx.fillStyle = '#171d25';
+                ctx.strokeStyle = 'rgba(255, 77, 77, .55)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.rect(22, 186, 30, 28);
+                ctx.fill();
+                ctx.stroke();
+
+                // barrel
+                ctx.beginPath();
+                ctx.moveTo(52, 194);
+                ctx.lineTo(56, 194);
+                ctx.lineTo(56, 206);
+                ctx.lineTo(52, 206);
+                ctx.closePath();
+                ctx.fillStyle = '#2a1a1c';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 77, 77, .55)';
+                ctx.stroke();
+
+                // lens glow
+                const glow = ctx.createRadialGradient(LASER.x, LASER.y, 0, LASER.x, LASER.y, 16);
+                glow.addColorStop(0, 'rgba(255, 220, 220, .95)');
+                glow.addColorStop(0.35, 'rgba(255, 80, 80, .65)');
+                glow.addColorStop(1, 'rgba(255, 42, 42, 0)');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(LASER.x, LASER.y, 16, 0, TAU);
+                ctx.fill();
+
+                ctx.font = '11px "Share Tech Mono", monospace';
+                ctx.fillStyle = 'rgba(255, 120, 120, .8)';
+                ctx.fillText(STRINGS[lang].laser, 22, 178);
+            }
+
+            function paintBeam(ctx, color, rgb, solved) {
+                const segs = beam.segments;
+                if (!segs.length) return;
+
+                const path = () => {
+                    ctx.beginPath();
+                    segs.forEach((s, i) => {
+                        if (i === 0) ctx.moveTo(s.a.x, s.a.y);
+                        ctx.lineTo(s.b.x, s.b.y);
+                    });
+                };
+
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                // halo
+                path();
+                ctx.strokeStyle = `rgba(${rgb}, .10)`;
+                ctx.lineWidth = 14;
+                ctx.stroke();
+
+                // glow
+                path();
+                ctx.strokeStyle = `rgba(${rgb}, .30)`;
+                ctx.lineWidth = 6;
+                ctx.stroke();
+
+                // core
+                path();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.2;
+                ctx.stroke();
+
+                // impact spark where the beam dies (wall / room edge)
+                const last = segs[segs.length - 1];
+                if (!solved) {
+                    const spark = ctx.createRadialGradient(last.b.x, last.b.y, 0, last.b.x, last.b.y, 12);
+                    spark.addColorStop(0, 'rgba(255, 220, 180, .9)');
+                    spark.addColorStop(0.35, `rgba(${rgb}, .55)`);
+                    spark.addColorStop(1, `rgba(${rgb}, 0)`);
+                    ctx.fillStyle = spark;
+                    ctx.beginPath();
+                    ctx.arc(last.b.x, last.b.y, 12, 0, TAU);
+                    ctx.fill();
+                }
+            }
+
+            function paintTarget(ctx, solved) {
+                const color = solved ? '#00ff66' : '#ff2a2a';
+                const rgb = solved ? '0,255,102' : '255,42,42';
+
+                const glow = ctx.createRadialGradient(TARGET.x, TARGET.y, 0, TARGET.x, TARGET.y, 34);
+                glow.addColorStop(0, `rgba(${rgb}, ${solved ? 0.35 : 0.16})`);
+                glow.addColorStop(1, `rgba(${rgb}, 0)`);
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(TARGET.x, TARGET.y, 34, 0, TAU);
+                ctx.fill();
+
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.arc(TARGET.x, TARGET.y, TARGET.r, 0, TAU);
+                ctx.stroke();
+
+                ctx.strokeStyle = `rgba(${rgb}, .55)`;
+                ctx.beginPath();
+                ctx.arc(TARGET.x, TARGET.y, 8, 0, TAU);
+                ctx.stroke();
+
+                // crosshair
+                ctx.strokeStyle = `rgba(${rgb}, .35)`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(TARGET.x - 24, TARGET.y);
+                ctx.lineTo(TARGET.x - TARGET.r - 3, TARGET.y);
+                ctx.moveTo(TARGET.x + TARGET.r + 3, TARGET.y);
+                ctx.lineTo(TARGET.x + 24, TARGET.y);
+                ctx.moveTo(TARGET.x, TARGET.y - 24);
+                ctx.lineTo(TARGET.x, TARGET.y - TARGET.r - 3);
+                ctx.moveTo(TARGET.x, TARGET.y + TARGET.r + 3);
+                ctx.lineTo(TARGET.x, TARGET.y + 24);
+                ctx.stroke();
+
+                ctx.font = '11px "Share Tech Mono", monospace';
+                ctx.fillStyle = `rgba(${rgb}, .8)`;
+                ctx.fillText(STRINGS[lang].target, TARGET.x - 12, TARGET.y + 40);
+            }
+
+            function paintMirror(ctx, mirror, index) {
+                const a = mirror.angle * Math.PI / 180;
+
+                ctx.beginPath();
+                ctx.arc(mirror.x, mirror.y, MIRROR_R, 0, TAU);
+                ctx.fillStyle = 'rgba(0, 240, 255, .07)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0, 240, 255, .55)';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                // pane line across the diameter
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 240, 255, .85)';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.moveTo(mirror.x - Math.cos(a) * MIRROR_R, mirror.y - Math.sin(a) * MIRROR_R);
+                ctx.lineTo(mirror.x + Math.cos(a) * MIRROR_R, mirror.y + Math.sin(a) * MIRROR_R);
+                ctx.strokeStyle = '#d9feff';
+                ctx.lineWidth = 2.4;
+                ctx.stroke();
+                ctx.restore();
+
+                // index + current angle, above-left of the disc so the beam does not cut through
+                ctx.textAlign = 'right';
+                ctx.font = '700 11px "Orbitron", sans-serif';
+                ctx.fillStyle = '#00f0ff';
+                ctx.fillText('M' + (index + 1), mirror.x - 18, mirror.y - 19);
+
+                ctx.font = '10px "Share Tech Mono", monospace';
+                ctx.fillStyle = '#6b7788';
+                ctx.fillText(mirror.angle + '°', mirror.x - 18, mirror.y - 6);
+                ctx.textAlign = 'left';
+            }
+
+            /* ------------------------------------------------------------ rendering */
+            function paintAll() {
+                beam = traceBeam();
+
+                paintRoom(el('op-room'), false);
+                if (previewOpen) paintRoom(el('hk-room'), true);
+
+                syncKnobs();
+                updateStatus();
+                updateReadout();
+            }
+
+            function syncKnobs() {
+                knobEls.forEach((knob, i) => {
+                    const angle = MIRRORS[i].angle;
+                    knob.classList.toggle('selected', i === selected);
+                    knob.querySelector('.knob-pane').style.transform = 'rotate(' + angle + 'deg)';
+                    knob.querySelector('.knob-deg').textContent = angle + '°';
+                    knob.setAttribute('aria-pressed', i === selected ? 'true' : 'false');
+                });
+                el('sel-mirror').textContent = 'M' + (selected + 1);
+                el('sel-value').textContent = MIRRORS[selected].angle + '°';
+                el('angle').value = MIRRORS[selected].angle;
+
+                const degrees = MIRRORS.map(m => String(m.angle).padStart(3, '0') + '°').join(' / ');
+                el('op-degrees').textContent = degrees;
+            }
+
+            function updateStatus() {
+                const status = el('op-status');
+                if (beam.hitTarget) {
+                    status.className = 'ok';
+                    status.textContent = STRINGS[lang].statusSolved;
+                } else if (beam.bounces > 0) {
+                    status.className = 'near';
+                    status.textContent = STRINGS[lang].statusRouted;
+                } else {
+                    status.className = '';
+                    status.textContent = STRINGS[lang].statusBlocked;
+                }
+                el('op-modal').classList.toggle('solved', beam.hitTarget);
+                el('hacker-preview').classList.toggle('solved', beam.hitTarget);
+            }
+
+            function updateReadout() {
+                const s = STRINGS[lang];
+                el('readout').innerHTML =
+                    `<span>${s.readoutBounces}: <b>${beam.bounces}</b></span>` +
+                    `<span>${s.readoutTarget}: <b class="${beam.hitTarget ? 'ok' : 'off'}">` +
+                    `${beam.hitTarget ? s.hit : s.miss}</b></span>`;
+
+                el('hk-state').innerHTML = s.hkState
+                    .replace('{n}', `<b>${beam.bounces}</b>`)
+                    .replace('{state}', `<b class="${beam.hitTarget ? 'ok' : 'off'}">` +
+                        `${beam.hitTarget ? s.hit : s.miss}</b>`);
+            }
+
+            /* ------------------------------------------------------------- controls */
+            function buildKnobs() {
+                const wrap = el('knobs');
+                wrap.innerHTML = '';
+                knobEls = MIRRORS.map((mirror, i) => {
+                    const knob = document.createElement('button');
+                    knob.type = 'button';
+                    knob.className = 'knob';
+                    knob.innerHTML =
+                        `<span class="knob-dial">` +
+                        `<span class="knob-pane"></span>` +
+                        `<span class="knob-hub"></span>` +
+                        `</span>` +
+                        `<span class="knob-label">M${i + 1}</span>` +
+                        `<span class="knob-deg">${mirror.angle}°</span>`;
+                    knob.addEventListener('click', () => {
+                        selected = i;
+                        syncKnobs();
+                        paintAll();
+                    });
+                    wrap.appendChild(knob);
+                    return knob;
+                });
+            }
+
+            el('angle').addEventListener('input', (event) => {
+                MIRRORS[selected].angle = clamp(parseInt(event.target.value, 10) || 0, 0, 360);
+                paintAll();
+            });
+
+            el('btn-solve').addEventListener('click', () => {
+                MIRRORS.forEach((m, i) => { m.angle = SOLUTION[i]; });
+                selected = 0;
+                paintAll();
+            });
+
+            el('btn-reset').addEventListener('click', () => {
+                MIRRORS.forEach((m, i) => { m.angle = START[i]; });
+                selected = 0;
+                paintAll();
+            });
+
+            function setPreview(open) {
+                previewOpen = open;
+                el('hacker-preview').classList.toggle('hidden', !open);
+                el('btn-preview').textContent = open
+                    ? STRINGS[lang].closePreview
+                    : STRINGS[lang].openPreview;
+                if (open) paintAll();
+            }
+
+            el('btn-preview').addEventListener('click', () => setPreview(!previewOpen));
+            el('btn-preview-close').addEventListener('click', () => setPreview(false));
+            el('btn-preview-close-2').addEventListener('click', () => setPreview(false));
+
+            /* ------------------------------------------------------------- language */
+            function applyLanguage() {
+                const s = STRINGS[lang];
+                document.querySelectorAll('[data-i18n]').forEach(node => {
+                    const value = s[node.dataset.i18n];
+                    if (typeof value === 'string') node.textContent = value;
+                });
+                document.querySelectorAll('.lang-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.lang === lang);
+                });
+                el('btn-solve').textContent = s.solveBtn;
+                el('btn-reset').textContent = s.resetBtn;
+                el('btn-preview').textContent = previewOpen ? s.closePreview : s.openPreview;
+                paintAll();
+            }
+
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    lang = btn.dataset.lang;
+                    applyLanguage();
+                });
+            });
+
+            /* ----------------------------------------------------------------- init */
+            function onResize() {
+                const w = el('op-room').parentElement.clientWidth;
+                if (w === lastLayoutW) return;
+                lastLayoutW = w;
+                if (previewOpen) paintAll();
+                else {
+                    paintRoom(el('op-room'), false);
+                }
+            }
+
+            window.addEventListener('resize', onResize);
+
+            buildKnobs();
+            applyLanguage();
+            syncKnobs();
+            paintAll();
+        })();
+    </script>
+</body>
+
+</html>

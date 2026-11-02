@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2Escape // Mockup #14 – Levitationsfeld (Operativ)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        /*
+         * DESIGN MOCKUP ONLY – not part of the app.
+         * Recreates the operative's puzzle modal (#puzzle-modal in index.html) with the
+         * levitating-ball puzzle from issue #14, so the layout/feel can be reviewed
+         * before anything is added to puzzles.js. Plain CSS on purpose: this file must
+         * open standalone, without the Tailwind build.
+         */
+        :root {
+            --cyan: #00f0ff;
+            --green: #00ff66;
+            --red: #ff2a2a;
+            --amber: #ffcc00;
+            --ink: #0d0f12;
+            --panel: #12161f;
+            --stage: #05070a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 50% 0%, #0d1a24 0%, var(--stage) 55%, #020304 100%);
+            color: #d7dde5;
+            font-family: 'Share Tech Mono', ui-monospace, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 16px 48px;
+            gap: 18px;
+        }
+
+        /* ---------------------------------------------------------------- meta */
+        .meta {
+            width: 100%;
+            max-width: 512px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            color: #6b7788;
+            text-transform: uppercase;
+        }
+
+        .meta strong {
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+        }
+
+        .meta-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lang-btn,
+        .ghost-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            padding: 4px 8px;
+            background: var(--ink);
+            color: #8a94a6;
+            border: 1px solid #2a3340;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .lang-btn:hover,
+        .ghost-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .lang-btn.active {
+            border-color: var(--cyan);
+            background: rgba(0, 240, 255, .12);
+            color: var(--cyan);
+            font-weight: 700;
+        }
+
+        /* --------------------------------------------------------- modal shell */
+        .modal {
+            width: 100%;
+            max-width: 512px;
+            background: var(--panel);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .65), 0 0 40px rgba(0, 240, 255, .10);
+            overflow: hidden;
+        }
+
+        .modal-head {
+            background: var(--ink);
+            border-bottom: 1px solid rgba(0, 240, 255, .27);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .modal-head-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .tag {
+            padding: 2px 8px;
+            background: rgba(0, 240, 255, .13);
+            border: 1px solid rgba(0, 240, 255, .53);
+            border-radius: 4px;
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .modal-title {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--cyan);
+            text-shadow: 0 0 10px rgba(0, 240, 255, .55);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .close-x {
+            background: none;
+            border: 0;
+            color: #8a94a6;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0 6px;
+        }
+
+        .close-x:hover {
+            color: #ff5c5c;
+        }
+
+        .modal-body {
+            padding: 22px 22px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* --------------------------------------------------------- shaft stage */
+        .shaft-stage {
+            display: flex;
+            align-items: stretch;
+            gap: 10px;
+        }
+
+        .scale {
+            width: 34px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 26px 0 56px;
+            color: #4a5568;
+            font-size: 9px;
+        }
+
+        .scale div {
+            position: relative;
+            width: 100%;
+            text-align: right;
+            line-height: 1;
+        }
+
+        .scale div::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            width: 5px;
+            border-top: 1px solid #2a3340;
+        }
+
+        .shaft {
+            position: relative;
+            width: 208px;
+            height: 336px;
+            border: 1px solid rgba(0, 240, 255, .28);
+            border-radius: 10px;
+            background-color: #070a0f;
+            background-image:
+                linear-gradient(rgba(0, 240, 255, .055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, .055) 1px, transparent 1px),
+                radial-gradient(circle at 50% 100%, rgba(0, 240, 255, .10), transparent 62%);
+            background-size: 22px 22px, 22px 22px, 100% 100%;
+            overflow: hidden;
+            transition: box-shadow .35s, border-color .35s;
+        }
+
+        .shaft.solved {
+            border-color: rgba(0, 255, 102, .55);
+            box-shadow: inset 0 0 42px rgba(0, 255, 102, .18), 0 0 22px rgba(0, 255, 102, .16);
+        }
+
+        /* inner wall shading */
+        .shaft::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(0, 0, 0, .55), transparent 18%, transparent 82%, rgba(0, 0, 0, .55));
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        /* ------------------------------------------------------------- air flow */
+        .air {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 56px;
+            top: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .streak {
+            position: absolute;
+            bottom: -70px;
+            width: 2px;
+            height: 46px;
+            border-radius: 2px;
+            background: linear-gradient(to top, rgba(0, 240, 255, 0), rgba(0, 240, 255, .85));
+            opacity: .3;
+            animation-name: rise;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+
+        @keyframes rise {
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(-330px);
+            }
+        }
+
+        /* ------------------------------------------------------------ tolerance */
+        .band {
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            border-top: 1px dashed rgba(255, 42, 42, .55);
+            border-bottom: 1px dashed rgba(255, 42, 42, .55);
+            background: linear-gradient(to bottom, rgba(255, 42, 42, .13), rgba(255, 42, 42, .07));
+            z-index: 2;
+            transition: all .35s;
+        }
+
+        .band::before,
+        .band::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            bottom: -2px;
+            width: 1px;
+            background: rgba(255, 42, 42, .5);
+        }
+
+        .band::before {
+            left: 0;
+        }
+
+        .band::after {
+            right: 0;
+        }
+
+        .band.solved {
+            border-color: rgba(0, 255, 102, .65);
+            background: linear-gradient(to bottom, rgba(0, 255, 102, .18), rgba(0, 255, 102, .10));
+        }
+
+        .band.solved::before,
+        .band.solved::after {
+            background: rgba(0, 255, 102, .55);
+        }
+
+        /* ---------------------------------------------------------- target line */
+        .target {
+            position: absolute;
+            left: 0;
+            right: 0;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .target-line {
+            height: 0;
+            border-top: 2px dashed var(--red);
+            box-shadow: 0 0 8px rgba(255, 42, 42, .45);
+            transition: border-color .35s, box-shadow .35s;
+        }
+
+        .shaft.solved .target-line {
+            border-top-color: var(--green);
+            box-shadow: 0 0 10px rgba(0, 255, 102, .55);
+        }
+
+        .target-flag {
+            position: absolute;
+            right: 4px;
+            top: -9px;
+            padding: 1px 5px;
+            background: rgba(13, 15, 18, .92);
+            border: 1px solid rgba(255, 42, 42, .7);
+            border-radius: 3px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px;
+            letter-spacing: .12em;
+            color: #ff6b6b;
+            transition: all .35s;
+        }
+
+        .shaft.solved .target-flag {
+            border-color: rgba(0, 255, 102, .7);
+            color: var(--green);
+        }
+
+        /* (the numeric target is deliberately NOT shown: that is the handbook's job) */
+
+        /* ----------------------------------------------------------------- ball */
+        .ball {
+            position: absolute;
+            left: 50%;
+            width: 26px;
+            height: 26px;
+            margin-left: -13px;
+            margin-bottom: -13px;
+            z-index: 4;
+            will-change: bottom;
+        }
+
+        .ball-bob {
+            width: 100%;
+            height: 100%;
+            animation: bob 2.6s ease-in-out infinite;
+        }
+
+        @keyframes bob {
+            0%, 100% {
+                transform: translate(-2px, -2px);
+            }
+
+            50% {
+                transform: translate(2px, 2px);
+            }
+        }
+
+        .ball-core {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 34% 30%, #d9feff 0%, #57f2ff 28%, #00c2d4 62%, #00707d 100%);
+            box-shadow:
+                0 0 10px rgba(0, 240, 255, .85),
+                0 0 24px rgba(0, 240, 255, .45),
+                inset -3px -3px 7px rgba(0, 0, 0, .45);
+            transition: background .35s, box-shadow .35s;
+        }
+
+        .shaft.solved .ball-core {
+            background: radial-gradient(circle at 34% 30%, #e4ffea 0%, #7dffb0 28%, #00e05c 62%, #00752f 100%);
+            box-shadow:
+                0 0 12px rgba(0, 255, 102, .95),
+                0 0 30px rgba(0, 255, 102, .55),
+                inset -3px -3px 7px rgba(0, 0, 0, .45);
+        }
+
+        /* ------------------------------------------------------------------ fan */
+        .fan-zone {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 56px;
+            z-index: 5;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            background: linear-gradient(to top, rgba(0, 240, 255, .07), transparent);
+        }
+
+        /* soft up-draught cone above the fan */
+        .fan-zone::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 30px;
+            width: 150px;
+            height: 120px;
+            transform: translateX(-50%);
+            background: radial-gradient(ellipse at 50% 100%, rgba(0, 240, 255, .16), transparent 70%);
+            pointer-events: none;
+        }
+
+        .fan-disc {
+            position: absolute;
+            bottom: 16px;
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 240, 255, .55);
+            background:
+                repeating-conic-gradient(from 0deg, rgba(0, 240, 255, .42) 0deg 16deg, rgba(0, 240, 255, .04) 16deg 45deg),
+                radial-gradient(circle, rgba(0, 240, 255, .10), transparent 68%);
+            box-shadow: 0 0 18px rgba(0, 240, 255, .30), inset 0 0 16px rgba(0, 240, 255, .22);
+            animation: spin 1.5s linear infinite;
+        }
+
+        .fan-hub {
+            position: absolute;
+            bottom: 41px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #c8fbff, #0097a8 70%, #00434c);
+            box-shadow: 0 0 12px rgba(0, 240, 255, .8);
+        }
+
+        .fan-grille {
+            position: absolute;
+            bottom: 16px;
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            background: repeating-conic-gradient(from 0deg, rgba(0, 240, 255, .10) 0deg 1deg, transparent 1deg 15deg);
+            -webkit-mask: radial-gradient(circle, transparent 42%, #000 64%);
+            mask: radial-gradient(circle, transparent 42%, #000 64%);
+            pointer-events: none;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .fan-base {
+            position: relative;
+            width: 100%;
+            height: 14px;
+            background: linear-gradient(to top, #0d1116, #101820);
+            border-top: 1px solid rgba(0, 240, 255, .28);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 7px;
+            letter-spacing: .28em;
+            color: rgba(0, 240, 255, .55);
+        }
+
+        /* --------------------------------------------------------- hint + status */
+        .hint {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--ink);
+            border: 1px solid #2a3340;
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.7;
+            text-align: center;
+            color: #9aa6b8;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .hint .label {
+            color: #6b7788;
+        }
+
+        .hint-note {
+            font-size: 10px;
+            color: #6b7788;
+        }
+
+        .cmd {
+            display: inline-block;
+            margin: 0 1px;
+            padding: 1px 6px;
+            background: #0f141a;
+            border: 1px solid #39424f;
+            border-radius: 3px;
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+        }
+
+        .modal-foot {
+            background: var(--ink);
+            border-top: 1px solid #232b36;
+            padding: 11px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 12px;
+            color: #9aa6b8;
+        }
+
+        #status.ok {
+            color: var(--green);
+            text-shadow: 0 0 8px rgba(0, 255, 102, .45);
+        }
+
+        #status.near {
+            color: var(--amber);
+        }
+
+        .disengage {
+            padding: 4px 12px;
+            background: none;
+            border: 1px solid #39424f;
+            border-radius: 4px;
+            color: #9aa6b8;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .disengage:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        /* ---------------------------------------------------------- mockup only */
+        .demo {
+            width: 100%;
+            max-width: 512px;
+            border: 1px dashed #2a3340;
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(13, 15, 18, .55);
+        }
+
+        .demo-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: .18em;
+            color: #6b7788;
+            text-transform: uppercase;
+        }
+
+        .demo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .demo button {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            padding: 6px 12px;
+            background: #0f141a;
+            color: var(--cyan);
+            border: 1px solid #39424f;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .demo button:hover {
+            border-color: var(--cyan);
+            background: rgba(0, 240, 255, .10);
+        }
+
+        .demo button.reset {
+            color: #9aa6b8;
+        }
+
+        .demo-readout {
+            font-size: 11px;
+            color: #7d8899;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .demo-readout b {
+            color: #cfd8e3;
+            font-weight: 400;
+        }
+
+        .demo-readout .delta-ok {
+            color: var(--green);
+        }
+
+        .demo-readout .delta-off {
+            color: #ff8a8a;
+        }
+
+        /* very narrow phones: keep the whole shaft inside the card */
+        @media (max-width: 380px) {
+            .modal-body {
+                padding: 16px 12px;
+            }
+
+            .shaft {
+                width: 178px;
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="meta">
+        <span><strong>2Escape</strong> // Issue #14 – Levitating Ball</span>
+        <span class="meta-right">
+            <button class="lang-btn active" data-lang="de">DE</button>
+            <button class="lang-btn" data-lang="en">EN</button>
+        </span>
+    </div>
+
+    <!-- ============================ what the operative sees ============================ -->
+    <div class="modal">
+        <div class="modal-head">
+            <div class="modal-head-left">
+                <span class="tag" id="tag">[LEVITATION FIELD]</span>
+                <h3 class="modal-title" id="title">Vortex Levitation Column MK-II</h3>
+            </div>
+            <button class="close-x" title="close">✕</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="shaft-stage">
+                <div class="scale" id="scale"></div>
+
+                <div class="shaft" id="shaft">
+                    <div class="air" id="air"></div>
+                    <div class="band" id="band"></div>
+
+                    <div class="target" id="target">
+                        <div class="target-line"></div>
+                        <span class="target-flag" id="target-flag">ZIEL</span>
+                    </div>
+
+                    <div class="ball" id="ball">
+                        <div class="ball-bob">
+                            <div class="ball-core"></div>
+                        </div>
+                    </div>
+
+                    <div class="fan-zone">
+                        <div class="fan-disc" id="fan-disc"></div>
+                        <div class="fan-grille"></div>
+                        <div class="fan-hub"></div>
+                        <div class="fan-base" id="fan-base">LÜFTER</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint">
+                <div class="hint-row">
+                    <span class="label">Hacker-Terminal:</span>
+                    <span class="cmd">fan+</span><span class="cmd">fan++</span>
+                    <span class="cmd">fan-</span><span class="cmd">fan--</span>
+                </div>
+                <div class="hint-note">Lüfterleistung erhöhen / verringern</div>
+            </div>
+        </div>
+
+        <div class="modal-foot">
+            <span id="status">Status: Levitation instabil...</span>
+            <button class="disengage" id="disengage">ABBRECHEN</button>
+        </div>
+    </div>
+
+    <!-- ================================ mockup only ================================ -->
+    <div class="demo">
+        <div class="demo-title">Mockup-Steuerung – im Spiel kommen diese Befehle vom Hacker-Terminal</div>
+        <div class="demo-row">
+            <button data-cmd="-5">fan--</button>
+            <button data-cmd="-1">fan-</button>
+            <button data-cmd="1">fan+</button>
+            <button data-cmd="5">fan++</button>
+            <button class="reset" id="reroll">Neues Ziel</button>
+        </div>
+        <div class="demo-readout" id="readout"></div>
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const STRINGS = {
+                de: {
+                    tag: '[LEVITATION FIELD]',
+                    title: 'Vortex Levitation Column MK-II',
+                    targetFlag: 'ZIEL',
+                    fan: 'LÜFTER',
+                    hintLabel: 'Hacker-Terminal:',
+                    hintNote: 'Lüfterleistung erhöhen / verringern',
+                    statusFar: 'Status: Levitation instabil...',
+                    statusNear: 'Status: Zielband in Reichweite...',
+                    statusSolved: 'Status: Ball im Zielband – Levitation stabilisiert!',
+                    disengage: 'ABBRECHEN',
+                    demoTitle: 'Mockup-Steuerung – im Spiel kommen diese Befehle vom Hacker-Terminal',
+                    reroll: 'Neues Ziel',
+                    readout: { force: 'Lüfter', height: 'Ballhöhe', target: 'Ziel', delta: 'Abweichung', tol: 'Toleranz' }
+                },
+                en: {
+                    tag: '[LEVITATION FIELD]',
+                    title: 'Vortex Levitation Column MK-II',
+                    targetFlag: 'TARGET',
+                    fan: 'FAN',
+                    hintLabel: 'Hacker terminal:',
+                    hintNote: 'increase / decrease fan force',
+                    statusFar: 'Status: Levitation unstable...',
+                    statusNear: 'Status: Target band in range...',
+                    statusSolved: 'Status: Ball in target band – levitation stabilised!',
+                    disengage: 'DISENGAGE',
+                    demoTitle: 'Mockup controls – in the game these come from the hacker terminal',
+                    reroll: 'New target',
+                    readout: { force: 'Fan', height: 'Ball height', target: 'Target', delta: 'Delta', tol: 'Tolerance' }
+                }
+            };
+
+            // Geometry: the ball rides between the fan and the ceiling, the same space the
+            // target band lives in. 0 % = resting on the airflow, 100 % = top of the shaft.
+            const FAN_ZONE = 56;
+            const TOP_MARGIN = 26;
+            const TOLERANCE = 3; // ±3 as specified in issue #14
+
+            const el = (id) => document.getElementById(id);
+            const shaft = el('shaft');
+            const ball = el('ball');
+            const target = el('target');
+            const band = el('band');
+            const air = el('air');
+            const fanDisc = el('fan-disc');
+            const scale = el('scale');
+            const status = el('status');
+            const readout = el('readout');
+
+            let lang = 'de';
+            let targetValue = 62;
+            let force = 35;
+            let shown = 35;          // eased height, for smooth motion
+            let solved = false;
+            let rafId = null;
+
+            const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+            function yFor(value, height) {
+                return FAN_ZONE + (value / 100) * (height - FAN_ZONE - TOP_MARGIN);
+            }
+
+            // Position-only: runs on every animation frame, so it must stay cheap.
+            function layout() {
+                const h = shaft.clientHeight;
+                const ty = yFor(targetValue, h);
+                const lo = yFor(targetValue - TOLERANCE, h);
+                const hi = yFor(targetValue + TOLERANCE, h);
+
+                ball.style.bottom = yFor(shown, h) + 'px';
+                target.style.bottom = ty + 'px';
+                band.style.bottom = lo + 'px';
+                band.style.height = (hi - lo) + 'px';
+            }
+
+            // Scale is static per size, so build it once instead of every frame.
+            function buildScale() {
+                scale.innerHTML = '';
+                [100, 75, 50, 25, 0].forEach(v => {
+                    const d = document.createElement('div');
+                    d.innerText = v;
+                    scale.appendChild(d);
+                });
+            }
+
+            function applyAirflow() {
+                const speed = 1.7 - (force / 100) * 1.15;      // seconds per streak cycle
+                const opacity = 0.10 + (force / 100) * 0.55;
+                [...air.children].forEach((s, i) => {
+                    s.style.animationDuration = (speed + (i % 5) * 0.06).toFixed(2) + 's';
+                    s.style.opacity = opacity.toFixed(2);
+                });
+                fanDisc.style.animationDuration = Math.max(0.18, 2.1 - (force / 100) * 1.9).toFixed(2) + 's';
+            }
+
+            function buildAirflow() {
+                air.innerHTML = '';
+                for (let i = 0; i < 11; i++) {
+                    const s = document.createElement('div');
+                    s.className = 'streak';
+                    s.style.left = (8 + Math.random() * 84) + '%';
+                    s.style.height = (26 + Math.random() * 48).toFixed(0) + 'px';
+                    s.style.animationDelay = (-Math.random() * 2).toFixed(2) + 's';
+                    air.appendChild(s);
+                }
+            }
+
+            let lastState = null;
+            let lastHeight = null;
+
+            // Only touches the DOM when something actually changed.
+            function render(forceReadout = false) {
+                const d = Math.abs(force - targetValue);
+                solved = d <= TOLERANCE;
+                const stateKey = solved ? 'solved' : (d <= 12 ? 'near' : 'far');
+
+                if (stateKey !== lastState) {
+                    lastState = stateKey;
+                    shaft.classList.toggle('solved', solved);
+                    band.classList.toggle('solved', solved);
+                    status.className = solved ? 'ok' : (stateKey === 'near' ? 'near' : '');
+                    status.innerText = solved ? STRINGS[lang].statusSolved
+                        : (stateKey === 'near' ? STRINGS[lang].statusNear : STRINGS[lang].statusFar);
+                }
+
+                const rounded = Math.round(shown);
+                if (forceReadout || rounded !== lastHeight) {
+                    lastHeight = rounded;
+                    const r = STRINGS[lang].readout;
+                    readout.innerHTML =
+                        `${r.force}: <b>${force}%</b>` +
+                        ` · ${r.height}: <b>${rounded}%</b>` +
+                        ` · ${r.target}: <b>${targetValue}%</b>` +
+                        ` · ${r.delta}: <b class="${solved ? 'delta-ok' : 'delta-off'}">${d}</b>` +
+                        ` · ${r.tol}: <b>±${TOLERANCE}</b>`;
+                }
+            }
+
+            // The ball eases towards the fan force so a command reads as movement
+            // instead of teleporting by 1 or 5 height units. Time-based easing keeps
+            // the settle time constant even when the frame rate dips.
+            let lastFrame = 0;
+
+            function tick(now) {
+                const dt = lastFrame ? Math.min(0.25, (now - lastFrame) / 1000) : 0.016;
+                lastFrame = now;
+
+                const diff = force - shown;
+                if (Math.abs(diff) > 0.05) shown += diff * (1 - Math.exp(-dt / 0.10));
+                else shown = force;
+
+                layout();
+                render();
+                rafId = requestAnimationFrame(tick);
+            }
+
+            function applyLanguage() {
+                const s = STRINGS[lang];
+                el('tag').innerText = s.tag;
+                el('title').innerText = s.title;
+                el('target-flag').innerText = s.targetFlag;
+                el('fan-base').innerText = s.fan;
+                el('disengage').innerText = s.disengage;
+                el('reroll').innerText = s.reroll;
+                document.querySelector('.demo-title').innerText = s.demoTitle;
+                el('hint').innerHTML =
+                    `<div class="hint-row">` +
+                    `<span class="label">${s.hintLabel}</span> ` +
+                    `<span class="cmd">fan+</span><span class="cmd">fan++</span> ` +
+                    `<span class="cmd">fan-</span><span class="cmd">fan--</span>` +
+                    `</div>` +
+                    `<div class="hint-note">${s.hintNote}</div>`;
+                document.querySelectorAll('.lang-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.lang === lang);
+                });
+                lastState = null;   // status strings changed language
+                render(true);
+            }
+
+            function command(delta) {
+                force = clamp(force + delta, 0, 100);
+                applyAirflow();
+                render(true);
+            }
+
+            function reroll() {
+                force = 10 + Math.floor(Math.random() * 35);
+                targetValue = 25 + Math.floor(Math.random() * 70);
+                if (Math.abs(force - targetValue) < 12) force = clamp(targetValue - 30, 0, 100);
+                shown = force;
+                lastState = null;
+                layout();
+                applyAirflow();
+                render(true);
+            }
+
+            document.querySelectorAll('.demo button[data-cmd]').forEach(btn => {
+                btn.addEventListener('click', () => command(parseInt(btn.dataset.cmd, 10)));
+            });
+            el('reroll').addEventListener('click', reroll);
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    lang = btn.dataset.lang;
+                    applyLanguage();
+                });
+            });
+
+            function onResize() {
+                buildScale();
+                layout();
+            }
+
+            window.addEventListener('resize', onResize);
+
+            buildScale();
+            buildAirflow();
+            applyAirflow();
+            applyLanguage();
+            layout();
+            tick();
+        })();
+    </script>
+</body>
+
+</html>
