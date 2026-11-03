@@ -272,33 +272,23 @@
         };
     }
 
-    // Type selection bounds are part of every existing seed: this list is frozen at the
-    // types of the initial release. New types are injected after generation instead
-    // (see injectLaserPuzzle / injectLaserHurdlesPuzzle), so adding them never shifts
-    // the legacy draws.
+    // Type selection is part of every seed. Laser hurdles join the regular type pool
+    // like any other puzzle, which intentionally reshuffles layouts from older builds.
+    // The optical relay is still injected after generation (see injectLaserPuzzle).
     const LEGACY_TYPE_KEYS = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle', 'levitation'];
+    const TYPE_POOL = LEGACY_TYPE_KEYS.concat('laser_hurdles');
     const PUZZLE_TYPE_KEYS = LEGACY_TYPE_KEYS.concat('laser', 'laser_hurdles');
 
-    // Turns one non-keypad puzzle of an already generated room into a laser hurdle.
-    // As with the optical relay, all draws come from the caller's own PRNG and the
-    // make/model is built locally, so legacy parameter and name streams stay put.
-    function injectLaserHurdlesPuzzle(pList, roomNum, prng, takeHurdleKey) {
-        // Never steal a puzzle that already became the run's optical relay.
-        const candidates = pList.filter(p => p.type !== 'keypad' && p.type !== 'laser');
-        if (candidates.length === 0) return false;
-
-        const victim = candidates[prng.range(0, candidates.length - 1)];
+    // Hurdle-only data comes from its own PRNG, so phrase draws never shift the
+    // room's type, placement, parameter or device-name schedules.
+    function createHurdleData(seedStr, roomNum, slot, takeHurdleKey) {
+        const prng = new SeededPRNG(`${seedStr}-HURDLES-${roomNum}-${slot}`);
         const phrases = [];
         for (let i = 0; i < 4; i++) {
             phrases.push(prng.range(0, 255).toString(16).toUpperCase().padStart(2, '0'));
         }
 
-        victim.id = `r${roomNum}_p${pList.indexOf(victim) + 1}_laser_hurdles`;
-        victim.type = 'laser_hurdles';
-        victim.makeModel = `${deviceBrands[prng.range(0, deviceBrands.length - 1)]} ` +
-            `${DEVICE_TYPE_LABELS.laser_hurdles} ${deviceSeries[prng.range(0, deviceSeries.length - 1)]}`;
-        victim.freqInRoomIndex = null;
-        victim.hurdleData = {
+        return {
             wordKey: takeHurdleKey(),
             phrases: phrases,
             started: false,
@@ -307,16 +297,13 @@
             nextPhrasePass: 3,
             hits: 0
         };
-
-        syncFrequencyTotals(pList);
-        return true;
     }
 
     // Turns one non-keypad puzzle of an already generated room into an optical relay.
     // Everything is drawn from the caller's own PRNG and the make/model is built from
     // local draws, so the run-wide device-name cursor and parameter streams stay put.
     function injectLaserPuzzle(pList, roomNum, prng) {
-        const candidates = pList.filter(p => p.type !== 'keypad');
+        const candidates = pList.filter(p => p.type !== 'keypad' && p.type !== 'laser_hurdles');
         if (candidates.length === 0) return false;
 
         const victim = candidates[prng.range(0, candidates.length - 1)];
@@ -344,7 +331,7 @@
         // Issue #22: no type repeats while unused types remain, so a room is filled
         // from a shuffled pool instead of independent draws. Draw count stays equal to
         // puzzleCount, as in the legacy schedule.
-        const typePool = LEGACY_TYPE_KEYS.slice();
+        const typePool = TYPE_POOL.slice();
         const selectedTypes = [];
         for (let p = 0; p < puzzleCount; p++) {
             const pickIdx = roomPrng.range(p, typePool.length - 1);
@@ -403,7 +390,7 @@
             const makeModel = generateDeviceName(roomPrng, typeKey, takeDeviceName);
             const params = drawPuzzleParameters(roomPrng, nextPumpId);
 
-            pList.push({
+            const puzzle = {
                 id: `r${roomNum}_p${pIdx + 1}_${typeKey}`,
                 room: roomNum,
                 freqInRoomIndex: freqInRoomIndex,
@@ -421,7 +408,13 @@
                 levitationTarget: params.levitationTarget,
                 fanForce: params.fanForce,
                 pressureData: params.pressureData
-            });
+            };
+
+            if (typeKey === 'laser_hurdles') {
+                puzzle.hurdleData = createHurdleData(seedStr, roomNum, pIdx + 1, takeHurdleKey);
+            }
+
+            pList.push(puzzle);
         });
 
         // Optical relay (issue #17): injected after the room is complete, from its own
@@ -431,12 +424,6 @@
             injectLaserPuzzle(pList, roomNum, laserPrng);
         }
 
-        // Laser hurdles (issue #28): injected after the optical relay from its own PRNG.
-        // A hurdle never replaces the relay, so both new types can coexist in one run.
-        const hurdlePrng = new SeededPRNG(`${seedStr}-HURDLES-ROOM-${roomNum}`);
-        if (hurdlePrng.range(0, 99) < 50) {
-            injectLaserHurdlesPuzzle(pList, roomNum, hurdlePrng, takeHurdleKey);
-        }
         syncFrequencyTotals(pList);
 
         return { id: roomNum, puzzles: pList };
@@ -458,21 +445,11 @@
         // issue #17's puzzle type unseen for a whole mission.
         if (!run.some(room => room.puzzles.some(p => p.type === 'laser'))) {
             const fallbackPrng = new SeededPRNG(`${seed}-LASER-FALLBACK`);
-            const roomsWithCandidates = run.filter(room => room.puzzles.some(p => p.type !== 'keypad'));
+            const roomsWithCandidates = run.filter(room =>
+                room.puzzles.some(p => p.type !== 'keypad' && p.type !== 'laser_hurdles'));
             if (roomsWithCandidates.length > 0) {
                 const room = roomsWithCandidates[fallbackPrng.range(0, roomsWithCandidates.length - 1)];
                 injectLaserPuzzle(room.puzzles, room.id, fallbackPrng);
-            }
-        }
-
-        // Same guarantee for issue #28: every run contains at least one laser hurdle.
-        if (!run.some(room => room.puzzles.some(p => p.type === 'laser_hurdles'))) {
-            const fallbackPrng = new SeededPRNG(`${seed}-HURDLES-FALLBACK`);
-            const roomsWithCandidates = run.filter(room =>
-                room.puzzles.some(p => p.type !== 'keypad' && p.type !== 'laser'));
-            if (roomsWithCandidates.length > 0) {
-                const room = roomsWithCandidates[fallbackPrng.range(0, roomsWithCandidates.length - 1)];
-                injectLaserHurdlesPuzzle(room.puzzles, room.id, fallbackPrng, takeHurdleKey);
             }
         }
 
