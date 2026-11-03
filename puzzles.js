@@ -149,8 +149,32 @@
         power_grid: 'Matrix Grid',
         pressure_cycle: 'Hydro Station',
         levitation: 'Levitation Column',
-        laser: 'Optical Relay'
+        laser: 'Optical Relay',
+        laser_hurdles: 'Laser Hurdles'
     };
+
+    // Word keys for the laser hurdle access sequence. Every run shuffles this pool
+    // with its own PRNG, so two hurdles in one run never share a sequence.
+    const HURDLE_WORD_KEYS = [
+        'nebula', 'quartz', 'vortex', 'cinder', 'lumen', 'onyx', 'pulsar', 'ember',
+        'glacier', 'zephyr', 'cobalt', 'raven', 'atlas', 'helix', 'drift', 'prism',
+        'tundra', 'solace', 'vector', 'mirage', 'cipher', 'orbit', 'flint', 'harbor',
+        'krypton', 'ion', 'matrix', 'nomad', 'opal', 'phantom', 'rift', 'spark'
+    ];
+
+    function createHurdleKeyPicker(seedStr) {
+        const pool = HURDLE_WORD_KEYS.slice();
+        const prng = new SeededPRNG(`${seedStr}-HURDLE-KEYS`);
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = prng.range(0, i);
+            const tmp = pool[i];
+            pool[i] = pool[j];
+            pool[j] = tmp;
+        }
+
+        let cursor = 0;
+        return () => pool[cursor++ % pool.length];
+    }
 
     // Deterministic, run-wide shuffled pool of brand/series combinations.
     // Each puzzle draws the next combination, so a make/model can never repeat within a run.
@@ -250,9 +274,43 @@
 
     // Type selection bounds are part of every existing seed: this list is frozen at the
     // types of the initial release. New types are injected after generation instead
-    // (see injectLaserPuzzle), so adding them never shifts the legacy draws.
+    // (see injectLaserPuzzle / injectLaserHurdlesPuzzle), so adding them never shifts
+    // the legacy draws.
     const LEGACY_TYPE_KEYS = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle', 'levitation'];
-    const PUZZLE_TYPE_KEYS = LEGACY_TYPE_KEYS.concat('laser');
+    const PUZZLE_TYPE_KEYS = LEGACY_TYPE_KEYS.concat('laser', 'laser_hurdles');
+
+    // Turns one non-keypad puzzle of an already generated room into a laser hurdle.
+    // As with the optical relay, all draws come from the caller's own PRNG and the
+    // make/model is built locally, so legacy parameter and name streams stay put.
+    function injectLaserHurdlesPuzzle(pList, roomNum, prng, takeHurdleKey) {
+        // Never steal a puzzle that already became the run's optical relay.
+        const candidates = pList.filter(p => p.type !== 'keypad' && p.type !== 'laser');
+        if (candidates.length === 0) return false;
+
+        const victim = candidates[prng.range(0, candidates.length - 1)];
+        const phrases = [];
+        for (let i = 0; i < 4; i++) {
+            phrases.push(prng.range(0, 255).toString(16).toUpperCase().padStart(2, '0'));
+        }
+
+        victim.id = `r${roomNum}_p${pList.indexOf(victim) + 1}_laser_hurdles`;
+        victim.type = 'laser_hurdles';
+        victim.makeModel = `${deviceBrands[prng.range(0, deviceBrands.length - 1)]} ` +
+            `${DEVICE_TYPE_LABELS.laser_hurdles} ${deviceSeries[prng.range(0, deviceSeries.length - 1)]}`;
+        victim.freqInRoomIndex = null;
+        victim.hurdleData = {
+            wordKey: takeHurdleKey(),
+            phrases: phrases,
+            started: false,
+            passed: 0,
+            accepted: 0,
+            nextPhrasePass: 3,
+            hits: 0
+        };
+
+        syncFrequencyTotals(pList);
+        return true;
+    }
 
     // Turns one non-keypad puzzle of an already generated room into an optical relay.
     // Everything is drawn from the caller's own PRNG and the make/model is built from
@@ -280,7 +338,7 @@
         });
     }
 
-    function generateRoom(seedStr, roomNum, takeDeviceName, nextPumpId) {
+    function generateRoom(seedStr, roomNum, takeDeviceName, nextPumpId, takeHurdleKey) {
         const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${roomNum}`);
         const puzzleCount = getPuzzleCountForRoom(roomNum);
         // Issue #22: no type repeats while unused types remain, so a room is filled
@@ -372,6 +430,13 @@
         if (laserPrng.range(0, 99) < 40) {
             injectLaserPuzzle(pList, roomNum, laserPrng);
         }
+
+        // Laser hurdles (issue #28): injected after the optical relay from its own PRNG.
+        // A hurdle never replaces the relay, so both new types can coexist in one run.
+        const hurdlePrng = new SeededPRNG(`${seedStr}-HURDLES-ROOM-${roomNum}`);
+        if (hurdlePrng.range(0, 99) < 50) {
+            injectLaserHurdlesPuzzle(pList, roomNum, hurdlePrng, takeHurdleKey);
+        }
         syncFrequencyTotals(pList);
 
         return { id: roomNum, puzzles: pList };
@@ -380,12 +445,13 @@
     function generateRun(seedStr) {
         const seed = String(seedStr == null ? '' : seedStr);
         const takeDeviceName = createDeviceNamePicker(seed);
+        const takeHurdleKey = createHurdleKeyPicker(seed);
         let pumpCounter = 1;
         const nextPumpId = () => `p${pumpCounter++}`;
 
         const run = [];
         for (let r = 1; r <= TOTAL_ROOMS; r++) {
-            run.push(generateRoom(seed, r, takeDeviceName, nextPumpId));
+            run.push(generateRoom(seed, r, takeDeviceName, nextPumpId, takeHurdleKey));
         }
 
         // Every run must actually contain the optical relay; otherwise a seed could leave
@@ -396,6 +462,17 @@
             if (roomsWithCandidates.length > 0) {
                 const room = roomsWithCandidates[fallbackPrng.range(0, roomsWithCandidates.length - 1)];
                 injectLaserPuzzle(room.puzzles, room.id, fallbackPrng);
+            }
+        }
+
+        // Same guarantee for issue #28: every run contains at least one laser hurdle.
+        if (!run.some(room => room.puzzles.some(p => p.type === 'laser_hurdles'))) {
+            const fallbackPrng = new SeededPRNG(`${seed}-HURDLES-FALLBACK`);
+            const roomsWithCandidates = run.filter(room =>
+                room.puzzles.some(p => p.type !== 'keypad' && p.type !== 'laser'));
+            if (roomsWithCandidates.length > 0) {
+                const room = roomsWithCandidates[fallbackPrng.range(0, roomsWithCandidates.length - 1)];
+                injectLaserHurdlesPuzzle(room.puzzles, room.id, fallbackPrng, takeHurdleKey);
             }
         }
 
@@ -1562,6 +1639,372 @@
                     puzzleId: puzzle.id
                 };
             }
+        },
+        laser_hurdles: {
+            labelKey: 'ptype.laser_hurdles',
+            manualEntry: (puzzle, host) =>
+                `${host.t('hurdle.manualSequence')} ` +
+                `<span class="text-[#00ff66] font-mono font-bold">laser(${puzzle.hurdleData.wordKey})</span>` +
+                `<div class="text-[10px] text-gray-500 mt-1">${host.t('hurdle.manualNote')}</div>`,
+            render: (body, status, puzzle, host) => {
+                const data = puzzle.hurdleData;
+
+                // The operative field starts as soon as the modal opens. The hacker
+                // sequence still gates the terminal, not the run itself.
+                data.started = true;
+
+                // The play field mirrors the approved mockup: 640 x 300 design space,
+                // 34 px player, dots capped at 20 % of that height.
+                const W = 640;
+                const H = 300;
+                const GROUND_OFFSET = 34;
+                const GROUND_Y = H - GROUND_OFFSET;
+                const PLAYER = { x: 64, w: 22, h: 34 };
+                const DOT_DIAMETER = PLAYER.h * 0.2;
+                const DOT_RADIUS = DOT_DIAMETER / 2;
+                const LASER_Y_MIN = GROUND_Y - PLAYER.h + DOT_RADIUS;
+                const LASER_Y_MAX = GROUND_Y - DOT_DIAMETER - DOT_RADIUS;
+                const BASE_PACE = 1.5;
+                const PACE_STEP = 0.03;
+                const MIN_PACE = 0.9;
+                const HIT_PENALTY = 3;
+                const JUMP_VELOCITY = 500;
+                const GRAVITY = 2450;
+
+                body.innerHTML = `
+                    <div class="w-full flex flex-col items-center gap-3">
+                        <div class="relative w-full rounded overflow-hidden border border-[#00f0ff44] bg-[#05070a]">
+                            <canvas id="hurdle-canvas" class="block w-full h-auto"></canvas>
+                            <div id="hurdle-hex" class="hidden absolute top-2 right-2 min-w-[104px] px-2.5 py-1.5 rounded border text-right"
+                                style="background:rgba(5,8,12,.82);border-color:rgba(0,240,255,.45);backdrop-filter:blur(4px)">
+                                <span class="block font-orbitron text-[7px] tracking-[.18em] text-gray-500">${host.t('hurdle.hexLabel')}</span>
+                                <span id="hurdle-hex-code" class="block mt-0.5 text-xl font-mono tracking-widest text-gray-500">--</span>
+                            </div>
+                        </div>
+                        <div class="w-full flex items-center justify-between gap-3 flex-wrap text-[10px] tracking-widest text-gray-500 uppercase">
+                            <span>${host.t('hurdle.passed')} <b id="hurdle-passed" class="text-gray-200 font-normal">0</b></span>
+                            <span>${host.t('hurdle.pace')} <b id="hurdle-pace" class="text-gray-200 font-normal">1.50s</b></span>
+                            <span>${host.t('hurdle.hits')} <b id="hurdle-hits" class="text-red-400 font-normal">0</b></span>
+                        </div>
+                        <button id="hurdle-jump" type="button"
+                            class="w-full px-4 py-10 min-h-[104px] bg-[#00f0ff11] border-2 border-[#00f0ff] rounded text-[#00f0ff] font-orbitron font-bold text-base tracking-[.22em] cursor-pointer select-none transition-all hover:bg-[#00f0ff22] disabled:opacity-40 disabled:cursor-default">
+                            ${host.t('hurdle.jump')}
+                        </button>
+                    </div>
+                `;
+
+                const canvas = document.getElementById('hurdle-canvas');
+                const hexBox = document.getElementById('hurdle-hex');
+                const hexCode = document.getElementById('hurdle-hex-code');
+                const hudPassed = document.getElementById('hurdle-passed');
+                const hudPace = document.getElementById('hurdle-pace');
+                const hudHits = document.getElementById('hurdle-hits');
+                const jumpButton = document.getElementById('hurdle-jump');
+
+                const dpr = Math.min(2, window.devicePixelRatio || 1);
+                canvas.width = Math.round(W * dpr);
+                canvas.height = Math.round(H * dpr);
+                const ctx = canvas.getContext('2d');
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                const player = { jumpY: 0, jumpT: 0, onGround: true };
+                const lasers = [];
+                let spawnTimer = 0.9;
+                let flash = 0;
+                let lastFrame = 0;
+                let lastRevealedIndex = -1;
+                let disposed = false;
+                let raf = 0;
+
+                function pace() {
+                    return Math.max(MIN_PACE, BASE_PACE - data.passed * PACE_STEP);
+                }
+
+                function pendingPhrase() {
+                    if (!data.started || puzzle.solved) return null;
+                    if (data.accepted >= data.phrases.length) return null;
+                    if (data.passed < data.nextPhrasePass) return null;
+                    return data.phrases[data.accepted];
+                }
+
+                function renderStatus() {
+                    let text;
+                    if (puzzle.solved || data.accepted >= data.phrases.length) {
+                        text = host.t('hurdle.statusSolved');
+                    } else if (!data.started) {
+                        text = host.t('hurdle.statusIdle');
+                    } else if (pendingPhrase()) {
+                        // The phrase itself lives in the top-right screen box only.
+                        text = host.t('hurdle.statusReady');
+                    } else {
+                        text = host.t('hurdle.statusPlaying', {
+                            n: Math.max(0, data.nextPhrasePass - data.passed)
+                        });
+                    }
+                    if (status.innerText !== text) status.innerText = text;
+                }
+
+                function renderHex() {
+                    const solved = puzzle.solved || data.accepted >= data.phrases.length;
+                    hexBox.classList.toggle('hidden', !data.started && !solved);
+                    if (!data.started && !solved) return;
+
+                    if (solved) {
+                        hexCode.innerText = 'OK';
+                        hexCode.style.color = '#00ff66';
+                        hexCode.style.textShadow = '0 0 12px rgba(0,255,102,.55)';
+                        hexBox.style.borderColor = 'rgba(0,255,102,.65)';
+                    } else {
+                        const code = pendingPhrase();
+                        hexCode.innerText = code || '--';
+                        hexCode.style.color = code ? '#ffcc00' : '#6b7788';
+                        hexCode.style.textShadow = code ? '0 0 12px rgba(255,204,0,.55)' : 'none';
+                        hexBox.style.borderColor = code ? '#ffcc00' : 'rgba(0,240,255,.45)';
+                    }
+                }
+
+                function renderHud() {
+                    hudPassed.innerText = String(data.passed);
+                    hudPace.innerText = pace().toFixed(2) + 's';
+                    hudHits.innerText = String(data.hits);
+                    jumpButton.disabled = puzzle.solved || !data.started || data.accepted >= data.phrases.length;
+                }
+
+                function refresh() {
+                    renderHud();
+                    renderHex();
+                    renderStatus();
+                }
+
+                function triggerJump() {
+                    if (disposed || puzzle.solved || !data.started) return;
+                    if (!player.onGround) return;
+                    player.onGround = false;
+                    player.jumpT = 0;
+                    host.beep(620, 'sine', 0.06, 0.04);
+                }
+
+                function laserHitsPlayer(laser) {
+                    const playerTop = GROUND_Y - player.jumpY - PLAYER.h;
+                    const nearestX = Math.max(PLAYER.x, Math.min(laser.x, PLAYER.x + PLAYER.w));
+                    const nearestY = Math.max(playerTop, Math.min(laser.y, playerTop + PLAYER.h));
+                    const dx = laser.x - nearestX;
+                    const dy = laser.y - nearestY;
+                    return dx * dx + dy * dy <= DOT_RADIUS * DOT_RADIUS;
+                }
+
+                function update(dt) {
+                    flash = Math.max(0, flash - dt);
+                    if (!data.started || puzzle.solved || data.accepted >= data.phrases.length) return;
+
+                    if (!player.onGround) {
+                        // Closed-form arc: apex is exactly 1.5x the player height,
+                        // independent of frame rate.
+                        player.jumpT += dt;
+                        player.jumpY = JUMP_VELOCITY * player.jumpT - 0.5 * GRAVITY * player.jumpT * player.jumpT;
+                        if (player.jumpY <= 0) {
+                            player.jumpY = 0;
+                            player.jumpT = 0;
+                            player.onGround = true;
+                        }
+                    }
+
+                    spawnTimer -= dt;
+                    if (spawnTimer <= 0) {
+                        lasers.push({
+                            x: W + DOT_DIAMETER,
+                            y: LASER_Y_MIN + Math.random() * (LASER_Y_MAX - LASER_Y_MIN),
+                            passed: false,
+                            hit: false
+                        });
+                        spawnTimer = Math.max(0.42, pace() * 0.9);
+                    }
+
+                    const speed = W / pace();
+
+                    for (const laser of lasers) {
+                        laser.x -= speed * dt;
+
+                        if (!laser.hit && laserHitsPlayer(laser)) {
+                            laser.hit = true;
+                            flash = 0.42;
+                            data.hits += 1;
+                            host.penalty(HIT_PENALTY);
+                            host.error();
+                        }
+
+                        if (!laser.passed && laser.x + DOT_RADIUS < PLAYER.x) {
+                            laser.passed = true;
+                            data.passed += 1;
+                        }
+                    }
+
+                    for (let i = lasers.length - 1; i >= 0; i--) {
+                        if (lasers[i].x < -DOT_DIAMETER * 2) lasers.splice(i, 1);
+                    }
+
+                    // Announce each newly revealed phrase once.
+                    if (data.accepted < data.phrases.length &&
+                        data.passed >= data.nextPhrasePass &&
+                        lastRevealedIndex !== data.accepted) {
+                        lastRevealedIndex = data.accepted;
+                        host.beep(880, 'sine', 0.1, 0.05);
+                    }
+                }
+
+                function roundRect(x, y, w, h, r) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.arcTo(x + w, y, x + w, y + h, r);
+                    ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r);
+                    ctx.arcTo(x, y, x + w, y, r);
+                    ctx.closePath();
+                }
+
+                function draw() {
+                    ctx.clearRect(0, 0, W, H);
+
+                    const bg = ctx.createRadialGradient(W * 0.52, H * 0.42, 20, W * 0.5, H * 0.5, W * 0.8);
+                    bg.addColorStop(0, '#0b141c');
+                    bg.addColorStop(0.6, '#070b10');
+                    bg.addColorStop(1, '#040608');
+                    ctx.fillStyle = bg;
+                    ctx.fillRect(0, 0, W, H);
+
+                    ctx.strokeStyle = 'rgba(0, 240, 255, .055)';
+                    ctx.lineWidth = 1;
+                    for (let x = 12; x < W; x += 24) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, H);
+                        ctx.stroke();
+                    }
+                    for (let y = 12; y < H; y += 24) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(W, y);
+                        ctx.stroke();
+                    }
+
+                    ctx.font = '10px "Share Tech Mono", monospace';
+                    ctx.fillStyle = 'rgba(0, 240, 255, .42)';
+                    ctx.fillText('FOCUS // LASER HURDLES', 12, 18);
+
+                    const groundGlow = ctx.createLinearGradient(0, GROUND_Y - 20, 0, GROUND_Y + 10);
+                    groundGlow.addColorStop(0, 'rgba(0, 255, 102, 0)');
+                    groundGlow.addColorStop(0.7, 'rgba(0, 255, 102, .10)');
+                    groundGlow.addColorStop(1, 'rgba(0, 255, 102, .22)');
+                    ctx.fillStyle = groundGlow;
+                    ctx.fillRect(0, GROUND_Y - 20, W, 30);
+
+                    ctx.save();
+                    ctx.shadowColor = '#00ff66';
+                    ctx.shadowBlur = 10;
+                    ctx.strokeStyle = '#00ff66';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, GROUND_Y);
+                    ctx.lineTo(W, GROUND_Y);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    for (const laser of lasers) {
+                        ctx.save();
+                        ctx.shadowColor = '#ff2a2a';
+                        ctx.shadowBlur = laser.hit ? 4 : 12;
+                        ctx.fillStyle = laser.hit ? 'rgba(255, 42, 42, .30)' : '#ff2a2a';
+                        ctx.beginPath();
+                        ctx.arc(laser.x, laser.y, DOT_RADIUS, 0, Math.PI * 2);
+                        ctx.fill();
+                        if (!laser.hit) {
+                            ctx.shadowBlur = 0;
+                            ctx.fillStyle = 'rgba(255, 255, 255, .75)';
+                            ctx.beginPath();
+                            ctx.arc(
+                                laser.x - DOT_RADIUS * 0.28,
+                                laser.y - DOT_RADIUS * 0.28,
+                                DOT_RADIUS * 0.34,
+                                0,
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                        }
+                        ctx.restore();
+                    }
+
+                    const py = GROUND_Y - player.jumpY - PLAYER.h;
+                    ctx.save();
+                    ctx.shadowColor = '#00f0ff';
+                    ctx.shadowBlur = 16;
+                    ctx.fillStyle = '#00f0ff';
+                    roundRect(PLAYER.x, py, PLAYER.w, PLAYER.h, 6);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = 'rgba(5, 8, 12, .28)';
+                    ctx.fillRect(PLAYER.x + 5, py + 9, PLAYER.w - 10, 2);
+                    ctx.fillRect(PLAYER.x + 5, py + 15, PLAYER.w - 10, 2);
+                    ctx.fillRect(PLAYER.x + 5, py + 21, PLAYER.w - 10, 2);
+                    ctx.restore();
+
+                    if (flash > 0) {
+                        ctx.fillStyle = 'rgba(255, 42, 42, ' + (flash * 0.35) + ')';
+                        ctx.fillRect(0, 0, W, H);
+                    }
+
+                    if (puzzle.solved || data.accepted >= data.phrases.length) {
+                        ctx.fillStyle = 'rgba(0, 255, 102, .07)';
+                        ctx.fillRect(0, 0, W, H);
+                        ctx.font = '700 18px "Orbitron", sans-serif';
+                        ctx.fillStyle = '#00ff66';
+                        ctx.textAlign = 'center';
+                        ctx.shadowColor = '#00ff66';
+                        ctx.shadowBlur = 16;
+                        ctx.fillText(host.t('hurdle.canvasSolved'), W / 2, H / 2 + 2);
+                        ctx.shadowBlur = 0;
+                        ctx.textAlign = 'left';
+                    }
+                }
+
+                function frame(now) {
+                    if (disposed) return;
+                    if (!host.isOpen(puzzle)) return;
+
+                    const dt = lastFrame ? Math.min(0.05, Math.max(0, (now - lastFrame) / 1000)) : 0;
+                    lastFrame = now;
+
+                    update(dt);
+                    draw();
+                    renderHud();
+                    renderHex();
+                    renderStatus();
+
+                    raf = requestAnimationFrame(frame);
+                }
+
+                function onKeyDown(event) {
+                    if (event.code !== 'Space' && event.key !== ' ') return;
+                    const tag = event.target && event.target.tagName;
+                    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+                    event.preventDefault();
+                    triggerJump();
+                }
+
+                jumpButton.addEventListener('click', triggerJump);
+                document.addEventListener('keydown', onKeyDown);
+
+                refresh();
+                raf = requestAnimationFrame(frame);
+
+                return {
+                    refresh: refresh,
+                    dispose: () => {
+                        disposed = true;
+                        if (raf) cancelAnimationFrame(raf);
+                        document.removeEventListener('keydown', onKeyDown);
+                    }
+                };
+            }
         }
     };
 
@@ -1767,6 +2210,63 @@
                 delta: force - levitationPuzzle.fanForce,
                 force: force,
                 roomId: levitationPuzzle.room
+            };
+        }
+
+        // Laser hurdles (issue #28): laser(<word key>) unlocks the field, then the
+        // hacker relays the four hex phrases the operative reads off the modal.
+        const hurdleSeqMatch = text.match(/^laser\(\s*([a-z0-9_-]+)\s*\)$/i);
+        if (hurdleSeqMatch) {
+            let hurdlePuzzle = null;
+            rooms.some(room => {
+                const found = room.puzzles.find(p => p.id === ctx.activePuzzleId);
+                if (found && found.type === 'laser_hurdles') {
+                    hurdlePuzzle = found;
+                    return true;
+                }
+                return false;
+            });
+
+            if (!hurdlePuzzle) return { kind: 'hurdle-no-puzzle', cmd: text };
+            if (hurdlePuzzle.solved) return { kind: 'hurdle-solved', puzzle: hurdlePuzzle };
+            if (hurdleSeqMatch[1].toLowerCase() !== hurdlePuzzle.hurdleData.wordKey) {
+                return { kind: 'hurdle-sequence-invalid', puzzle: hurdlePuzzle };
+            }
+            return { kind: 'hurdle-sequence', puzzle: hurdlePuzzle, roomId: hurdlePuzzle.room };
+        }
+
+        const hurdleHexMatch = text.match(/^([0-9a-f]{2})$/i);
+        if (hurdleHexMatch) {
+            let hurdlePuzzle = null;
+            rooms.some(room => {
+                const found = room.puzzles.find(p => p.id === ctx.activePuzzleId);
+                if (found && found.type === 'laser_hurdles') {
+                    hurdlePuzzle = found;
+                    return true;
+                }
+                return false;
+            });
+
+            // A bare hex pair outside a laser hurdle stays an unknown command.
+            if (!hurdlePuzzle) return null;
+
+            const d = hurdlePuzzle.hurdleData;
+            if (hurdlePuzzle.solved || d.accepted >= d.phrases.length) {
+                return { kind: 'hurdle-solved', puzzle: hurdlePuzzle };
+            }
+            if (!d.started) return { kind: 'hurdle-no-sequence', puzzle: hurdlePuzzle };
+
+            const hex = hurdleHexMatch[1].toUpperCase();
+            const matched = hex === d.phrases[d.accepted];
+            return {
+                kind: 'hurdle-phrase',
+                puzzle: hurdlePuzzle,
+                hex: hex,
+                matched: matched,
+                acceptedCount: d.accepted + 1,
+                total: d.phrases.length,
+                complete: matched && d.accepted + 1 >= d.phrases.length,
+                roomId: hurdlePuzzle.room
             };
         }
 
