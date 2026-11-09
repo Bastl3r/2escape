@@ -20,7 +20,8 @@ The seed drives everything: room layouts, puzzle positions, device names, pump f
 - Top-down canvas: move with WASD or arrow keys or the on-screen joystick, interact with `E`.
 - Six puzzle slots per room plus the exit keypad. Rooms get harder: 
   - 3 puzzles for rooms 1–4
-  - 4 for 5–9, 5 for 10–14
+  - 4 for 5–9
+  - 5 for 10–14
   - 6 from room 15.
 - Puzzles are solved inside a modal; wrong answers cost time.
 - Every room is unique: no puzzle type repeats inside a room.
@@ -45,6 +46,7 @@ Four tabs, no room view:
 | Pressure cycle | Balance two pumps to hit a target level |
 | Levitation field | Hold a ball at the target height with fan force |
 | Optical relay | Rotate mirrors to route a laser into the receiver |
+| Laser hurdles | Survive the laser gauntlet and relay the hex phrases |
 
 ## Running it
 
