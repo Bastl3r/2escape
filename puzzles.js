@@ -272,11 +272,12 @@
         };
     }
 
-    // Type selection is part of every seed. Laser hurdles join the regular type pool
-    // like any other puzzle, which intentionally reshuffles layouts from older builds.
-    // The optical relay is still injected after generation (see injectLaserPuzzle).
+    // Type selection is part of every seed. Laser hurdles and the optical relay join
+    // the regular type pool like any other puzzle, which intentionally reshuffles
+    // layouts from older builds. New keys are appended so existing keys keep their
+    // position in the pool.
     const LEGACY_TYPE_KEYS = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle', 'levitation'];
-    const TYPE_POOL = LEGACY_TYPE_KEYS.concat('laser_hurdles');
+    const TYPE_POOL = LEGACY_TYPE_KEYS.concat('laser_hurdles', 'laser');
     const PUZZLE_TYPE_KEYS = LEGACY_TYPE_KEYS.concat('laser', 'laser_hurdles');
 
     // Hurdle-only data comes from its own PRNG, so phrase draws never shift the
@@ -299,23 +300,12 @@
         };
     }
 
-    // Turns one non-keypad puzzle of an already generated room into an optical relay.
-    // Everything is drawn from the caller's own PRNG and the make/model is built from
-    // local draws, so the run-wide device-name cursor and parameter streams stay put.
-    function injectLaserPuzzle(pList, roomNum, prng) {
-        const candidates = pList.filter(p => p.type !== 'keypad' && p.type !== 'laser_hurdles');
-        if (candidates.length === 0) return false;
-
-        const victim = candidates[prng.range(0, candidates.length - 1)];
-        victim.id = `r${roomNum}_p${pList.indexOf(victim) + 1}_laser`;
-        victim.type = 'laser';
-        victim.makeModel = `${deviceBrands[prng.range(0, deviceBrands.length - 1)]} ` +
-            `${DEVICE_TYPE_LABELS.laser} ${deviceSeries[prng.range(0, deviceSeries.length - 1)]}`;
-        victim.freqInRoomIndex = null;
-        victim.laserData = createLaserRoom(prng.range(0, 2147483647));
-
-        syncFrequencyTotals(pList);
-        return true;
+    // Optical-relay room data comes from its own PRNG, so mirror, wall and beam
+    // draws never shift the room's type, placement, parameter or device-name
+    // schedules.
+    function createLaserData(seedStr, roomNum, slot) {
+        const prng = new SeededPRNG(`${seedStr}-LASER-ROOM-${roomNum}-${slot}`);
+        return createLaserRoom(prng.range(0, 2147483647));
     }
 
     function syncFrequencyTotals(pList) {
@@ -329,11 +319,14 @@
         const roomPrng = new SeededPRNG(`${seedStr}-ROOM-${roomNum}`);
         const puzzleCount = getPuzzleCountForRoom(roomNum);
         // Issue #22: no type repeats while unused types remain, so a room is filled
-        // from a shuffled pool instead of independent draws. Draw count stays equal to
-        // puzzleCount, as in the legacy schedule.
+        // from a shuffled pool instead of independent draws. The pool is only refilled
+        // when the puzzle count exceeds the number of types, which repeats nothing
+        // before every type has been used once. Draw count stays equal to puzzleCount,
+        // as in the legacy schedule.
         const typePool = TYPE_POOL.slice();
         const selectedTypes = [];
         for (let p = 0; p < puzzleCount; p++) {
+            if (p >= typePool.length) typePool.push(...TYPE_POOL);
             const pickIdx = roomPrng.range(p, typePool.length - 1);
             selectedTypes.push(typePool[pickIdx]);
             typePool[pickIdx] = typePool[p];
@@ -349,7 +342,8 @@
             let posX, posY;
             if (typeKey === 'keypad') {
                 const isDoorKeypad = keypadCount === 0;
-                // The first keypad guards the exit; any further keypad sits as far from the door as possible
+                // Every keypad stays close to the exit: the first guards it, any
+                // further keypad takes the free slot nearest the door.
                 const candidates = isDoorKeypad
                     ? [DOOR_KEYPAD_POSITION, ...ROOM_PUZZLE_SLOTS]
                     : ROOM_PUZZLE_SLOTS;
@@ -358,7 +352,7 @@
                     placedPositions,
                     isDoorKeypad
                         ? candidate => (candidate === DOOR_KEYPAD_POSITION ? 1 : 0)
-                        : distanceToDoor
+                        : candidate => -distanceToDoor(candidate)
                 );
                 posX = free.x;
                 posY = free.y;
@@ -413,16 +407,12 @@
             if (typeKey === 'laser_hurdles') {
                 puzzle.hurdleData = createHurdleData(seedStr, roomNum, pIdx + 1, takeHurdleKey);
             }
+            if (typeKey === 'laser') {
+                puzzle.laserData = createLaserData(seedStr, roomNum, pIdx + 1);
+            }
 
             pList.push(puzzle);
         });
-
-        // Optical relay (issue #17): injected after the room is complete, from its own
-        // PRNG, so every legacy type/parameter/name draw above stays untouched.
-        const laserPrng = new SeededPRNG(`${seedStr}-LASER-ROOM-${roomNum}`);
-        if (laserPrng.range(0, 99) < 40) {
-            injectLaserPuzzle(pList, roomNum, laserPrng);
-        }
 
         syncFrequencyTotals(pList);
 
@@ -439,18 +429,6 @@
         const run = [];
         for (let r = 1; r <= TOTAL_ROOMS; r++) {
             run.push(generateRoom(seed, r, takeDeviceName, nextPumpId, takeHurdleKey));
-        }
-
-        // Every run must actually contain the optical relay; otherwise a seed could leave
-        // issue #17's puzzle type unseen for a whole mission.
-        if (!run.some(room => room.puzzles.some(p => p.type === 'laser'))) {
-            const fallbackPrng = new SeededPRNG(`${seed}-LASER-FALLBACK`);
-            const roomsWithCandidates = run.filter(room =>
-                room.puzzles.some(p => p.type !== 'keypad' && p.type !== 'laser_hurdles'));
-            if (roomsWithCandidates.length > 0) {
-                const room = roomsWithCandidates[fallbackPrng.range(0, roomsWithCandidates.length - 1)];
-                injectLaserPuzzle(room.puzzles, room.id, fallbackPrng);
-            }
         }
 
         return run;

@@ -282,6 +282,14 @@
                         class="px-2.5 py-1 text-[10px] font-orbitron rounded border border-gray-700 bg-[#0d0f12] text-gray-400 hover:text-gray-200 cursor-pointer">EN</button>
                 </div>
 
+                <!-- Host Background Audio -->
+                <div class="flex items-center justify-center gap-2 mb-5">
+                    <span class="text-[10px] tracking-widest text-gray-500 font-orbitron"
+                        data-i18n="lobby.backgroundAudio">BACKGROUND AUDIO (HOST)</span>
+                    <button id="btn-audio-toggle"
+                        class="px-2.5 py-1 text-[10px] font-orbitron rounded border border-gray-700 bg-[#0d0f12] text-gray-400 hover:text-gray-200 cursor-pointer">AUDIO: OFF</button>
+                </div>
+
                 <!-- Role Selection -->
                 <div class="grid grid-cols-2 gap-3 mb-6">
                     <button id="btn-role-operative"
@@ -392,6 +400,8 @@
                             id="net-indicator"></span>
                         <span id="net-status-text" class="text-gray-400" data-i18n="hud.secure">P2P SECURE</span>
                     </div>
+                    <button id="btn-hud-audio"
+                        class="hidden text-xs font-orbitron text-[#00f0ff] border border-[#00f0ff44] px-2.5 py-1 rounded hover:bg-[#00f0ff22] transition cursor-pointer">AUDIO: OFF</button>
                     <button id="btn-quit"
                         class="text-xs font-orbitron text-red-400 border border-red-500/40 px-2.5 py-1 rounded hover:bg-red-500/20 transition cursor-pointer"
                         data-i18n="hud.quit">QUIT</button>
@@ -665,6 +675,9 @@
                 de: {
                     'lobby.tagline': 'ASYMMETRISCHES CO-OP-INFILTRATIONS-PWA',
                     'lobby.language': 'SPRACHE',
+                    'lobby.backgroundAudio': 'HINTERGRUND-AUDIO (HOST)',
+                    'audio.on': 'AUDIO: AN',
+                    'audio.off': 'AUDIO: AUS',
                     'lobby.role.operative': 'AGENT',
                     'lobby.role.hacker': 'HACKER',
                     'lobby.seedLabel': 'Missions-Zufalls-Code (PRNG)',
@@ -833,6 +846,9 @@
                 en: {
                     'lobby.tagline': 'ASYMMETRICAL CO-OP INFILTRATION PWA',
                     'lobby.language': 'LANGUAGE',
+                    'lobby.backgroundAudio': 'BACKGROUND AUDIO (HOST)',
+                    'audio.on': 'AUDIO: ON',
+                    'audio.off': 'AUDIO: OFF',
                     'lobby.role.operative': 'FIELD OPERATIVE',
                     'lobby.role.hacker': 'HACKER OPS',
                     'lobby.seedLabel': 'Mission Seed (PRNG)',
@@ -1034,6 +1050,7 @@
                     el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
                 });
                 updateLanguageButtons();
+                updateAudioToggleButtons();
                 updateHudRoleBadge();
                 if (rooms.length) {
                     updateObjectivesDisplay();
@@ -1103,11 +1120,117 @@
                 sessionStarted: false,
                 operativePos: { x: 200, y: 150, vx: 0, vy: 0, speed: 3.5, room: 1 },
                 missionTime: 0,
+                roomStartTime: 0,
                 timerInterval: null,
+                backgroundAudio: false,
                 gameOver: false,
                 commandHistory: [],
                 historyIndex: -1
             };
+
+            // Background countdown melody. Playback is deliberately local: the host's toggle
+            // never travels to the peer, it only decides what this client plays.
+            const MELODY_NOTES = [440, 523.25, 659.25, 783.99, 880, 783.99, 659.25, 523.25, 493.88, 440];
+            const MELODY_STEP_MS = 300;
+            // Informational cues (success/error) are the 100 % loudness reference. The background
+            // melody therefore tops out at 75 % of their gain and never masks them.
+            const BACKGROUND_AUDIO_REFERENCE_GAIN = 0.15;
+
+            function isAudioHost() {
+                return State.isHost || State.soloMode;
+            }
+
+            function backgroundColorMelodyIntensity() {
+                const remaining = Math.max(0, State.missionTime);
+                const start = Math.max(1, State.roomStartTime || getSecondsPerRoom(State.operativePos.room));
+
+                // Sparse at the room's full time (every third note = 4 notes), full melody at 60 s.
+                const densitySpan = Math.max(1, start - 60);
+                const densityProgress = Math.min(1, Math.max(0, (start - remaining) / densitySpan));
+                const noteCount = Math.min(
+                    MELODY_NOTES.length,
+                    Math.max(4, Math.round(4 + (MELODY_NOTES.length - 4) * densityProgress))
+                );
+
+                // 10 % at the room's full time, 75 % at 30 s, never louder than 75 % of the
+                // informational cue reference (so success/error always cut through).
+                const volumeSpan = Math.max(1, start - 30);
+                const volumeProgress = Math.min(1, Math.max(0, (start - remaining) / volumeSpan));
+                const relativeVolume = Math.min(0.75, Math.max(0.10, 0.10 + 0.65 * volumeProgress));
+                const gain = relativeVolume * BACKGROUND_AUDIO_REFERENCE_GAIN;
+
+                return { noteCount, gain };
+            }
+
+            function melodyNoteSubset(noteCount) {
+                const indices = new Set();
+                if (noteCount >= MELODY_NOTES.length) {
+                    MELODY_NOTES.forEach((_, i) => indices.add(i));
+                    return indices;
+                }
+                for (let i = 0; i < noteCount; i++) {
+                    indices.add(Math.round(i * (MELODY_NOTES.length - 1) / Math.max(1, noteCount - 1)));
+                }
+                return indices;
+            }
+
+            const BackgroundMelody = {
+                timerId: null,
+                step: 0,
+                start() {
+                    if (this.timerId || !isAudioHost() || !State.backgroundAudio || State.gameOver) return;
+                    this.step = 0;
+                    this.tick();
+                    this.timerId = setInterval(() => this.tick(), MELODY_STEP_MS);
+                },
+                restart() {
+                    if (!this.timerId) return;
+                    this.stop();
+                    this.start();
+                },
+                stop() {
+                    if (this.timerId) clearInterval(this.timerId);
+                    this.timerId = null;
+                    this.step = 0;
+                },
+                tick() {
+                    if (!isAudioHost() || !State.backgroundAudio || State.gameOver || !State.sessionStarted) {
+                        this.stop();
+                        return;
+                    }
+                    const { noteCount, gain } = backgroundColorMelodyIntensity();
+                    if (melodyNoteSubset(noteCount).has(this.step)) {
+                        audio.beep(MELODY_NOTES[this.step], 'sine', 0.2, gain);
+                    }
+                    this.step = (this.step + 1) % MELODY_NOTES.length;
+                }
+            };
+
+            function updateAudioToggleButtons() {
+                const label = State.backgroundAudio ? t('audio.on') : t('audio.off');
+                const lobbyBtn = document.getElementById('btn-audio-toggle');
+                if (lobbyBtn) lobbyBtn.innerText = label;
+                const hudBtn = document.getElementById('btn-hud-audio');
+                if (hudBtn) {
+                    hudBtn.classList.toggle('hidden', !isAudioHost());
+                    hudBtn.innerText = label;
+                }
+            }
+
+            function setBackgroundAudioEnabled(enabled) {
+                State.backgroundAudio = !!enabled;
+                updateAudioToggleButtons();
+                if (!State.backgroundAudio) {
+                    BackgroundMelody.stop();
+                } else if (isAudioHost() && State.sessionStarted && !State.gameOver) {
+                    BackgroundMelody.start();
+                }
+            }
+
+            function toggleBackgroundAudio() {
+                audio.beep(600, 'sine', 0.05, 0.05);
+                setBackgroundAudioEnabled(!State.backgroundAudio);
+            }
 
             function getSecondsPerRoom(roomNum) {
                 const safeRoomNum = Math.min(Math.max(1, roomNum), 20);
@@ -1117,9 +1240,11 @@
 
             function resetRoomTimer(roomNum) {
                 if (State.timerInterval) clearInterval(State.timerInterval);
-                State.missionTime = getSecondsPerRoom(roomNum);
+                State.roomStartTime = getSecondsPerRoom(roomNum);
+                State.missionTime = State.roomStartTime;
 
                 updateTimerDisplay();
+                BackgroundMelody.restart();
 
                 State.timerInterval = setInterval(() => {
                     if (State.gameOver) return;
@@ -1281,7 +1406,11 @@
                 if (State.peer) { try { State.peer.destroy(); } catch (e) { } }
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 if (State.pendingSeedTimeout) { clearTimeout(State.pendingSeedTimeout); State.pendingSeedTimeout = null; }
+                BackgroundMelody.stop();
                 State.sessionStarted = false;
+                State.isHost = false;
+                State.soloMode = false;
+                updateAudioToggleButtons();
                 State.activePuzzle = null;
                 State.operativePuzzleId = null;
                 State.commandHistory = [];
@@ -1462,6 +1591,8 @@
                 State.gameOver = false;
 
                 resetRoomTimer(1);
+                updateAudioToggleButtons();
+                if (isAudioHost() && State.backgroundAudio) BackgroundMelody.start();
                 updateObjectivesDisplay();
                 updateTelemetryNodesDisplay();
 
@@ -1493,6 +1624,7 @@
             function triggerGameOver(isWin) {
                 State.gameOver = true;
                 if (State.timerInterval) clearInterval(State.timerInterval);
+                BackgroundMelody.stop();
                 const modal = document.getElementById('end-modal');
                 const title = document.getElementById('end-title');
                 const desc = document.getElementById('end-desc');
@@ -2144,6 +2276,8 @@
             document.getElementById('btn-lang-de').addEventListener('click', () => selectLanguage('de'));
             document.getElementById('btn-lang-en').addEventListener('click', () => selectLanguage('en'));
             document.getElementById('btn-gen-seed').addEventListener('click', randomizeSeed);
+            document.getElementById('btn-audio-toggle').addEventListener('click', toggleBackgroundAudio);
+            document.getElementById('btn-hud-audio').addEventListener('click', toggleBackgroundAudio);
             document.getElementById('btn-host').addEventListener('click', hostGame);
             document.getElementById('btn-solo').addEventListener('click', startSolo);
             document.getElementById('btn-join').addEventListener('click', () => joinGame());
