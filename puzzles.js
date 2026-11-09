@@ -150,8 +150,25 @@
         pressure_cycle: 'Hydro Station',
         levitation: 'Levitation Column',
         laser: 'Optical Relay',
-        laser_hurdles: 'Laser Hurdles'
+        laser_hurdles: 'Laser Hurdles',
+        network_overload: 'Overload Relay'
     };
+
+    // Bus capacities (fixed in v1) and target classes for network overload (#33).
+    // Caps stay fixed; only the target class is seed-drawn via a dedicated PRNG.
+    const NETWORK_BUS_CAPS = Object.freeze([42, 34, 28, 18]); // blue, amber, green, red
+    const NETWORK_BUS_NAME_KEYS = Object.freeze([
+        'overload.busBlue', 'overload.busAmber', 'overload.busGreen', 'overload.busRed'
+    ]);
+    const NETWORK_TARGETS = Object.freeze(['ai', 'server', 'appliance']);
+
+    const NETWORK_BAND_MIN = 100;
+    const NETWORK_BAND_MAX = 120;
+    const NETWORK_HARD_TRIP = 125;
+    const NETWORK_DWELL = 5;
+    const NETWORK_DECAY = 4;
+    const NETWORK_GRACE = 1.2;
+    const NETWORK_MAX_GAUGE = 130;
 
     // Word keys for the laser hurdle access sequence. Every run shuffles this pool
     // with its own PRNG, so two hurdles in one run never share a sequence.
@@ -277,8 +294,8 @@
     // layouts from older builds. New keys are appended so existing keys keep their
     // position in the pool.
     const LEGACY_TYPE_KEYS = ['keypad', 'frequency', 'wires', 'power_grid', 'pressure_cycle', 'levitation'];
-    const TYPE_POOL = LEGACY_TYPE_KEYS.concat('laser_hurdles', 'laser');
-    const PUZZLE_TYPE_KEYS = LEGACY_TYPE_KEYS.concat('laser', 'laser_hurdles');
+    const TYPE_POOL = LEGACY_TYPE_KEYS.concat('laser_hurdles', 'laser', 'network_overload');
+    const PUZZLE_TYPE_KEYS = LEGACY_TYPE_KEYS.concat('laser', 'laser_hurdles', 'network_overload');
 
     // Hurdle-only data comes from its own PRNG, so phrase draws never shift the
     // room's type, placement, parameter or device-name schedules.
@@ -306,6 +323,16 @@
     function createLaserData(seedStr, roomNum, slot) {
         const prng = new SeededPRNG(`${seedStr}-LASER-ROOM-${roomNum}-${slot}`);
         return createLaserRoom(prng.range(0, 2147483647));
+    }
+
+    // Network overload target class: drawn from a dedicated PRNG so it never shifts the
+    // shared per-puzzle parameter schedule (cf. createHurdleData / createLaserData).
+    function createNetworkData(seedStr, roomNum, slot) {
+        const prng = new SeededPRNG(`${seedStr}-OVERLOAD-${roomNum}-${slot}`);
+        return {
+            targetKey: NETWORK_TARGETS[prng.range(0, NETWORK_TARGETS.length - 1)],
+            injection: 0
+        };
     }
 
     function syncFrequencyTotals(pList) {
@@ -409,6 +436,9 @@
             }
             if (typeKey === 'laser') {
                 puzzle.laserData = createLaserData(seedStr, roomNum, pIdx + 1);
+            }
+            if (typeKey === 'network_overload') {
+                puzzle.networkData = createNetworkData(seedStr, roomNum, pIdx + 1);
             }
 
             pList.push(puzzle);
@@ -1977,6 +2007,373 @@
                     }
                 };
             }
+        },
+
+        network_overload: {
+            labelKey: 'ptype.network_overload',
+            manualEntry: (puzzle, host) => {
+                const net = puzzle.networkData;
+                const targetName = host.t(`overload.target.${net.targetKey}`);
+                const rows = NETWORK_BUS_NAME_KEYS.map((nameKey, index) =>
+                    `<div class="flex justify-between text-xs mt-0.5"><span class="text-gray-400">${host.t(nameKey)}</span><b class="text-[#00ff66]">${NETWORK_BUS_CAPS[index]}%</b></div>`
+                ).join('');
+                return `
+                    <div class="text-gray-300 mt-1">${host.t('overload.manualIntro')} <span class="text-[#00f0ff] font-bold">${targetName}</span></div>
+                    ${rows}
+                    <div class="mt-2 text-gray-300">${host.t('overload.manualBand')}</div>
+                    <div class="mt-2 text-gray-300">${host.t('overload.manualDecay')}</div>
+                    <div class="mt-2 text-[10px] text-gray-500">${host.t('overload.manualNote')}</div>
+                `;
+            },
+            render: (body, status, puzzle, host) => {
+                const net = puzzle.networkData;
+                const targetName = host.t(`overload.target.${net.targetKey}`);
+                const titleEl = document.getElementById('puzzle-modal-title');
+                if (titleEl) titleEl.innerText = targetName;
+
+                const BUS = [
+                    { color: '#00f0ff', nameKey: 'overload.busBlue' },
+                    { color: '#ffcc00', nameKey: 'overload.busAmber' },
+                    { color: '#00ff66', nameKey: 'overload.busGreen' },
+                    { color: '#ff5c5c', nameKey: 'overload.busRed' }
+                ];
+
+                body.innerHTML = `
+                    <div class="w-full flex flex-col items-center gap-3">
+                        <div class="w-full" style="display:flex;align-items:center;gap:12px;padding:10px 11px;background:#0d0f12;border:1px solid #232b36;border-radius:6px;">
+                            <div class="target-core" style="--core:#00f0ff;width:52px;height:52px;flex:0 0 52px;border-radius:50%;border:1px solid color-mix(in srgb, #00f0ff 65%, transparent);background:radial-gradient(circle at 38% 32%, rgba(255,255,255,.20), transparent 32%),radial-gradient(circle, color-mix(in srgb, #00f0ff 18%, transparent), transparent 68%);box-shadow:0 0 18px color-mix(in srgb, #00f0ff 28%, transparent), inset 0 0 14px color-mix(in srgb, #00f0ff 16%, transparent);"></div>
+                            <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:1px;">
+                                <div style="font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:.16em;color:#6b7788;text-transform:uppercase;">${host.t('overload.targetLabel')}</div>
+                                <div style="font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;color:#00f0ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="net-target-name">${targetName}</div>
+                                <div style="font-size:9px;letter-spacing:.05em;color:#7d8899;" id="net-target-state">${host.t('overload.statusIdle')}</div>
+                            </div>
+                            <div style="flex:0 0 128px;display:flex;flex-direction:column;gap:5px;">
+                                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
+                                    <div style="font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:.16em;color:#6b7788;text-transform:uppercase;">${host.t('overload.corruptLabel')}</div>
+                                    <b style="color:#ffcc00;font-size:10px;font-weight:400;white-space:nowrap;" id="net-corrupt-value">0.0s / 5.0s</b>
+                                </div>
+                                <div style="height:5px;background:#070a0f;border:1px solid #232b36;border-radius:3px;overflow:hidden;">
+                                    <div style="width:0;height:100%;background:linear-gradient(90deg,#ffcc00,#ff2a2a);box-shadow:0 0 8px rgba(255,42,42,.45);transition:width .1s linear;" id="net-corrupt-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="width:100%;padding:9px 11px 7px;background:#0d0f12;border:1px solid #232b36;border-radius:6px;" id="net-master">
+                            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;" id="net-master-head">
+                                <div style="font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:.16em;color:#6b7788;text-transform:uppercase;">${host.t('overload.netLoad')}</div>
+                                <b style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:700;color:#00f0ff;line-height:1;" id="net-load-value">0%</b>
+                            </div>
+                            <div style="position:relative;height:12px;background:#070a0f;border:1px solid #2a3340;border-radius:4px;overflow:hidden;">
+                                <div style="position:absolute;top:0;bottom:0;left:76.92%;width:15.38%;background:rgba(0,255,102,.13);border-left:1px solid rgba(0,255,102,.55);border-right:1px solid rgba(0,255,102,.55);z-index:1;"></div>
+                                <div style="position:absolute;top:0;bottom:0;left:0;width:0;background:linear-gradient(90deg,rgba(0,240,255,.55),#00f0ff);box-shadow:0 0 10px rgba(0,240,255,.4);z-index:2;transition:width .08s linear,background .2s;" id="net-master-fill"></div>
+                                <div style="position:absolute;top:-1px;bottom:-1px;left:96.15%;width:2px;background:#ff2a2a;box-shadow:0 0 7px #ff2a2a;z-index:3;"></div>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:8px;color:#4f5a6a;letter-spacing:.04em;">
+                                <span>0</span><span>100</span><span>120</span><span>125</span>
+                            </div>
+                        </div>
+
+                        <div class="w-full" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;" id="net-node-grid">
+                            ${BUS.map((b, index) => `
+                                <div style="--node:${b.color};min-width:0;padding:8px 9px 7px;background:#0d0f12;border:1px solid #232b36;border-left:3px solid ${b.color};border-radius:6px;display:flex;flex-direction:column;gap:5px;" id="net-node-card-${index}">
+                                    <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                                        <span style="width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:${b.color};box-shadow:0 0 8px ${b.color};"></span>
+                                        <span style="font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#cfd8e3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" data-net-node-name="${index}">${host.t(b.nameKey)}</span>
+                                        <span style="margin-left:auto;font-size:11px;color:#d7dde5;white-space:nowrap;" data-net-node-load="${index}"><b>0.0</b><small style="font-size:8px;color:#5c6879;">%</small></span>
+                                    </div>
+                                    <div style="height:6px;background:#070a0f;border:1px solid #232b36;border-radius:3px;overflow:hidden;">
+                                        <div style="width:0;height:100%;background:${b.color};box-shadow:0 0 8px ${b.color};transition:width .08s linear,background .15s;" data-net-node-fill="${index}"></div>
+                                    </div>
+                                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:11px;font-size:8px;letter-spacing:.04em;color:#4f5a6a;">
+                                        <span style="white-space:nowrap;" data-net-node-share="${index}">${host.t('overload.shareLabel')} 0%</span>
+                                        <span style="color:#ff6b6b;white-space:nowrap;" data-net-node-warn="${index}"></span>
+                                    </div>
+                                    <input type="range" min="0" max="100" value="30" style="-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:linear-gradient(90deg,rgba(0,240,255,.16),rgba(0,240,255,.5));outline:none;cursor:pointer;margin:3px 0 1px;">
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div style="width:100%;display:flex;flex-direction:column;gap:5px;">
+                            <button id="net-hold-btn" style="width:100%;padding:11px 14px;background:rgba(255,42,42,.08);border:1px solid rgba(255,42,42,.7);color:#ff8a8a;font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;cursor:pointer;user-select:none;touch-action:none;transition:all .12s;">${host.t('overload.hold')}</button>
+                            <div style="text-align:center;font-size:9px;color:#5c6879;line-height:1.4;" id="net-hold-hint">${host.t('overload.holdHint')}</div>
+                        </div>
+                    </div>
+                `;
+
+                const nodeCards = BUS.map((_, index) => document.getElementById(`net-node-card-${index}`));
+                const nodeLoads = BUS.map((_, index) => document.querySelector(`[data-net-node-load="${index}"]`));
+                const nodeFills = BUS.map((_, index) => document.querySelector(`[data-net-node-fill="${index}"]`));
+                const nodeShares = BUS.map((_, index) => document.querySelector(`[data-net-node-share="${index}"]`));
+                const nodeWarns = BUS.map((_, index) => document.querySelector(`[data-net-node-warn="${index}"]`));
+                const sliders = BUS.map((_, index) => document.querySelector(`input[data-net-index="${index}"]`));
+
+                const masterFill = document.getElementById('net-master-fill');
+                const masterEl = document.getElementById('net-master');
+                const masterHead = document.getElementById('net-master-head');
+                const loadValue = document.getElementById('net-load-value');
+                const corruptValue = document.getElementById('net-corrupt-value');
+                const corruptFill = document.getElementById('net-corrupt-fill');
+                const targetCore = document.querySelector('.target-core');
+                const targetState = document.getElementById('net-target-state');
+                const holdBtn = document.getElementById('net-hold-btn');
+
+                let hold = false;
+                let progress = 0;
+                let tripFlash = 0;
+                let tripNode = null;
+                const overTime = [0, 0, 0, 0];
+                let weights = [30, 30, 20, 20];
+                let lastFrame = 0;
+                let raf = 0;
+                let disposed = false;
+                let solvedNow = false;
+
+                function computeDerived() {
+                    const sum = weights.reduce((a, b) => a + b, 0);
+                    const shares = sum > 0 ? weights.map(w => w / sum * 100) : [0, 0, 0, 0];
+                    const loads = shares.map(s => net.injection * s / 100);
+                    return { sum, shares, loads };
+                }
+
+                function trip(nodeIndex, isGlobal) {
+                    if (puzzle.solved) return;
+                    net.injection = 0;
+                    progress = 0;
+                    hold = false;
+                    tripFlash = 2.5;
+                    tripNode = isGlobal ? null : nodeIndex;
+                    overTime.fill(0);
+                    host.penalty(10);
+                    host.overloadSync(puzzle, 0, isGlobal
+                        ? { kind: 'global' }
+                        : { kind: 'node', node: host.t(BUS[nodeIndex].nameKey) });
+                    render();
+                }
+
+                function render() {
+                    const injection = net.injection;
+                    const d = computeDerived();
+                    const inBand = injection >= NETWORK_BAND_MIN && injection <= NETWORK_BAND_MAX;
+
+                    if (masterFill) {
+                        masterFill.style.width = Math.min(injection, NETWORK_MAX_GAUGE) / NETWORK_MAX_GAUGE * 100 + '%';
+                        if (injection > NETWORK_BAND_MAX) masterFill.style.background = 'linear-gradient(90deg, rgba(255,204,0,.65), #ff2a2a)';
+                        else if (inBand) masterFill.style.background = 'linear-gradient(90deg, rgba(0,255,102,.55), #00ff66)';
+                        else masterFill.style.background = 'linear-gradient(90deg, rgba(0,240,255,.55), #00f0ff)';
+                    }
+                    if (loadValue) loadValue.innerText = Math.round(injection) + '%';
+                    if (masterHead) {
+                        if (injection > NETWORK_BAND_MAX) { masterHead.style.color = '#ff2a2a'; masterHead.style.textShadow = '0 0 10px rgba(255,42,42,.5)'; }
+                        else if (inBand) { masterHead.style.color = '#00ff66'; masterHead.style.textShadow = '0 0 10px rgba(0,255,102,.45)'; }
+                        else { masterHead.style.color = '#00f0ff'; masterHead.style.textShadow = '0 0 10px rgba(0,240,255,.55)'; }
+                    }
+                    if (masterEl) {
+                        if (injection > NETWORK_BAND_MAX) masterEl.style.boxShadow = '0 0 12px rgba(255,42,42,.3)';
+                        else if (inBand) masterEl.style.boxShadow = '0 0 12px rgba(0,255,102,.3)';
+                        else masterEl.style.boxShadow = '';
+                    }
+
+                    BUS.forEach((b, index) => {
+                        const load = d.loads[index];
+                        const over = load > NETWORK_BUS_CAPS[index] + 0.01;
+                        const card = nodeCards[index];
+                        if (card) {
+                            card.style.borderColor = over ? '#ff2a2a' : b.color;
+                            card.style.borderLeftColor = over ? '#ff2a2a' : b.color;
+                            card.style.background = over ? 'rgba(255,42,42,.07)' : '#0d0f12';
+                        }
+                        const fill = nodeFills[index];
+                        if (fill) {
+                            fill.style.width = Math.min(load, 50) / 50 * 100 + '%';
+                            fill.style.background = over ? '#ff2a2a' : b.color;
+                            fill.style.boxShadow = over ? '0 0 9px #ff2a2a' : `0 0 8px ${b.color}`;
+                        }
+                        const loadEl = nodeLoads[index];
+                        if (loadEl) loadEl.querySelector('b').innerText = load.toFixed(1);
+                        const shareEl = nodeShares[index];
+                        if (shareEl) shareEl.innerText = host.t('overload.shareLabel') + ' ' + d.shares[index].toFixed(0) + '%';
+                        const warnEl = nodeWarns[index];
+                        if (warnEl) warnEl.innerText = over ? host.t('overload.warnTrip', { s: Math.max(0, NETWORK_GRACE - overTime[index]).toFixed(1) }) : '';
+                        const slider = sliders[index];
+                        if (slider) slider.style.accentColor = b.color;
+                    });
+
+                    const corrupting = !puzzle.solved && progress > 0.05;
+                    if (corruptValue) corruptValue.innerText = progress.toFixed(1) + 's / 5.0s';
+                    if (corruptFill) corruptFill.style.width = progress / NETWORK_DWELL * 100 + '%';
+                    if (targetCore) {
+                        targetCore.style.setProperty('--core', puzzle.solved ? '#ff2a2a' : corrupting ? '#ffcc00' : '#00f0ff');
+                        if (puzzle.solved) {
+                            targetCore.style.borderColor = 'rgba(255,42,42,.65)';
+                            targetCore.style.boxShadow = '0 0 18px rgba(255,42,42,.4), inset 0 0 14px rgba(255,42,42,.2)';
+                        } else if (corrupting) {
+                            targetCore.style.borderColor = 'rgba(255,204,0,.65)';
+                            targetCore.style.boxShadow = '0 0 18px rgba(255,204,0,.4), inset 0 0 14px rgba(255,204,0,.2)';
+                        } else {
+                            targetCore.style.borderColor = 'rgba(0,240,255,.65)';
+                            targetCore.style.boxShadow = '0 0 18px rgba(0,240,255,.4), inset 0 0 14px rgba(0,240,255,.2)';
+                        }
+                    }
+                    if (targetState) {
+                        if (puzzle.solved) targetState.innerText = host.t('overload.targetStateCorrupt');
+                        else if (corrupting) targetState.innerText = host.t('overload.targetStateOver');
+                        else targetState.innerText = host.t('overload.targetState');
+                    }
+                    if (holdBtn) {
+                        holdBtn.disabled = puzzle.solved;
+                        if (hold && !puzzle.solved) {
+                            holdBtn.style.background = 'rgba(255,42,42,.28)';
+                            holdBtn.style.color = '#fff';
+                            holdBtn.style.boxShadow = '0 0 24px rgba(255,42,42,.38), inset 0 0 18px rgba(255,42,42,.18)';
+                            holdBtn.style.transform = 'translateY(1px)';
+                        } else {
+                            holdBtn.style.background = 'rgba(255,42,42,.08)';
+                            holdBtn.style.color = '#ff8a8a';
+                            holdBtn.style.boxShadow = '';
+                            holdBtn.style.transform = '';
+                        }
+                    }
+                    renderStatus();
+                }
+
+                function renderStatus() {
+                    let text;
+                    if (puzzle.solved) {
+                        text = host.t('overload.statusSolved');
+                    } else if (tripFlash > 0) {
+                        text = tripNode === null
+                            ? host.t('overload.statusTripGlobal')
+                            : host.t('overload.statusTrip', { node: host.t(BUS[tripNode].nameKey) });
+                    } else {
+                        const d = computeDerived();
+                        const overIndex = d.loads.findIndex((load, index) => load > NETWORK_BUS_CAPS[index] + 0.01);
+                        if (overIndex >= 0) text = host.t('overload.statusUnbalanced', { node: host.t(BUS[overIndex].nameKey) });
+                        else if (net.injection < NETWORK_BAND_MIN) {
+                            text = net.injection < 0.5 ? host.t('overload.statusIdle') : host.t('overload.statusLow');
+                        } else if (net.injection > NETWORK_BAND_MAX) text = host.t('overload.statusHigh');
+                        else if (hold) text = host.t('overload.statusHolding');
+                        else if (progress > 0.05) text = host.t('overload.statusDecay');
+                        else text = host.t('overload.statusBalancing');
+                    }
+                    if (status.innerText !== text) status.innerText = text;
+                }
+
+                function frame(now) {
+                    if (disposed) return;
+                    if (!host.isOpen(puzzle)) { cancelAnimationFrame(raf); return; }
+                    const dt = lastFrame ? Math.min(0.05, Math.max(0, (now - lastFrame) / 1000)) : 0;
+                    lastFrame = now;
+
+                    if (tripFlash > 0) tripFlash = Math.max(0, tripFlash - dt);
+                    if (net.injection > 0) net.injection = Math.max(0, net.injection - NETWORK_DECAY * dt);
+
+                    const d = computeDerived();
+
+                    if (net.injection > NETWORK_HARD_TRIP) {
+                        trip(null, true);
+                    } else {
+                        let overIndex = -1;
+                        d.loads.forEach((load, index) => {
+                            if (load > NETWORK_BUS_CAPS[index] + 0.01) {
+                                overTime[index] += dt;
+                                if (overTime[index] > NETWORK_GRACE) overIndex = index;
+                            } else {
+                                overTime[index] = Math.max(0, overTime[index] - dt * 2);
+                            }
+                        });
+                        if (overIndex >= 0) trip(overIndex, false);
+                    }
+
+                    const inBand = net.injection >= NETWORK_BAND_MIN && net.injection <= NETWORK_BAND_MAX;
+                    const balanced = d.loads.every((load, index) => load <= NETWORK_BUS_CAPS[index] + 0.01);
+                    if (!solvedNow && hold && inBand && balanced && d.sum > 0) {
+                        progress = Math.min(NETWORK_DWELL, progress + dt);
+                        if (progress >= NETWORK_DWELL) {
+                            solvedNow = true;
+                            host.solve(puzzle);
+                        }
+                    } else {
+                        progress = Math.max(0, progress - dt * 1.5);
+                    }
+
+                    render();
+                    raf = requestAnimationFrame(frame);
+                }
+
+                function startHold() {
+                    if (puzzle.solved) return;
+                    hold = true;
+                    render();
+                }
+                function releaseHold() {
+                    if (!hold) return;
+                    hold = false;
+                    render();
+                }
+
+                function onHoldPointerDown(event) {
+                    event.preventDefault();
+                    startHold();
+                    try { holdBtn.setPointerCapture(event.pointerId); } catch (err) { /* ignore */ }
+                }
+                function onHoldRelease() { releaseHold(); }
+                function onHoldKeyDown(event) {
+                    if (event.code !== 'Space' && event.code !== 'Enter') return;
+                    if (puzzle.solved) return;
+                    event.preventDefault();
+                    hold = true;
+                    render();
+                }
+                function onHoldKeyUp(event) {
+                    if (event.code !== 'Space' && event.code !== 'Enter') return;
+                    event.preventDefault();
+                    releaseHold();
+                }
+                function onBlur() { releaseHold(); }
+                function onVisibilityChange() { if (document.hidden) releaseHold(); }
+                function onSliderInput(event) {
+                    if (puzzle.solved) return;
+                    const index = Number(event.target.dataset.index);
+                    weights[index] = Math.min(100, Math.max(0, parseInt(event.target.value, 10) || 0));
+                    render();
+                }
+
+                holdBtn.addEventListener('pointerdown', onHoldPointerDown);
+                ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+                    holdBtn.addEventListener(type, onHoldRelease);
+                });
+                holdBtn.addEventListener('keydown', onHoldKeyDown);
+                holdBtn.addEventListener('keyup', onHoldKeyUp);
+                window.addEventListener('blur', onBlur);
+                document.addEventListener('visibilitychange', onVisibilityChange);
+
+                sliders.forEach((slider, index) => {
+                    slider.dataset.index = index;
+                    slider.addEventListener('input', onSliderInput);
+                    slider.value = weights[index];
+                });
+
+                computeDerived();
+                render();
+                raf = requestAnimationFrame(frame);
+
+                return {
+                    refresh: render,
+                    dispose: () => {
+                        disposed = true;
+                        if (raf) cancelAnimationFrame(raf);
+                        holdBtn.removeEventListener('pointerdown', onHoldPointerDown);
+                        ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+                            holdBtn.removeEventListener(type, onHoldRelease);
+                        });
+                        holdBtn.removeEventListener('keydown', onHoldKeyDown);
+                        holdBtn.removeEventListener('keyup', onHoldKeyUp);
+                        window.removeEventListener('blur', onBlur);
+                        document.removeEventListener('visibilitychange', onVisibilityChange);
+                        sliders.forEach(slider => slider.removeEventListener('input', onSliderInput));
+                    }
+                };
+            }
         }
     };
 
@@ -2240,6 +2637,52 @@
                 complete: matched && d.accepted + 1 >= d.phrases.length,
                 roomId: hurdlePuzzle.room
             };
+        }
+
+        // Network overload (issue #33): load <n> / dump / status target the overload
+        // puzzle the operative currently has open, like p1/p2 and fan+/fan-.
+        const overloadLoadMatch = text.match(/^load\s+(\d{1,3})$/i);
+        if (overloadLoadMatch) {
+            let overloadPuzzle = null;
+            rooms.some(room => {
+                const found = room.puzzles.find(p => p.id === ctx.activePuzzleId);
+                if (found && found.type === 'network_overload') {
+                    overloadPuzzle = found;
+                    return true;
+                }
+                return false;
+            });
+            if (!overloadPuzzle) return { kind: 'overload-no-puzzle', cmd: text };
+            const value = Math.min(150, Math.max(0, parseInt(overloadLoadMatch[1], 10)));
+            return { kind: 'overload-load', puzzle: overloadPuzzle, value: value, roomId: overloadPuzzle.room };
+        }
+
+        if (/^dump$/i.test(text)) {
+            let overloadPuzzle = null;
+            rooms.some(room => {
+                const found = room.puzzles.find(p => p.id === ctx.activePuzzleId);
+                if (found && found.type === 'network_overload') {
+                    overloadPuzzle = found;
+                    return true;
+                }
+                return false;
+            });
+            if (!overloadPuzzle) return { kind: 'overload-no-puzzle', cmd: text };
+            return { kind: 'overload-dump', puzzle: overloadPuzzle, roomId: overloadPuzzle.room };
+        }
+
+        if (/^status$/i.test(text)) {
+            let overloadPuzzle = null;
+            rooms.some(room => {
+                const found = room.puzzles.find(p => p.id === ctx.activePuzzleId);
+                if (found && found.type === 'network_overload') {
+                    overloadPuzzle = found;
+                    return true;
+                }
+                return false;
+            });
+            if (overloadPuzzle) return { kind: 'overload-status', puzzle: overloadPuzzle, roomId: overloadPuzzle.room };
+            // `status` falls through to the generic statusreport when no overload puzzle is open
         }
 
         return null;

@@ -47,6 +47,7 @@ Four tabs, no room view:
 | Levitation field | Hold a ball at the target height with fan force |
 | Optical relay | Rotate mirrors to route a laser into the receiver |
 | Laser hurdles | Survive the laser gauntlet and relay the hex phrases |
+| Network overload | Route load across four buses and hold the overload lever |
 
 ## Running it
 

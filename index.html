@@ -739,6 +739,36 @@
                     'ptype.levitation': 'LEVITATION FIELD',
                     'ptype.laser': 'OPTIK-RELAIS',
                     'ptype.laser_hurdles': 'LASER-HÜRDEN',
+                    'ptype.network_overload': 'NETZWERK-ÜBERLAST',
+                    'overload.target.ai': 'SENTINEL-7 // KERN-KI',
+                    'overload.target.server': 'HELIOS // DATEISERVER',
+                    'overload.target.appliance': 'VULCAN // SMART-HEIZUNG',
+                    'overload.targetLabel': 'ZIEL',
+                    'overload.corruptLabel': 'KORRUPTION',
+                    'overload.netLoad': 'NETZLAST',
+                    'overload.shareLabel': 'ANTEIL',
+                    'overload.busBlue': 'BLAUER BUS',
+                    'overload.busAmber': 'AMBER BUS',
+                    'overload.busGreen': 'GRÜNER BUS',
+                    'overload.busRed': 'ROTER BUS',
+                    'overload.manualIntro': 'Kapazitäten der vier Busse (max. Anteil an der Netzlast):',
+                    'overload.manualBand': 'Korruptionsband: 100–120 %. Harte Abschaltung: über 125 %.',
+                    'overload.manualDecay': 'Injektion zerfällt um 4 %/s. Befehl load <n> erneut senden.',
+                    'overload.manualNote': 'Hinweis: Der Operative sieht die Live-Lasten, aber nicht die Kapazitäten.',
+                    'overload.hold': 'ÜBERLAST HALTEN',
+                    'overload.holdHint': 'Halten, solange die Last im Korruptionsband liegt.',
+                    'overload.statusIdle': 'Status: Warte auf Netz-Injektion.',
+                    'overload.statusLow': 'Status: Last zu niedrig – Hacker muss Injektion erhöhen.',
+                    'overload.statusHigh': 'Status: Last zu hoch – Injektion senken!',
+                    'overload.statusUnbalanced': 'Status: {node} über Kapazität – sofort umrouten!',
+                    'overload.statusBalancing': 'Status: Im Band – alle Busse unter Kapazität, jetzt halten.',
+                    'overload.statusHolding': 'Status: Überlast hält – weiter halten!',
+                    'overload.statusDecay': 'Status: Halten unterbrochen – Korruption zerfällt.',
+                    'overload.statusSolved': 'Status: ZIEL KORRUMPIERT – abgeschaltet!',
+                    'overload.statusTrip': 'Status: TRIP auf {node} – Injektion verworfen.',
+                    'overload.statusTripGlobal': 'Status: TRIP – Netzlast über 125 %.',
+                    'overload.statusNoRoute': 'Status: Kein Bus aktiv – Last wird verworfen.',
+                    'overload.warnTrip': 'TRIP {s}s',
                     'hurdle.manualSequence': 'Zugangssequenz:',
                     'hurdle.manualNote': 'Nach Freigabe übermittelt der Operative vier Hex-Frasen (je 2 Zeichen).',
                     'hurdle.statusIdle': 'Status: Warte auf Hacker-Sequenz.',
@@ -786,6 +816,15 @@
                     'term.successFan': 'ERFOLG: Raum {room} Lüfterkraft auf {force}% gesetzt.',
                     'term.helpLaserHurdle': '  - laser(<wort>)         : Zugangssequenz des geöffneten Laser-Hürden-Felds eingeben',
                     'term.helpHexHurdle': '  - [0-9a-f]{2}           : Vom Operativen übermittelte Hex-Frase eingeben',
+                    'term.helpLoad': '  - load <0-150>          : Netz-Injektion setzen (Überlast, Werte über 125 lösen sofort aus)',
+                    'term.helpDump': '  - dump                  : Injektion verwerfen und Korruption zurücksetzen',
+                    'term.helpOverloadStatus': '  - status                : Injektion und Band des offenen Überlast-Rätsels anzeigen',
+                    'term.overloadInjection': 'INJEKTION {n} %',
+                    'term.overloadDump': 'Injektion verworfen. Netzlast fällt.',
+                    'term.overloadStatus': 'Injektion {n} % · Band 100–120 % · Operative meldet Bus-Lasten.',
+                    'term.overloadTrip': 'TRIP: {node} über Kapazität. Injektion verworfen.',
+                    'term.overloadTripGlobal': 'TRIP: Netzlast über 125 %. Injektion verworfen.',
+                    'term.errorOverloadNoPuzzle': "HINWEIS: '{cmd}' angenommen, aber ignoriert - auf der Operativseite ist kein Netz-Überlast-Feld geöffnet.",
                     'term.successHurdleSequence': 'ERFOLG: Zugangssequenz akzeptiert – Laser-Hürden in Raum {room} aktiviert.',
                     'term.errorHurdleSequence': 'FEHLER: Zugangssequenz falsch – Handbucheintrag prüfen.',
                     'term.errorHurdleNoPuzzle': "HINWEIS: '{cmd}' angenommen, aber ignoriert - auf der Operativseite ist kein Laser-Hürden-Feld geöffnet.",
@@ -910,6 +949,36 @@
                     'ptype.levitation': 'LEVITATION FIELD',
                     'ptype.laser': 'OPTICAL RELAY',
                     'ptype.laser_hurdles': 'LASER HURDLES',
+                    'ptype.network_overload': 'NETWORK OVERLOAD',
+                    'overload.target.ai': 'SENTINEL-7 // CORE AI',
+                    'overload.target.server': 'HELIOS // FILE SERVER',
+                    'overload.target.appliance': 'VULCAN // SMART FURNACE',
+                    'overload.targetLabel': 'TARGET',
+                    'overload.corruptLabel': 'CORRUPTION',
+                    'overload.netLoad': 'NETWORK LOAD',
+                    'overload.shareLabel': 'SHARE',
+                    'overload.busBlue': 'BLUE BUS',
+                    'overload.busAmber': 'AMBER BUS',
+                    'overload.busGreen': 'GREEN BUS',
+                    'overload.busRed': 'RED BUS',
+                    'overload.manualIntro': 'Capacities of the four buses (max share of network load):',
+                    'overload.manualBand': 'Corruption band: 100–120 %. Hard cut-out: above 125 %.',
+                    'overload.manualDecay': 'Injection decays by 4 %/s. Reissue load <n>.',
+                    'overload.manualNote': 'Note: the operative sees live loads but not capacities.',
+                    'overload.hold': 'HOLD OVERLOAD',
+                    'overload.holdHint': 'Hold while the load sits inside the corruption band.',
+                    'overload.statusIdle': 'Status: Waiting for network injection.',
+                    'overload.statusLow': 'Status: Load too low – hacker must raise injection.',
+                    'overload.statusHigh': 'Status: Load too high – reduce injection!',
+                    'overload.statusUnbalanced': 'Status: {node} over capacity – reroute now!',
+                    'overload.statusBalancing': 'Status: In band – all buses under capacity, hold now.',
+                    'overload.statusHolding': 'Status: Overload holding – keep holding!',
+                    'overload.statusDecay': 'Status: Hold released – corruption decays.',
+                    'overload.statusSolved': 'Status: TARGET CORRUPTED – offline!',
+                    'overload.statusTrip': 'Status: TRIP on {node} – injection dumped.',
+                    'overload.statusTripGlobal': 'Status: TRIP – network load above 125 %.',
+                    'overload.statusNoRoute': 'Status: No bus active – load is being dumped.',
+                    'overload.warnTrip': 'TRIP {s}s',
                     'hurdle.manualSequence': 'Access sequence:',
                     'hurdle.manualNote': 'After unlock the operative relays four hex phrases (2 chars each).',
                     'hurdle.statusIdle': 'Status: Awaiting hacker sequence.',
@@ -957,6 +1026,15 @@
                     'term.successFan': 'SUCCESS: Room {room} fan force set to {force}%.',
                     'term.helpLaserHurdle': '  - laser(<word>)          : Enter the access sequence of the open laser hurdle field',
                     'term.helpHexHurdle': '  - [0-9a-f]{2}            : Enter a hex phrase relayed by the operative',
+                    'term.helpLoad': '  - load <0-150>           : Set network injection (overload, values > 125 trip immediately)',
+                    'term.helpDump': '  - dump                   : Drop injection and reset corruption',
+                    'term.helpOverloadStatus': '  - status                 : Show injection and band of the open overload puzzle',
+                    'term.overloadInjection': 'INJECTION {n} %',
+                    'term.overloadDump': 'Injection dumped. Network load falls.',
+                    'term.overloadStatus': 'Injection {n} % · band 100–120 % · operative reports bus loads.',
+                    'term.overloadTrip': 'TRIP: {node} over capacity. Injection dumped.',
+                    'term.overloadTripGlobal': 'TRIP: network load above 125 %. Injection dumped.',
+                    'term.errorOverloadNoPuzzle': "NOTE: '{cmd}' accepted but disregarded - no network overload field is open on the operative side.",
                     'term.successHurdleSequence': 'SUCCESS: Access sequence accepted – laser hurdles in Room {room} activated.',
                     'term.errorHurdleSequence': 'ERROR: Access sequence rejected – check the manual entry.',
                     'term.errorHurdleNoPuzzle': "NOTE: '{cmd}' accepted but disregarded - no laser hurdle field is open on the operative side.",
@@ -1552,6 +1630,24 @@
                     if (State.activePuzzle && State.activePuzzle.id === data.puzzleId) {
                         refreshActivePuzzle();
                     }
+                } else if (data.type === 'overload_sync') {
+                    rooms.forEach(r => {
+                        r.puzzles.forEach(p => {
+                            if (p.type !== 'network_overload' || p.id !== data.puzzleId) return;
+                            if (typeof data.injection === 'number') p.networkData.injection = data.injection;
+                        });
+                    });
+                    if (State.activePuzzle && State.activePuzzle.type === 'network_overload') {
+                        refreshActivePuzzle();
+                    }
+                    if (data.trip) {
+                        if (data.trip.kind === 'global') {
+                            appendTerminalOutput(t('term.overloadTripGlobal'), '#ff2a2a');
+                        } else {
+                            appendTerminalOutput(t('term.overloadTrip', { node: data.trip.node }), '#ff2a2a');
+                        }
+                        audio.error();
+                    }
                 } else if (data.type === 'active_puzzle') {
                     State.operativePuzzleId = data.puzzleId || null;
                 } else if (data.type === 'terminal_cmd') {
@@ -1833,7 +1929,9 @@
                     penalty: (seconds) => applyTimePenalty(seconds),
                     isOpen: (puzzle) => !!State.activePuzzle && State.activePuzzle.id === puzzle.id,
                     laserSync: (puzzle, index, angle) =>
-                        sendNetData({ type: 'laser_sync', puzzleId: puzzle.id, index: index, angle: angle })
+                        sendNetData({ type: 'laser_sync', puzzleId: puzzle.id, index: index, angle: angle }),
+                    overloadSync: (puzzle, injection, trip) =>
+                        sendNetData({ type: 'overload_sync', puzzleId: puzzle.id, injection: injection, trip: trip })
                 };
             }
 
@@ -2236,6 +2334,31 @@
                             appendTerminalOutput(t('term.errorHurdlePhrase', { code: puzzleCommand.hex }), '#ff2a2a');
                             audio.error();
                         }
+                    } else if (puzzleCommand.kind === 'overload-load') {
+                        const puzzle = puzzleCommand.puzzle;
+                        puzzle.networkData.injection = puzzleCommand.value;
+                        sendNetData({
+                            type: 'overload_sync',
+                            puzzleId: puzzle.id,
+                            injection: puzzleCommand.value
+                        });
+                        appendTerminalOutput(t('term.overloadInjection', { n: Math.round(puzzleCommand.value) }), '#00ff66');
+                        audio.success();
+                        refreshActivePuzzle();
+                    } else if (puzzleCommand.kind === 'overload-dump') {
+                        const puzzle = puzzleCommand.puzzle;
+                        puzzle.networkData.injection = 0;
+                        sendNetData({ type: 'overload_sync', puzzleId: puzzle.id, injection: 0 });
+                        appendTerminalOutput(t('term.overloadDump'), '#00ff66');
+                        audio.success();
+                        refreshActivePuzzle();
+                    } else if (puzzleCommand.kind === 'overload-status') {
+                        const puzzle = puzzleCommand.puzzle;
+                        appendTerminalOutput(t('term.overloadStatus', {
+                            n: Math.round(puzzle.networkData.injection)
+                        }), '#00f0ff');
+                    } else if (puzzleCommand.kind === 'overload-no-puzzle') {
+                        appendTerminalOutput(t('term.errorOverloadNoPuzzle', { cmd: puzzleCommand.cmd }));
                     }
                     return;
                 }
@@ -2250,9 +2373,12 @@
                     appendTerminalOutput(t('term.helpFan'), '#00f0ff');
                     appendTerminalOutput(t('term.helpLaserHurdle'), '#00f0ff');
                     appendTerminalOutput(t('term.helpHexHurdle'), '#00f0ff');
+                    appendTerminalOutput(t('term.helpLoad'), '#00f0ff');
+                    appendTerminalOutput(t('term.helpDump'), '#00f0ff');
+                    appendTerminalOutput(t('term.helpOverloadStatus'), '#00f0ff');
                     appendTerminalOutput(t('term.helpStatus'), '#00f0ff');
                     appendTerminalOutput(t('term.helpClear'), '#00f0ff');
-                } else if (cmd === 'statusreport') {
+                } else if (cmd === 'statusreport' || cmd === 'status') {
                     rooms.forEach(r => {
                         const solved = r.puzzles.every(p => p.solved);
                         appendTerminalOutput(t('term.statusRoom', { n: r.id, state: solved ? t('state.secured') : t('state.locked') }), solved ? '#00ff66' : '#ff2a2a');
