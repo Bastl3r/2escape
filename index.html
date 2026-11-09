@@ -1403,6 +1403,7 @@
             }
 
             function quitGame() {
+                closePuzzleModal();
                 if (State.peer) { try { State.peer.destroy(); } catch (e) { } }
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 if (State.pendingSeedTimeout) { clearTimeout(State.pendingSeedTimeout); State.pendingSeedTimeout = null; }
@@ -1625,6 +1626,7 @@
                 State.gameOver = true;
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 BackgroundMelody.stop();
+                closePuzzleModal();
                 const modal = document.getElementById('end-modal');
                 const title = document.getElementById('end-title');
                 const desc = document.getElementById('end-desc');

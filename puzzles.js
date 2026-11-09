@@ -1064,12 +1064,24 @@
                     ctx.stroke();
                 }
 
+                let toneTimer = null;
+
+                function playTone() {
+                    host.beep(freq, 'sine', 0.2, 0.07);
+                }
+
+                function stopTone() {
+                    if (toneTimer) clearInterval(toneTimer);
+                    toneTimer = null;
+                }
+
                 function checkFreq() {
                     const freqMatched = Math.abs(freq - puzzle.targetFreq) < 20;
                     const phaseMatched = puzzle.currentPhaseInput !== null && Math.abs(puzzle.currentPhaseInput - puzzle.targetPhase) < 5;
 
                     if (freqMatched && phaseMatched) {
                         status.innerText = host.t('freq.solved');
+                        stopTone();
                         host.solve(puzzle);
                     } else if (freqMatched && !phaseMatched) {
                         status.innerText = host.t('freq.matched');
@@ -1087,17 +1099,22 @@
                 }
 
                 fSlider.oninput = (e) => { updateFreqValue(parseInt(e.target.value)); };
-                btnMinus.onclick = () => { host.beep(400, 'sine', 0.05, 0.05); updateFreqValue(freq - 5); };
-                btnPlus.onclick = () => { host.beep(400, 'sine', 0.05, 0.05); updateFreqValue(freq + 5); };
+                btnMinus.onclick = () => { updateFreqValue(freq - 5); };
+                btnPlus.onclick = () => { updateFreqValue(freq + 5); };
 
                 drawWave();
+                // The selected frequency is played back to the operative every 1.5s,
+                // so tuning the slider changes what the next beep sounds like.
+                playTone();
+                toneTimer = setInterval(playTone, 1500);
 
                 // The peer syncing the phase (or the terminal) calls refresh()
                 return {
                     refresh: () => {
                         drawWave();
                         checkFreq();
-                    }
+                    },
+                    dispose: stopTone
                 };
             }
         },
