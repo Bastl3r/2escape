@@ -2088,7 +2088,7 @@
                                         <span style="white-space:nowrap;" data-net-node-share="${index}">${host.t('overload.shareLabel')} 0%</span>
                                         <span style="color:#ff6b6b;white-space:nowrap;" data-net-node-warn="${index}"></span>
                                     </div>
-                                    <input type="range" min="0" max="100" value="30" style="-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:linear-gradient(90deg,rgba(0,240,255,.16),rgba(0,240,255,.5));outline:none;cursor:pointer;margin:3px 0 1px;">
+                                    <input type="range" data-net-index="${index}" min="0" max="100" value="30" style="-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:linear-gradient(90deg,rgba(0,240,255,.16),rgba(0,240,255,.5));outline:none;cursor:pointer;margin:3px 0 1px;">
                                 </div>
                             `).join('')}
                         </div>
