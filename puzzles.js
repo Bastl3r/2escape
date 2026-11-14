@@ -2463,9 +2463,8 @@
 
                 item.innerHTML = `
                     <div>
-                        <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center mb-1">
                             <span class="font-orbitron font-bold text-[#00f0ff]">${puzzle.makeModel}</span>
-                            <span class="text-[10px] text-gray-500 font-mono">${host.t('manual.room', { n: puzzle.room })}</span>
                         </div>
                         ${entry ? `<div class="text-gray-300 mt-1">${entry}</div>` : ''}
                         ${previewButton}
