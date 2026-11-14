@@ -1316,10 +1316,10 @@
                 return Math.max(120, calculated);
             }
 
-            function resetRoomTimer(roomNum) {
+            function resetRoomTimer(roomNum, bonusSeconds = 0) {
                 if (State.timerInterval) clearInterval(State.timerInterval);
                 State.roomStartTime = getSecondsPerRoom(roomNum);
-                State.missionTime = State.roomStartTime;
+                State.missionTime = State.roomStartTime + Math.floor(bonusSeconds);
 
                 updateTimerDisplay();
                 BackgroundMelody.restart();
@@ -1834,7 +1834,8 @@
                     if (currentRoom.id < totalRooms && isRoomSolved && State.operativePos.y >= doorYStart && State.operativePos.y <= doorYStart + doorHeight) {
                         State.operativePos.room += 1;
                         State.operativePos.x = margin + 10;
-                        resetRoomTimer(State.operativePos.room);
+                        // Room time carryover: 25 % of remaining time added to next room timer
+                        resetRoomTimer(State.operativePos.room, Math.floor(State.missionTime * 0.25));
                         audio.beep(880, 'sine', 0.15, 0.15);
                     } else {
                         State.operativePos.x = ROOM_VIEW_WIDTH - margin;
