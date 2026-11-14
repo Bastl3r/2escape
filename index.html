@@ -1618,12 +1618,10 @@
                             if (data.started) {
                                 if (!p.hurdleData.started) {
                                     p.hurdleData.started = true;
-                                    p.hurdleData.nextPhrasePass = p.hurdleData.passed + 3;
                                 }
                             }
                             if (typeof data.accepted === 'number' && data.accepted !== p.hurdleData.accepted) {
                                 p.hurdleData.accepted = data.accepted;
-                                p.hurdleData.nextPhrasePass = p.hurdleData.passed + 3;
                             }
                         });
                     });
@@ -2293,7 +2291,6 @@
                         const puzzle = puzzleCommand.puzzle;
                         const d = puzzle.hurdleData;
                         d.started = true;
-                        d.nextPhrasePass = d.passed + 3;
                         sendNetData({
                             type: 'hurdle_sync',
                             puzzleId: puzzle.id,
@@ -2319,7 +2316,6 @@
 
                         if (puzzleCommand.matched) {
                             d.accepted = puzzleCommand.acceptedCount;
-                            d.nextPhrasePass = d.passed + 3;
                             sendNetData({
                                 type: 'hurdle_sync',
                                 puzzleId: puzzle.id,

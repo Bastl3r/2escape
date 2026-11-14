@@ -312,7 +312,6 @@
             started: false,
             passed: 0,
             accepted: 0,
-            nextPhrasePass: 3,
             hits: 0
         };
     }
@@ -1722,10 +1721,16 @@
                     return Math.max(MIN_PACE, BASE_PACE - data.passed * PACE_STEP);
                 }
 
+                // A phrase unlocks after every 3 lasers that have either passed the
+                // operative cleanly or hit them. Thresholds: 3, 6, 9, 12.
+                function unlockedCount() {
+                    return Math.min(data.phrases.length, Math.floor((data.passed + data.hits) / 3));
+                }
+
                 function pendingPhrase() {
                     if (!data.started || puzzle.solved) return null;
                     if (data.accepted >= data.phrases.length) return null;
-                    if (data.passed < data.nextPhrasePass) return null;
+                    if (data.accepted >= unlockedCount()) return null;
                     return data.phrases[data.accepted];
                 }
 
@@ -1739,8 +1744,10 @@
                         // The phrase itself lives in the top-right screen box only.
                         text = host.t('hurdle.statusReady');
                     } else {
+                        const total = data.passed + data.hits;
+                        const nextThreshold = (data.accepted + 1) * 3;
                         text = host.t('hurdle.statusPlaying', {
-                            n: Math.max(0, data.nextPhrasePass - data.passed)
+                            n: Math.max(0, nextThreshold - total)
                         });
                     }
                     if (status.innerText !== text) status.innerText = text;
@@ -1835,7 +1842,9 @@
                             host.error();
                         }
 
-                        if (!laser.passed && laser.x + DOT_RADIUS < PLAYER.x) {
+                        // A laser that hit the operative already counts toward the
+                        // phrase threshold; don't count it again as "passed".
+                        if (!laser.passed && !laser.hit && laser.x + DOT_RADIUS < PLAYER.x) {
                             laser.passed = true;
                             data.passed += 1;
                         }
@@ -1846,8 +1855,9 @@
                     }
 
                     // Announce each newly revealed phrase once.
+                    const nowUnlocked = unlockedCount();
                     if (data.accepted < data.phrases.length &&
-                        data.passed >= data.nextPhrasePass &&
+                        data.accepted < nowUnlocked &&
                         lastRevealedIndex !== data.accepted) {
                         lastRevealedIndex = data.accepted;
                         host.beep(880, 'sine', 0.1, 0.05);
