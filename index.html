@@ -2019,12 +2019,21 @@
             }
 
             function solvePuzzle(puzzle) {
+                // game-over takes priority; guard prevents double +15s on re-solve
+                if (puzzle.solved || State.gameOver) return;
                 puzzle.solved = true;
                 audio.success();
                 const rObj = rooms.find(r => r.puzzles.some(p => p.id === puzzle.id));
                 sendNetData({ type: 'puzzle_sync', roomId: rObj.id, puzzleId: puzzle.id, solved: true });
                 updateTelemetryNodesDisplay();
                 updateObjectivesDisplay();
+
+                // #31: solution time gain — +15s to the room timer (uncapped), synced to peer
+                State.missionTime += 15;
+                updateTimerDisplay();
+                sendNetData({ type: 'timer_sync', seconds: State.missionTime });
+                audio.beep(880, 'sine', 0.1, 0.12); // distinct time-gain cue
+
                 checkMissionWinCondition();
                 setTimeout(closePuzzleModal, 1000);
             }
