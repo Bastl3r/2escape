@@ -154,9 +154,10 @@
         network_overload: 'Overload Relay'
     };
 
-    // Bus capacities (fixed in v1) and target classes for network overload (#33).
-    // Caps stay fixed; only the target class is seed-drawn via a dedicated PRNG.
-    const NETWORK_BUS_CAPS = Object.freeze([42, 34, 28, 18]); // blue, amber, green, red
+    // Bus capacities: drawn per overload puzzle from the main PRNG schedule
+    // (option 3). Breaks seed stability for older builds, accepted on purpose.
+    // Each overload room gets its own caps, so no single weight recipe works everywhere.
+    // Kept in range [15, 45] so every bus can be the bottleneck.
     const NETWORK_BUS_NAME_KEYS = Object.freeze([
         'overload.busBlue', 'overload.busAmber', 'overload.busGreen', 'overload.busRed'
     ]);
@@ -277,6 +278,12 @@
             powerGridTargets: powerGridTargets,
             levitationTarget: levitationTarget,
             fanForce: levitationStartForce,
+            busCaps: [
+                prng.range(15, 45),
+                prng.range(15, 45),
+                prng.range(15, 45),
+                prng.range(15, 45)
+            ],
             pressureData: {
                 targetTank: targetTank,
                 targetLevel: targetLevel,
@@ -326,11 +333,12 @@
 
     // Network overload target class: drawn from a dedicated PRNG so it never shifts the
     // shared per-puzzle parameter schedule (cf. createHurdleData / createLaserData).
-    function createNetworkData(seedStr, roomNum, slot) {
+    function createNetworkData(seedStr, roomNum, slot, busCaps) {
         const prng = new SeededPRNG(`${seedStr}-OVERLOAD-${roomNum}-${slot}`);
         return {
             targetKey: NETWORK_TARGETS[prng.range(0, NETWORK_TARGETS.length - 1)],
-            injection: 0
+            injection: 0,
+            busCaps: busCaps
         };
     }
 
@@ -437,7 +445,7 @@
                 puzzle.laserData = createLaserData(seedStr, roomNum, pIdx + 1);
             }
             if (typeKey === 'network_overload') {
-                puzzle.networkData = createNetworkData(seedStr, roomNum, pIdx + 1);
+                puzzle.networkData = createNetworkData(seedStr, roomNum, pIdx + 1, params.busCaps);
             }
 
             pList.push(puzzle);
@@ -2026,12 +2034,13 @@
                 const net = puzzle.networkData;
                 const targetName = host.t(`overload.target.${net.targetKey}`);
                 const rows = NETWORK_BUS_NAME_KEYS.map((nameKey, index) =>
-                    `<div class="flex justify-between text-xs mt-0.5"><span class="text-gray-400">${host.t(nameKey)}</span><b class="text-[#00ff66]">${NETWORK_BUS_CAPS[index]}%</b></div>`
+                    `<div class="flex justify-between text-xs mt-0.5"><span class="text-gray-400">${host.t(nameKey)}</span><b class="text-[#00ff66]">${net.busCaps[index]}%</b></div>`
                 ).join('');
                 return `
                     <div class="text-gray-300 mt-1">${host.t('overload.manualIntro')} <span class="text-[#00f0ff] font-bold">${targetName}</span></div>
                     ${rows}
                     <div class="mt-2 text-gray-300">${host.t('overload.manualBand')}</div>
+                    <div class="mt-2 text-gray-300">${host.t('overload.manualTargets120')}</div>
                     <div class="mt-2 text-gray-300">${host.t('overload.manualDecay')}</div>
                     <div class="mt-2 text-[10px] text-gray-500">${host.t('overload.manualNote')}</div>
                 `;
@@ -2186,7 +2195,7 @@
 
                     BUS.forEach((b, index) => {
                         const load = d.loads[index];
-                        const over = load > NETWORK_BUS_CAPS[index] + 0.01;
+                        const over = load > net.busCaps[index] + 0.01;
                         const card = nodeCards[index];
                         if (card) {
                             card.style.borderColor = over ? '#ff2a2a' : b.color;
@@ -2257,7 +2266,7 @@
                             : host.t('overload.statusTrip', { node: host.t(BUS[tripNode].nameKey) });
                     } else {
                         const d = computeDerived();
-                        const overIndex = d.loads.findIndex((load, index) => load > NETWORK_BUS_CAPS[index] + 0.01);
+                        const overIndex = d.loads.findIndex((load, index) => load > net.busCaps[index] + 0.01);
                         if (overIndex >= 0) text = host.t('overload.statusUnbalanced', { node: host.t(BUS[overIndex].nameKey) });
                         else if (net.injection < NETWORK_BAND_MIN) {
                             text = net.injection < 0.5 ? host.t('overload.statusIdle') : host.t('overload.statusLow');
@@ -2285,7 +2294,7 @@
                     } else {
                         let overIndex = -1;
                         d.loads.forEach((load, index) => {
-                            if (load > NETWORK_BUS_CAPS[index] + 0.01) {
+                            if (load > net.busCaps[index] + 0.01) {
                                 overTime[index] += dt;
                                 if (overTime[index] > NETWORK_GRACE) overIndex = index;
                             } else {
@@ -2296,7 +2305,7 @@
                     }
 
                     const inBand = net.injection >= NETWORK_BAND_MIN && net.injection <= NETWORK_BAND_MAX;
-                    const balanced = d.loads.every((load, index) => load <= NETWORK_BUS_CAPS[index] + 0.01);
+                    const balanced = d.loads.every((load, index) => load <= net.busCaps[index] + 0.01);
                     if (!solvedNow && hold && inBand && balanced && d.sum > 0) {
                         progress = Math.min(NETWORK_DWELL, progress + dt);
                         if (progress >= NETWORK_DWELL) {
