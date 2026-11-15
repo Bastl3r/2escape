@@ -1654,8 +1654,6 @@
         laser_hurdles: {
             labelKey: 'ptype.laser_hurdles',
             manualEntry: (puzzle, host) =>
-                `${host.t('hurdle.manualSequence')} ` +
-                `<span class="text-[#00ff66] font-mono font-bold">laser(${puzzle.hurdleData.wordKey})</span>` +
                 `<div class="text-[10px] text-gray-500 mt-1">${host.t('hurdle.manualNote')}</div>` +
                 `<div class="text-[10px] text-gray-500 mt-1">${host.t('hurdle.manualHint')}</div>`,
             render: (body, status, puzzle, host) => {
@@ -2547,7 +2545,10 @@
             const grid = document.createElement('div');
             grid.className = "grid grid-cols-1 md:grid-cols-2 gap-3";
 
-            group.forEach(puzzle => {
+            // laser_hurdles: one shared entry for the whole type, not per puzzle
+            const hurdleGroup = typeKey === 'laser_hurdles' ? group.slice(0, 1) : group;
+
+            hurdleGroup.forEach(puzzle => {
                 const item = document.createElement('div');
                 item.className = "bg-[#0d0f12] border border-gray-800 rounded p-3 text-xs flex flex-col justify-between self-start";
 
