@@ -485,8 +485,10 @@
             // Started below target: accepted range is [target, target + 10%]
             return currentValue >= target && currentValue <= target + thresholdDelta;
         }
-        // Edge case: initial value equals target
-        return currentValue === target;
+        // Edge case: initial value equals target — allow the same ±10% tolerance
+        // window as the other cases so the puzzle stays solvable once the sim
+        // starts moving the tanks.
+        return currentValue >= target - thresholdDelta && currentValue <= target + thresholdDelta;
     }
 
     function isPowerGridSolved(targets, grid) {
