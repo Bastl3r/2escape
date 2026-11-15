@@ -771,6 +771,7 @@
                     'overload.warnTrip': 'TRIP {s}s',
                     'hurdle.manualSequence': 'Zugangssequenz:',
                     'hurdle.manualNote': 'Nach Freigabe übermittelt der Operative vier Hex-Frasen (je 2 Zeichen).',
+                    'hurdle.manualHint': 'Hacker: Übermittele die Hex-Frasen per Terminal (z. B. „7D“). Jeweils 3 passiert/treffer freischalten die nächste Frase.',
                     'hurdle.statusIdle': 'Status: Warte auf Hacker-Sequenz.',
                     'hurdle.statusPlaying': 'Status: Sequenz aktiv – nächste Hex-Frase in {n} Lasern.',
                     'hurdle.statusReady': 'Status: Hex-Frase im Bildschirm – an Hacker melden.',
@@ -981,6 +982,7 @@
                     'overload.warnTrip': 'TRIP {s}s',
                     'hurdle.manualSequence': 'Access sequence:',
                     'hurdle.manualNote': 'After unlock the operative relays four hex phrases (2 chars each).',
+                    'hurdle.manualHint': 'Hacker: supply the hex phrases to the terminal (e.g. „7D“). Every 3 lasers passed/hit unlocks the next phrase.',
                     'hurdle.statusIdle': 'Status: Awaiting hacker sequence.',
                     'hurdle.statusPlaying': 'Status: Sequence active – next hex phrase in {n} lasers.',
                     'hurdle.statusReady': 'Status: Hex phrase on screen – relay it to the hacker.',
@@ -2305,9 +2307,6 @@
                         audio.error();
                     } else if (puzzleCommand.kind === 'hurdle-no-puzzle') {
                         appendTerminalOutput(t('term.errorHurdleNoPuzzle', { cmd: puzzleCommand.cmd }));
-                    } else if (puzzleCommand.kind === 'hurdle-no-sequence') {
-                        appendTerminalOutput(t('term.errorHurdleNoSequence'), '#ff2a2a');
-                        audio.error();
                     } else if (puzzleCommand.kind === 'hurdle-solved') {
                         appendTerminalOutput(t('term.errorHurdleSolved'));
                     } else if (puzzleCommand.kind === 'hurdle-phrase') {

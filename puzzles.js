@@ -1646,7 +1646,8 @@
             manualEntry: (puzzle, host) =>
                 `${host.t('hurdle.manualSequence')} ` +
                 `<span class="text-[#00ff66] font-mono font-bold">laser(${puzzle.hurdleData.wordKey})</span>` +
-                `<div class="text-[10px] text-gray-500 mt-1">${host.t('hurdle.manualNote')}</div>`,
+                `<div class="text-[10px] text-gray-500 mt-1">${host.t('hurdle.manualNote')}</div>` +
+                `<div class="text-[10px] text-gray-500 mt-1">${host.t('hurdle.manualHint')}</div>`,
             render: (body, status, puzzle, host) => {
                 const data = puzzle.hurdleData;
 
@@ -2348,16 +2349,19 @@
                     render();
                 }
 
-                holdBtn.addEventListener('pointerdown', onHoldPointerDown);
-                ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
-                    holdBtn.addEventListener(type, onHoldRelease);
-                });
-                holdBtn.addEventListener('keydown', onHoldKeyDown);
-                holdBtn.addEventListener('keyup', onHoldKeyUp);
+                if (holdBtn) {
+                    holdBtn.addEventListener('pointerdown', onHoldPointerDown);
+                    ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+                        holdBtn.addEventListener(type, onHoldRelease);
+                    });
+                    holdBtn.addEventListener('keydown', onHoldKeyDown);
+                    holdBtn.addEventListener('keyup', onHoldKeyUp);
+                }
                 window.addEventListener('blur', onBlur);
                 document.addEventListener('visibilitychange', onVisibilityChange);
 
                 sliders.forEach((slider, index) => {
+                    if (!slider) return;
                     slider.dataset.index = index;
                     slider.addEventListener('input', onSliderInput);
                     slider.value = weights[index];
@@ -2372,15 +2376,19 @@
                     dispose: () => {
                         disposed = true;
                         if (raf) cancelAnimationFrame(raf);
-                        holdBtn.removeEventListener('pointerdown', onHoldPointerDown);
-                        ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
-                            holdBtn.removeEventListener(type, onHoldRelease);
-                        });
-                        holdBtn.removeEventListener('keydown', onHoldKeyDown);
-                        holdBtn.removeEventListener('keyup', onHoldKeyUp);
+                        if (holdBtn) {
+                            holdBtn.removeEventListener('pointerdown', onHoldPointerDown);
+                            ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+                                holdBtn.removeEventListener(type, onHoldRelease);
+                            });
+                            holdBtn.removeEventListener('keydown', onHoldKeyDown);
+                            holdBtn.removeEventListener('keyup', onHoldKeyUp);
+                        }
                         window.removeEventListener('blur', onBlur);
                         document.removeEventListener('visibilitychange', onVisibilityChange);
-                        sliders.forEach(slider => slider.removeEventListener('input', onSliderInput));
+                        sliders.forEach(slider => {
+                            if (slider) slider.removeEventListener('input', onSliderInput);
+                        });
                     }
                 };
             }
@@ -2632,7 +2640,6 @@
             if (hurdlePuzzle.solved || d.accepted >= d.phrases.length) {
                 return { kind: 'hurdle-solved', puzzle: hurdlePuzzle };
             }
-            if (!d.started) return { kind: 'hurdle-no-sequence', puzzle: hurdlePuzzle };
 
             const hex = hurdleHexMatch[1].toUpperCase();
             const matched = hex === d.phrases[d.accepted];
