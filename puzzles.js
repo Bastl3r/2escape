@@ -1895,18 +1895,16 @@
 
                     ctx.strokeStyle = 'rgba(0, 240, 255, .055)';
                     ctx.lineWidth = 1;
+                    ctx.beginPath();
                     for (let x = 12; x < W; x += 24) {
-                        ctx.beginPath();
                         ctx.moveTo(x, 0);
                         ctx.lineTo(x, H);
-                        ctx.stroke();
                     }
                     for (let y = 12; y < H; y += 24) {
-                        ctx.beginPath();
                         ctx.moveTo(0, y);
                         ctx.lineTo(W, y);
-                        ctx.stroke();
                     }
+                    ctx.stroke();
 
                     ctx.font = '10px "Share Tech Mono", monospace';
                     ctx.fillStyle = 'rgba(0, 240, 255, .42)';
@@ -1930,29 +1928,44 @@
                     ctx.stroke();
                     ctx.restore();
 
+                    // Batch lasers by shadow state: canvas shadow state changes are
+                    // expensive per frame, so draw all normals, then all hits, then
+                    // all white cores in three batches instead of per-laser save/restore.
+                    const normals = [];
+                    const hits = [];
                     for (const laser of lasers) {
+                        (laser.hit ? hits : normals).push(laser);
+                    }
+                    function drawLaserBatch(batch, blur, glow) {
+                        if (!batch.length) return;
                         ctx.save();
                         ctx.shadowColor = '#ff2a2a';
-                        ctx.shadowBlur = laser.hit ? 4 : 12;
-                        ctx.fillStyle = laser.hit ? 'rgba(255, 42, 42, .30)' : '#ff2a2a';
-                        ctx.beginPath();
-                        ctx.arc(laser.x, laser.y, DOT_RADIUS, 0, Math.PI * 2);
-                        ctx.fill();
-                        if (!laser.hit) {
-                            ctx.shadowBlur = 0;
-                            ctx.fillStyle = 'rgba(255, 255, 255, .75)';
+                        ctx.shadowBlur = blur;
+                        ctx.fillStyle = glow;
+                        for (const laser of batch) {
                             ctx.beginPath();
-                            ctx.arc(
-                                laser.x - DOT_RADIUS * 0.28,
-                                laser.y - DOT_RADIUS * 0.28,
-                                DOT_RADIUS * 0.34,
-                                0,
-                                Math.PI * 2
-                            );
+                            ctx.arc(laser.x, laser.y, DOT_RADIUS, 0, Math.PI * 2);
                             ctx.fill();
                         }
                         ctx.restore();
                     }
+                    drawLaserBatch(normals, 12, '#ff2a2a');
+                    drawLaserBatch(hits, 4, 'rgba(255, 42, 42, .30)');
+                    ctx.save();
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = 'rgba(255, 255, 255, .75)';
+                    for (const laser of normals) {
+                        ctx.beginPath();
+                        ctx.arc(
+                            laser.x - DOT_RADIUS * 0.28,
+                            laser.y - DOT_RADIUS * 0.28,
+                            DOT_RADIUS * 0.34,
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                    ctx.restore();
 
                     const py = GROUND_Y - player.jumpY - PLAYER.h;
                     ctx.save();
@@ -2175,22 +2188,40 @@
                     const d = computeDerived();
                     const inBand = injection >= NETWORK_BAND_MIN && injection <= NETWORK_BAND_MAX;
 
+                    // Skip DOM writes when nothing changed: reduces layout thrashing
+                    // while the hold button is pressed and load bars animate.
+                    const prev = render.prev || (render.prev = {});
+                    const write = (key, value) => {
+                        if (prev[key] !== value) { prev[key] = value; return true; }
+                        return false;
+                    };
+
                     if (masterFill) {
-                        masterFill.style.width = Math.min(injection, NETWORK_MAX_GAUGE) / NETWORK_MAX_GAUGE * 100 + '%';
-                        if (injection > NETWORK_BAND_MAX) masterFill.style.background = 'linear-gradient(90deg, rgba(255,204,0,.65), #ff2a2a)';
-                        else if (inBand) masterFill.style.background = 'linear-gradient(90deg, rgba(0,255,102,.55), #00ff66)';
-                        else masterFill.style.background = 'linear-gradient(90deg, rgba(0,240,255,.55), #00f0ff)';
+                        const width = Math.min(injection, NETWORK_MAX_GAUGE) / NETWORK_MAX_GAUGE * 100 + '%';
+                        if (write('masterFill-width', width)) masterFill.style.width = width;
+                        const bg = injection > NETWORK_BAND_MAX ? 'linear-gradient(90deg, rgba(255,204,0,.65), #ff2a2a)'
+                            : inBand ? 'linear-gradient(90deg, rgba(0,255,102,.55), #00ff66)'
+                            : 'linear-gradient(90deg, rgba(0,240,255,.55), #00f0ff)';
+                        if (write('masterFill-bg', bg)) masterFill.style.background = bg;
                     }
-                    if (loadValue) loadValue.innerText = Math.round(injection) + '%';
+                    if (loadValue) {
+                        const text = Math.round(injection) + '%';
+                        if (write('loadValue', text)) loadValue.innerText = text;
+                    }
                     if (masterHead) {
-                        if (injection > NETWORK_BAND_MAX) { masterHead.style.color = '#ff2a2a'; masterHead.style.textShadow = '0 0 10px rgba(255,42,42,.5)'; }
-                        else if (inBand) { masterHead.style.color = '#00ff66'; masterHead.style.textShadow = '0 0 10px rgba(0,255,102,.45)'; }
-                        else { masterHead.style.color = '#00f0ff'; masterHead.style.textShadow = '0 0 10px rgba(0,240,255,.55)'; }
+                        let color, shadow;
+                        if (injection > NETWORK_BAND_MAX) { color = '#ff2a2a'; shadow = '0 0 10px rgba(255,42,42,.5)'; }
+                        else if (inBand) { color = '#00ff66'; shadow = '0 0 10px rgba(0,255,102,.45)'; }
+                        else { color = '#00f0ff'; shadow = '0 0 10px rgba(0,240,255,.55)'; }
+                        if (write('masterHead-color', color)) masterHead.style.color = color;
+                        if (write('masterHead-shadow', shadow)) masterHead.style.textShadow = shadow;
                     }
                     if (masterEl) {
-                        if (injection > NETWORK_BAND_MAX) masterEl.style.boxShadow = '0 0 12px rgba(255,42,42,.3)';
-                        else if (inBand) masterEl.style.boxShadow = '0 0 12px rgba(0,255,102,.3)';
-                        else masterEl.style.boxShadow = '';
+                        let box;
+                        if (injection > NETWORK_BAND_MAX) box = '0 0 12px rgba(255,42,42,.3)';
+                        else if (inBand) box = '0 0 12px rgba(0,255,102,.3)';
+                        else box = '';
+                        if (write('masterEl-box', box)) masterEl.style.boxShadow = box;
                     }
 
                     BUS.forEach((b, index) => {
@@ -2198,59 +2229,99 @@
                         const over = load > net.busCaps[index] + 0.01;
                         const card = nodeCards[index];
                         if (card) {
-                            card.style.borderColor = over ? '#ff2a2a' : b.color;
-                            card.style.borderLeftColor = over ? '#ff2a2a' : b.color;
-                            card.style.background = over ? 'rgba(255,42,42,.07)' : '#0d0f12';
+                            const border = over ? '#ff2a2a' : b.color;
+                            const bg = over ? 'rgba(255,42,42,.07)' : '#0d0f12';
+                            if (write(`card-${index}-border`, border)) card.style.borderColor = border;
+                            if (write(`card-${index}-border-left`, border)) card.style.borderLeftColor = border;
+                            if (write(`card-${index}-bg`, bg)) card.style.background = bg;
                         }
                         const fill = nodeFills[index];
                         if (fill) {
-                            fill.style.width = Math.min(load, 50) / 50 * 100 + '%';
-                            fill.style.background = over ? '#ff2a2a' : b.color;
-                            fill.style.boxShadow = over ? '0 0 9px #ff2a2a' : `0 0 8px ${b.color}`;
+                            const width = Math.min(load, 50) / 50 * 100 + '%';
+                            const fillBg = over ? '#ff2a2a' : b.color;
+                            const shadow = over ? '0 0 9px #ff2a2a' : `0 0 8px ${b.color}`;
+                            if (write(`fill-${index}-width`, width)) fill.style.width = width;
+                            if (write(`fill-${index}-bg`, fillBg)) fill.style.background = fillBg;
+                            if (write(`fill-${index}-shadow`, shadow)) fill.style.boxShadow = shadow;
                         }
                         const loadEl = nodeLoads[index];
-                        if (loadEl) loadEl.querySelector('b').innerText = load.toFixed(1);
+                        if (loadEl) {
+                            const bEl = loadEl.querySelector('b');
+                            const loadText = load.toFixed(1);
+                            if (bEl && write(`load-${index}`, loadText)) bEl.innerText = loadText;
+                        }
                         const shareEl = nodeShares[index];
-                        if (shareEl) shareEl.innerText = host.t('overload.shareLabel') + ' ' + d.shares[index].toFixed(0) + '%';
+                        if (shareEl) {
+                            const shareText = host.t('overload.shareLabel') + ' ' + d.shares[index].toFixed(0) + '%';
+                            if (write(`share-${index}`, shareText)) shareEl.innerText = shareText;
+                        }
                         const warnEl = nodeWarns[index];
-                        if (warnEl) warnEl.innerText = over ? host.t('overload.warnTrip', { s: Math.max(0, NETWORK_GRACE - overTime[index]).toFixed(1) }) : '';
+                        if (warnEl) {
+                            const warnText = over ? host.t('overload.warnTrip', { s: Math.max(0, NETWORK_GRACE - overTime[index]).toFixed(1) }) : '';
+                            if (write(`warn-${index}`, warnText)) warnEl.innerText = warnText;
+                        }
                         const slider = sliders[index];
-                        if (slider) slider.style.accentColor = b.color;
+                        if (slider) {
+                            if (write(`slider-${index}-accent`, b.color)) slider.style.accentColor = b.color;
+                        }
                     });
 
                     const corrupting = !puzzle.solved && progress > 0.05;
-                    if (corruptValue) corruptValue.innerText = progress.toFixed(1) + 's / 5.0s';
-                    if (corruptFill) corruptFill.style.width = progress / NETWORK_DWELL * 100 + '%';
+                    if (corruptValue) {
+                        const text = progress.toFixed(1) + 's / 5.0s';
+                        if (write('corruptValue', text)) corruptValue.innerText = text;
+                    }
+                    if (corruptFill) {
+                        const width = progress / NETWORK_DWELL * 100 + '%';
+                        if (write('corruptFill-width', width)) corruptFill.style.width = width;
+                    }
                     if (targetCore) {
-                        targetCore.style.setProperty('--core', puzzle.solved ? '#ff2a2a' : corrupting ? '#ffcc00' : '#00f0ff');
+                        const core = puzzle.solved ? '#ff2a2a' : corrupting ? '#ffcc00' : '#00f0ff';
+                        if (write('targetCore-var', core)) targetCore.style.setProperty('--core', core);
                         if (puzzle.solved) {
-                            targetCore.style.borderColor = 'rgba(255,42,42,.65)';
-                            targetCore.style.boxShadow = '0 0 18px rgba(255,42,42,.4), inset 0 0 14px rgba(255,42,42,.2)';
+                            const bc = 'rgba(255,42,42,.65)';
+                            const bs = '0 0 18px rgba(255,42,42,.4), inset 0 0 14px rgba(255,42,42,.2)';
+                            if (write('targetCore-solved-border', bc)) targetCore.style.borderColor = bc;
+                            if (write('targetCore-solved-shadow', bs)) targetCore.style.boxShadow = bs;
                         } else if (corrupting) {
-                            targetCore.style.borderColor = 'rgba(255,204,0,.65)';
-                            targetCore.style.boxShadow = '0 0 18px rgba(255,204,0,.4), inset 0 0 14px rgba(255,204,0,.2)';
+                            const bc = 'rgba(255,204,0,.65)';
+                            const bs = '0 0 18px rgba(255,204,0,.4), inset 0 0 14px rgba(255,204,0,.2)';
+                            if (write('targetCore-over-border', bc)) targetCore.style.borderColor = bc;
+                            if (write('targetCore-over-shadow', bs)) targetCore.style.boxShadow = bs;
                         } else {
-                            targetCore.style.borderColor = 'rgba(0,240,255,.65)';
-                            targetCore.style.boxShadow = '0 0 18px rgba(0,240,255,.4), inset 0 0 14px rgba(0,240,255,.2)';
+                            const bc = 'rgba(0,240,255,.65)';
+                            const bs = '0 0 18px rgba(0,240,255,.4), inset 0 0 14px rgba(0,240,255,.2)';
+                            if (write('targetCore-idle-border', bc)) targetCore.style.borderColor = bc;
+                            if (write('targetCore-idle-shadow', bs)) targetCore.style.boxShadow = bs;
                         }
                     }
                     if (targetState) {
-                        if (puzzle.solved) targetState.innerText = host.t('overload.targetStateCorrupt');
-                        else if (corrupting) targetState.innerText = host.t('overload.targetStateOver');
-                        else targetState.innerText = host.t('overload.targetState');
+                        let stateText;
+                        if (puzzle.solved) stateText = host.t('overload.targetStateCorrupt');
+                        else if (corrupting) stateText = host.t('overload.targetStateOver');
+                        else stateText = host.t('overload.targetState');
+                        if (write('targetState', stateText)) targetState.innerText = stateText;
                     }
                     if (holdBtn) {
                         holdBtn.disabled = puzzle.solved;
                         if (hold && !puzzle.solved) {
-                            holdBtn.style.background = 'rgba(255,42,42,.28)';
-                            holdBtn.style.color = '#fff';
-                            holdBtn.style.boxShadow = '0 0 24px rgba(255,42,42,.38), inset 0 0 18px rgba(255,42,42,.18)';
-                            holdBtn.style.transform = 'translateY(1px)';
+                            const bg = 'rgba(255,42,42,.28)';
+                            const color = '#fff';
+                            const bs = '0 0 24px rgba(255,42,42,.38), inset 0 0 18px rgba(255,42,42,.18)';
+                            const transform = 'translateY(1px)';
+                            if (write('holdBtn-bg', bg)) holdBtn.style.background = bg;
+                            if (write('holdBtn-color', color)) holdBtn.style.color = color;
+                            if (write('holdBtn-shadow', bs)) holdBtn.style.boxShadow = bs;
+                            if (write('holdBtn-transform', transform)) holdBtn.style.transform = transform;
                         } else {
-                            holdBtn.style.background = 'rgba(255,42,42,.08)';
-                            holdBtn.style.color = '#ff8a8a';
-                            holdBtn.style.boxShadow = '';
-                            holdBtn.style.transform = '';
+                            const bg = 'rgba(255,42,42,.08)';
+                            const color = '#ff8a8a';
+                            const bs = '';
+                            const transform = '';
+                            if (write('holdBtn-idle-bg', bg)) holdBtn.style.background = bg;
+                            if (write('holdBtn-idle-color', color)) holdBtn.style.color = color;
+                            if (write('holdBtn-idle-shadow', bs)) holdBtn.style.boxShadow = bs;
+                            if (write('holdBtn-idle-transform', transform)) holdBtn.style.transform = transform;
                         }
                     }
                     renderStatus();
